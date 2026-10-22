@@ -45,7 +45,7 @@ func loadDotEnv(path string) error {
 	if err != nil {
 		return fmt.Errorf("открытие %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // файл только читался, ошибка закрытия не важна
 
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
