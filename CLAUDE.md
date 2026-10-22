@@ -6,7 +6,7 @@
 
 ## Статус
 
-Проект на этапе 0: кода ещё нет. Не описывай несуществующие файлы, команды и модули как готовые. Раздел «Команды» заполняется только командами, которые реально работают.
+Этап 0 (окружение) закончен: есть Go-сервер с `GET /health` (`cmd/server`, `internal/httpapi`, `internal/config`), PostgreSQL в Docker. Остального кода ещё нет. Не описывай несуществующие файлы, команды и модули как готовые. Раздел «Команды» заполняется только командами, которые реально работают.
 
 ## Ключевые решения
 
@@ -95,4 +95,6 @@ cmd/server  cmd/import  internal/  migrations/  queries/  api/  web/  docs/
 - `colima start` — запустить Docker-движок (после перезагрузки Mac).
 - `docker compose up -d --wait` — поднять PostgreSQL 17 (порт 5432, только localhost).
 - `docker compose down` — остановить (данные сохраняются; флаг `-v` запрещён в deny).
+- `go run ./cmd/server` — запустить сервер (читает `.env`, порт `HTTP_ADDR`, по умолчанию :8080); проверка: `curl localhost:8080/health`.
+- `go vet ./... && go test -race ./...` — проверка кода и тесты.
 - `.env` создаётся из `.env.example` с случайным паролем: `sed "s/change-me/$(openssl rand -hex 16)/g" .env.example > .env && chmod 600 .env`.
