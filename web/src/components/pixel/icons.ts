@@ -72,15 +72,15 @@ export const icons = {
     'x........',
     'xxxxx....',
   ]),
-  moon: icon([
+  contrast: icon([
     '..xxxxx..',
-    '.xxx.....',
-    'xxx......',
-    'xxx......',
-    'xxx......',
-    'xxx.....x',
-    '.xxx...xx',
-    '..xxxxxx.',
+    '.xxxx..x.',
+    'xxxxx...x',
+    'xxxxx...x',
+    'xxxxx...x',
+    'xxxxx...x',
+    '.xxxx..x.',
+    '..xxxxx..',
     '.........',
   ]),
   exit: icon([

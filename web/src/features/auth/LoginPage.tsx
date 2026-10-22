@@ -1,7 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { ApiError } from '@/api/client'
-import { WordmarkWithMascot } from '@/components/brand/Wordmark'
+import { Wordmark } from '@/components/brand/Wordmark'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,7 +58,7 @@ export function LoginPage() {
   return (
     <main className="grid min-h-dvh place-items-center p-6">
       <div className="flex w-full max-w-md flex-col items-center gap-8">
-        <WordmarkWithMascot scale={4} className="max-w-full" />
+        <Wordmark scale={5} className="h-auto max-w-full" />
 
         <form
           onSubmit={onSubmit}

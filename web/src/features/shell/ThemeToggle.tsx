@@ -16,7 +16,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       title={toDark ? 'Включить тёмную тему' : 'Включить светлую тему'}
       onClick={() => setTheme(toDark ? 'dark' : 'light')}
     >
-      <PixelArtSvg art={toDark ? icons.moon : icons.today} scale={3} />
+      <PixelArtSvg art={icons.contrast} scale={3} />
     </Button>
   )
 }

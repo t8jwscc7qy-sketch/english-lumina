@@ -14,6 +14,23 @@ function renderToday() {
 }
 
 describe('TodayPage', () => {
+  it('каждая карточка задачи — ссылка на свой раздел', async () => {
+    renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    const hrefs = within(screen.getByRole('region', { name: 'Задачи на сегодня' }))
+      .getAllByRole('link')
+      .map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual(['/cards', '/exercises', '/mistakes'])
+  })
+
+  it('кнопка «Начать сессию» стоит раньше карточек в порядке чтения, а не в самом низу', async () => {
+    renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    const button = screen.getByRole('button', { name: 'Начать сессию' })
+    const tasks = screen.getByRole('region', { name: 'Задачи на сегодня' })
+    expect(button.compareDocumentPosition(tasks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('заголовки идут по порядку: h1, затем h2 для разделов, h3 только внутри них', async () => {
     renderToday()
     await screen.findByRole('heading', { level: 1 })

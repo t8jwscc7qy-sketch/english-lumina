@@ -1,5 +1,5 @@
 import { PixelArtSvg } from '@/components/pixel/PixelArtSvg'
-import { mascot, post, wordmarkGround, wordmarkMascot } from './logo-data'
+import { mascot, post, wordmarkGround } from './logo-data'
 
 interface BrandProps {
   scale?: number
@@ -9,11 +9,6 @@ interface BrandProps {
 /** Слово VERST на земле: основной знак в навигации. */
 export function Wordmark({ scale = 3, className }: BrandProps) {
   return <PixelArtSvg art={wordmarkGround} scale={scale} title="Verst" className={className} />
-}
-
-/** Слово VERST с маскотом: приветственные экраны (вход). */
-export function WordmarkWithMascot({ scale = 4, className }: BrandProps) {
-  return <PixelArtSvg art={wordmarkMascot} scale={scale} title="Verst" className={className} />
 }
 
 /** Маскот «Верста»: полосатый столбик-веха с лицом. Декоративный, если не задан title. */

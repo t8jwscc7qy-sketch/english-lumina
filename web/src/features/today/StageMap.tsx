@@ -76,7 +76,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
                 )}
               >
                 {stage === 'bridge' && (
-                  <Dither level={2} color="var(--grass)" className="absolute inset-0 block" />
+                  <Dither level={2} color="var(--bridge)" className="absolute inset-0 block" />
                 )}
               </div>
 
@@ -92,8 +92,10 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               <p
                 aria-hidden
                 className={cn(
-                  'h-5 text-sm max-md:hidden',
-                  stage === 'current' ? 'font-semibold' : 'text-muted-foreground',
+                  'h-5 text-sm',
+                  stage === 'current'
+                    ? 'font-semibold max-md:text-xs'
+                    : 'text-muted-foreground max-md:hidden',
                 )}
               >
                 {stage === 'current'
@@ -112,7 +114,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
       {forecast === 'collecting' && cur < tgt && (
         <p className="flex items-center gap-3 text-sm">
           <span className="relative block h-4 w-12 shrink-0 border-4 border-line bg-muted">
-            <Dither level={2} color="var(--grass)" className="absolute inset-0 block" />
+            <Dither level={2} color="var(--bridge)" className="absolute inset-0 block" />
           </span>
           <span>
             <strong className="font-semibold">Собираю данные.</strong> Дату цели покажу после 1–2
