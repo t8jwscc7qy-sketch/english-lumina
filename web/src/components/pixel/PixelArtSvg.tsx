@@ -25,7 +25,7 @@ export function PixelArtSvg({ art, scale = 4, title, className }: PixelArtSvgPro
       {...(title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true })}
     >
       {rects.map((r, i) => (
-        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.fill} />
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} style={{ fill: r.fill }} />
       ))}
     </svg>
   )

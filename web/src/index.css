@@ -1,8 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-@import '@fontsource/pixelify-sans/500.css';
-@import '@fontsource/pixelify-sans/700.css';
+@import '@fontsource/press-start-2p/400.css';
 @import '@fontsource/onest/400.css';
 @import '@fontsource/onest/600.css';
 
@@ -69,9 +68,15 @@
 }
 
 @theme inline {
-  --font-pixel: 'Pixelify Sans', ui-monospace, monospace;
+  --font-pixel: 'Press Start 2P', ui-monospace, monospace;
   --font-sans: 'Onest', system-ui, sans-serif;
   --font-heading: var(--font-pixel);
+
+  /* Шкала размеров: 12 / 14 / 16 / 20 / 24 / 40. Пиксельный шрифт чёток на размерах, кратных 8 (16, 24, 40). */
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-display: 2.5rem;
+  --text-display--line-height: 3rem;
 
   --color-paper: var(--paper);
   --color-ink: var(--ink);
@@ -140,11 +145,16 @@
 
   h1,
   h2,
-  h3,
+  h3 {
+    font-weight: 600;
+  }
+
+  /* Пиксельный шрифт включается явно классом font-pixel (заголовки страниц, числа, кнопки). */
   .font-pixel {
     font-family: var(--font-pixel);
-    font-weight: 700;
+    font-weight: 400; /* у Press Start 2P один вес: жирный был бы подделкой */
     letter-spacing: 0;
+    word-spacing: -0.3em; /* пробел шрифта шириной в букву: сужаем, иначе слова разваливаются */
   }
 
   /* Пиксельный фокус: толстая рамка голубого цвета, видна в обеих темах. */

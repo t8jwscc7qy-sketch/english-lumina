@@ -136,7 +136,7 @@ export const wordmarkMascot: PixelArt = {
 
 export const mascot: PixelArt = {
   palette: {
-    '0': '#1E2347',
+    '0': 'var(--line)',
     '1': '#FFD23F',
     '2': '#F7F7FF',
     '3': '#EF476F',
@@ -169,7 +169,7 @@ export const mascot: PixelArt = {
 
 export const post: PixelArt = {
   palette: {
-    '0': '#1E2347',
+    '0': 'var(--line)',
     '1': '#FFD23F',
     '2': '#F7F7FF',
     '3': '#52B788',

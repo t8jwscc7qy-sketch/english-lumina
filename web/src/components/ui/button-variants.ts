@@ -6,7 +6,7 @@ import { cva } from 'class-variance-authority'
  * Главное действие (default) — жёлтое: этот цвет зарезервирован под опыт и главное действие.
  */
 export const buttonVariants = cva(
-  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 border-4 border-line font-pixel font-bold whitespace-nowrap select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 border-4 border-line font-pixel whitespace-nowrap select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
