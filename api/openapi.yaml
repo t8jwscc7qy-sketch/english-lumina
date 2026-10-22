@@ -1,0 +1,106 @@
+openapi: 3.0.3
+info:
+  title: English Pass API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/auth/login:
+    post:
+      operationId: login
+      summary: Вход по логину и паролю
+      description: При успехе ставит cookie сессии (HttpOnly, Secure, SameSite=Strict).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "204":
+          description: Вход выполнен, cookie установлена
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          description: Слишком много неудачных попыток, повторите позже
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Сервер занят проверкой паролей, повторите позже
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/auth/logout:
+    post:
+      operationId: logout
+      summary: Выход (идемпотентный)
+      responses:
+        "204":
+          description: Сессия отозвана, cookie стёрта
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/auth/me:
+    get:
+      operationId: getMe
+      summary: Текущий пользователь
+      responses:
+        "200":
+          description: Пользователь вошёл
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required: [login, password]
+      properties:
+        login:
+          type: string
+          minLength: 3
+          maxLength: 32
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+    Me:
+      type: object
+      required: [login]
+      properties:
+        login:
+          type: string
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Нет действующей сессии или неверные данные для входа
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Запрос с чужого источника (Origin)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
