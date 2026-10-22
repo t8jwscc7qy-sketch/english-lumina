@@ -33,6 +33,12 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-dvh">
+      <a
+        href="#content"
+        className="pixel-box sr-only px-4 py-2 font-semibold focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50"
+      >
+        Перейти к содержимому
+      </a>
       <aside className="w-20 shrink-0 bg-rail text-rail-foreground lg:w-60">
         <div className="sticky top-0 flex h-dvh flex-col gap-6 p-4">
           <div className="flex justify-center lg:justify-start">
@@ -84,7 +90,7 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1">
+      <main id="content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
         <Outlet />
       </main>
     </div>

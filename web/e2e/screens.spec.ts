@@ -100,3 +100,42 @@ for (const theme of ['light', 'dark'] as const) {
     })
   }
 }
+
+// Стресс: самое длинное допустимое имя и крайние ширины окна не должны ломать вёрстку.
+test.describe('стресс-проверка вёрстки', () => {
+  const LONG = 'w'.repeat(32)
+  for (const width of [360, 768, 1024, 1440, 2000]) {
+    test(`нет горизонтальной прокрутки при ширине ${width}`, async ({ browser }) => {
+      const context = await browser.newContext({ viewport: { width, height: 800 } })
+      const page = await context.newPage()
+      await page.route('**/api/v1/auth/me', (route) => route.fulfill({ json: { login: LONG } }))
+      for (const path of ['/', '/cards', '/nope']) {
+        await page.goto(path)
+        await expect(page.getByRole('heading').first()).toBeVisible()
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        )
+        expect(overflow, `${path} при ширине ${width}`).toBeLessThanOrEqual(0)
+      }
+      await page.screenshot({ path: `test-results/screens/stress-${width}.png` })
+      await context.close()
+    })
+  }
+
+  test('увеличение масштаба до 200% не ломает вход', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 640, height: 450 } }) // 1280×900 при 200%
+    const page = await context.newPage()
+    await page.route('**/api/v1/auth/me', (route) =>
+      route.fulfill({
+        status: 401,
+        json: { error: { code: 'unauthorized', message: 'Нужно войти' } },
+      }),
+    )
+    await page.goto('/login')
+    await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible()
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
+})

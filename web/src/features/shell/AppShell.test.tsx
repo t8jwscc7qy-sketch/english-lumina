@@ -26,6 +26,14 @@ afterEach(() => {
 })
 
 describe('AppShell', () => {
+  it('первой в порядке фокуса идёт ссылка «Перейти к содержимому» на <main>', async () => {
+    stubFetch()
+    renderAt('/', routes)
+    const skip = await screen.findByRole('link', { name: 'Перейти к содержимому' })
+    expect(skip).toHaveAttribute('href', '#content')
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'content')
+  })
+
   it('показывает навигацию с шестью разделами', async () => {
     stubFetch()
     renderAt('/', routes)

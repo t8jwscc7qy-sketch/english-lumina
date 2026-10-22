@@ -17,7 +17,7 @@ export const buttonVariants = cva(
         accent:
           'bg-accent text-accent-foreground shadow-pixel hover:brightness-105 active:translate-x-1 active:translate-y-1 active:shadow-pixel-sm',
         destructive:
-          'bg-destructive text-ink shadow-pixel hover:brightness-105 active:translate-x-1 active:translate-y-1 active:shadow-pixel-sm',
+          'bg-coral-soft text-ink shadow-pixel hover:brightness-105 active:translate-x-1 active:translate-y-1 active:shadow-pixel-sm',
         ghost: 'border-transparent bg-transparent text-foreground hover:border-line hover:bg-muted',
         link: 'border-transparent bg-transparent px-0 text-foreground underline underline-offset-4 hover:no-underline',
       },

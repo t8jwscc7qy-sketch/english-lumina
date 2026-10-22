@@ -43,14 +43,14 @@ export function TodayPage() {
   const dayWord = d.streakDays === 1 ? 'день' : d.streakDays < 5 ? 'дня' : 'дней'
 
   return (
-    <div className="grid gap-8 p-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:p-8">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 p-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:p-8">
       <div className="flex min-w-0 flex-col gap-8">
         <header className="flex flex-col gap-2">
           <h1 className="font-pixel text-title break-words md:text-display">
             Привет, {me.data?.login}
           </h1>
           <p className="text-muted-foreground">
-            Цель: {d.current} → {d.target} · {d.minutesPerDay} мин в день
+            Цель: {d.current} → {d.target} · {d.minutesPerDay} мин в день
           </p>
           <p
             role="note"
@@ -69,7 +69,7 @@ export function TodayPage() {
             <p className="flex justify-between text-sm">
               <span className="font-semibold">Опыт уровня {d.current}</span>
               <span className="text-muted-foreground">
-                {d.levelXp.value} из {d.levelXp.total}
+                {d.levelXp.value} из {d.levelXp.total}
               </span>
             </p>
             <XpBar
@@ -81,7 +81,10 @@ export function TodayPage() {
           </div>
         </section>
 
-        <section aria-label="Задачи на сегодня" className="grid gap-4 md:grid-cols-3">
+        <section aria-labelledby="tasks-title" className="grid gap-4 md:grid-cols-3">
+          <h2 id="tasks-title" className="sr-only">
+            Задачи на сегодня
+          </h2>
           <TaskCard
             title="Карточки к повторению"
             value={d.cardsDue}
@@ -122,9 +125,7 @@ export function TodayPage() {
             label="Минимальный день"
             segments={10}
           />
-          <p className="text-sm">
-            {d.minimumDay.done} из {d.minimumDay.total} мин
-          </p>
+          <p className="text-sm">{`${d.minimumDay.done} из ${d.minimumDay.total} мин`}</p>
         </section>
 
         <div className="flex flex-col gap-2">

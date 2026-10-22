@@ -65,8 +65,11 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               <div
                 className={cn(
                   'relative h-6 w-full border-y-4 border-line',
-                  i === 0 && 'border-l-4',
-                  i === LEVELS.length - 1 && 'border-r-4',
+                  // Торцы дороги: тонкие вертикальные заглушки на краях первой и последней платформы.
+                  i === 0 &&
+                    'before:absolute before:-top-1 before:-bottom-1 before:left-0 before:w-1 before:bg-line',
+                  i === LEVELS.length - 1 &&
+                    'after:absolute after:-top-1 after:-bottom-1 after:right-0 after:w-1 after:bg-line',
                   stage === 'done' && 'bg-grass',
                   stage === 'current' && 'bg-sky',
                   (stage === 'bridge' || stage === 'future') && 'bg-muted',

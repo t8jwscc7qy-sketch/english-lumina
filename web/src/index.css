@@ -21,6 +21,7 @@
   --sun: #ffd23f;
   --coral: #ef476f;
   --coral-text: #c42d52; /* коралл для текста: контраст ≥ 4.5:1 на бумаге */
+  --coral-soft: #ff6b88; /* заливка кнопки опасного действия: тёмный текст на ней ≥ 4.5:1 */
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -85,6 +86,7 @@
   --color-sun: var(--sun);
   --color-coral: var(--coral);
   --color-coral-text: var(--coral-text);
+  --color-coral-soft: var(--coral-soft);
   --color-rail: var(--rail);
   --color-rail-foreground: var(--rail-foreground);
   --color-rail-muted: var(--rail-muted);
@@ -132,6 +134,14 @@
 
   html {
     color-scheme: light;
+    /* Поверхности браузера тоже в палитре: прокрутка, выделение, нативные контролы. */
+    scrollbar-color: var(--line) var(--background);
+    accent-color: var(--sun);
+  }
+
+  ::selection {
+    background: var(--sun);
+    color: var(--ink);
   }
   html.dark {
     color-scheme: dark;
@@ -147,6 +157,14 @@
   h2,
   h3 {
     font-weight: 600;
+    text-wrap: balance;
+  }
+
+  /* Нет задержки двойного нажатия и случайного зума при быстрых тапах. */
+  a,
+  button,
+  input {
+    touch-action: manipulation;
   }
 
   /* Пиксельный шрифт включается явно классом font-pixel (заголовки страниц, числа, кнопки). */

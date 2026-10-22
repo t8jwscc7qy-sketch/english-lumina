@@ -107,3 +107,20 @@ describe('LoginPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Войти' })).toBeEnabled())
   })
 })
+
+describe('LoginPage: фокус после ошибки', () => {
+  it('пустая форма: фокус на пустом логине', async () => {
+    renderAt('/login', routes)
+    await fill('', '')
+    await screen.findByRole('alert')
+    expect(screen.getByLabelText('Логин')).toHaveFocus()
+  })
+
+  it('неверный пароль: фокус на пароле, чтобы сразу набрать заново', async () => {
+    stubFetch(() => errorResponse(401, 'invalid_credentials', 'Неверный логин или пароль'))
+    renderAt('/login', routes)
+    await fill('firimon', 'wrong-password-1')
+    await screen.findByRole('alert')
+    await waitFor(() => expect(screen.getByLabelText('Пароль')).toHaveFocus())
+  })
+})

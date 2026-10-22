@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useId, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { ApiError } from '@/api/client'
 import { WordmarkWithMascot } from '@/components/brand/Wordmark'
@@ -15,6 +15,8 @@ export function LoginPage() {
   const loginMutation = useLogin()
   const [localError, setLocalError] = useState<string | null>(null)
   const errorId = useId()
+  const loginRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   const apiError = loginMutation.error
   const message =
@@ -31,14 +33,20 @@ export function LoginPage() {
     const password = String(form.get('password') ?? '')
     if (!login || !password) {
       setLocalError('Введи логин и пароль')
+      // Фокус на первое пустое поле: можно сразу печатать.
+      ;(login ? passwordRef : loginRef).current?.focus()
       return
     }
     setLocalError(null)
     try {
       await loginMutation.mutateAsync({ login, password })
       navigate('/', { replace: true })
-    } catch {
-      // сообщение покажется из состояния мутации
+    } catch (e) {
+      // Сообщение покажется из состояния мутации. Неверные данные: фокус на пароль, чтобы набрать заново.
+      if (e instanceof ApiError && e.code === 'invalid_credentials') {
+        passwordRef.current?.focus()
+        passwordRef.current?.select()
+      }
     }
   }
 
@@ -77,6 +85,7 @@ export function LoginPage() {
             <Label htmlFor="login">Логин</Label>
             <Input
               id="login"
+              ref={loginRef}
               name="login"
               autoComplete="username"
               autoCapitalize="none"
@@ -90,6 +99,7 @@ export function LoginPage() {
             <Label htmlFor="password">Пароль</Label>
             <Input
               id="password"
+              ref={passwordRef}
               name="password"
               type="password"
               autoComplete="current-password"

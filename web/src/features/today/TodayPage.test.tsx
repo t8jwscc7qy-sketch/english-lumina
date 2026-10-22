@@ -14,6 +14,21 @@ function renderToday() {
 }
 
 describe('TodayPage', () => {
+  it('заголовки идут по порядку: h1, затем h2 для разделов, h3 только внутри них', async () => {
+    renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    const levels = screen.getAllByRole('heading').map((h) => Number(h.tagName[1]))
+    for (let i = 1; i < levels.length; i++) expect(levels[i] - levels[i - 1]).toBeLessThanOrEqual(1)
+  })
+
+  it('единицы не отрываются от чисел: «4 из 10 мин» с неразрывными пробелами', async () => {
+    renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    // getByText сам сворачивает неразрывные пробелы, поэтому сверяем сырой textContent.
+    const el = screen.getByText(/^4\s+из\s+10\s+мин$/)
+    expect(el.textContent).toBe('4\u00a0из\u00a010\u00a0мин')
+  })
+
   it('приветствует по имени и называет цель', async () => {
     renderToday()
     expect(
