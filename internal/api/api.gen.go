@@ -10,10 +10,52 @@ import (
 	"net/http"
 )
 
+// Defines values for ErrorErrorCode.
+const (
+	ErrorErrorCodeBusy               ErrorErrorCode = "busy"
+	ErrorErrorCodeForbiddenOrigin    ErrorErrorCode = "forbidden_origin"
+	ErrorErrorCodeInternal           ErrorErrorCode = "internal"
+	ErrorErrorCodeInvalidCredentials ErrorErrorCode = "invalid_credentials"
+	ErrorErrorCodeInvalidRequest     ErrorErrorCode = "invalid_request"
+	ErrorErrorCodeTooManyAttempts    ErrorErrorCode = "too_many_attempts"
+	ErrorErrorCodeUnauthorized       ErrorErrorCode = "unauthorized"
+)
+
+// Valid indicates whether the value is a known member of the ErrorErrorCode enum.
+func (e ErrorErrorCode) Valid() bool {
+	switch e {
+	case ErrorErrorCodeBusy:
+		return true
+	case ErrorErrorCodeForbiddenOrigin:
+		return true
+	case ErrorErrorCodeInternal:
+		return true
+	case ErrorErrorCodeInvalidCredentials:
+		return true
+	case ErrorErrorCodeInvalidRequest:
+		return true
+	case ErrorErrorCodeTooManyAttempts:
+		return true
+	case ErrorErrorCodeUnauthorized:
+		return true
+	default:
+		return false
+	}
+}
+
 // Error defines model for Error.
 type Error struct {
-	Error string `json:"error"`
+	Error struct {
+		// Code Машинный код ошибки
+		Code ErrorErrorCode `json:"code"`
+
+		// Message Текст для пользователя на русском
+		Message string `json:"message"`
+	} `json:"error"`
 }
+
+// ErrorErrorCode Машинный код ошибки
+type ErrorErrorCode string
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
@@ -41,13 +83,13 @@ type LoginJSONRequestBody = LoginRequest
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Login Вход по логину и паролю
-	// (POST /api/auth/login)
+	// (POST /api/v1/auth/login)
 	Login(w http.ResponseWriter, r *http.Request)
 	// Logout Выход (идемпотентный)
-	// (POST /api/auth/logout)
+	// (POST /api/v1/auth/logout)
 	Logout(w http.ResponseWriter, r *http.Request)
 	// GetMe Текущий пользователь
-	// (GET /api/auth/me)
+	// (GET /api/v1/auth/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
 }
 
@@ -222,9 +264,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/auth/login", wrapper.Login)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/auth/logout", wrapper.Logout)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/auth/me", wrapper.GetMe)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/auth/login", wrapper.Login)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/auth/logout", wrapper.Logout)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/auth/me", wrapper.GetMe)
 
 	return m
 }

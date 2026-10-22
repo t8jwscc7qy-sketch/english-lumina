@@ -50,3 +50,11 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 		slog.Error("запись ответа", "err", err)
 	}
 }
+
+// writeError отвечает ошибкой единого формата: {"error":{"code":"...","message":"..."}}.
+func writeError(w http.ResponseWriter, status int, code api.ErrorErrorCode, message string) {
+	var body api.Error
+	body.Error.Code = code
+	body.Error.Message = message
+	writeJSON(w, status, body)
+}

@@ -148,7 +148,7 @@ func sessionFrom(t *testing.T, rec *httptest.ResponseRecorder) *http.Cookie {
 
 func login(t *testing.T, e env) string {
 	t.Helper()
-	rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword))
+	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("вход: статус %d, тело %s", rec.Code, rec.Body)
 	}
@@ -157,7 +157,7 @@ func login(t *testing.T, e env) string {
 
 func TestLoginSuccessSetsSecureCookie(t *testing.T) {
 	e := newEnv(t)
-	rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword))
+	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("статус %d, ожидали 204", rec.Code)
 	}
@@ -179,8 +179,8 @@ func TestLoginSuccessSetsSecureCookie(t *testing.T) {
 
 func TestLoginFailuresLookTheSame(t *testing.T) {
 	e := newEnv(t)
-	wrongPass := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, "wrong-password-1"))
-	noUser := e.do(http.MethodPost, "/api/auth/login", loginBody("nobody", "wrong-password-1"))
+	wrongPass := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, "wrong-password-1"))
+	noUser := e.do(http.MethodPost, "/api/v1/auth/login", loginBody("nobody", "wrong-password-1"))
 	for name, rec := range map[string]*httptest.ResponseRecorder{"неверный пароль": wrongPass, "нет логина": noUser} {
 		if rec.Code != http.StatusUnauthorized {
 			t.Errorf("%s: статус %d, ожидали 401", name, rec.Code)
@@ -207,7 +207,7 @@ func TestLoginValidation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec := e.do(http.MethodPost, "/api/auth/login", tt.body)
+			rec := e.do(http.MethodPost, "/api/v1/auth/login", tt.body)
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("статус %d, ожидали 400", rec.Code)
 			}
@@ -218,18 +218,18 @@ func TestLoginValidation(t *testing.T) {
 func TestLoginThrottle(t *testing.T) {
 	e := newEnv(t)
 	for i := 0; i < 5; i++ {
-		rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, "wrong-password-1"))
+		rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, "wrong-password-1"))
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("попытка %d: статус %d, ожидали 401", i+1, rec.Code)
 		}
 	}
 	// Блокировка действует и на верный пароль.
-	rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword))
+	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword))
 	if rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("статус %d, ожидали 429", rec.Code)
 	}
 	// Другой порт того же адреса — тот же ключ.
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(loginBody(testLogin, testPassword)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(loginBody(testLogin, testPassword)))
 	req.RemoteAddr = "203.0.113.7:60000"
 	out := httptest.NewRecorder()
 	e.h.ServeHTTP(out, req)
@@ -242,9 +242,9 @@ func TestLoginSuccessResetsThrottle(t *testing.T) {
 	e := newEnv(t)
 	for round := 0; round < 3; round++ {
 		for i := 0; i < 4; i++ {
-			e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, "wrong-password-1"))
+			e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, "wrong-password-1"))
 		}
-		if rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword)); rec.Code != http.StatusNoContent {
+		if rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword)); rec.Code != http.StatusNoContent {
 			t.Fatalf("раунд %d: статус %d, ожидали 204", round, rec.Code)
 		}
 	}
@@ -254,7 +254,7 @@ func TestMe(t *testing.T) {
 	e := newEnv(t)
 	token := login(t, e)
 
-	rec := e.do(http.MethodGet, "/api/auth/me", "", withCookie(token))
+	rec := e.do(http.MethodGet, "/api/v1/auth/me", "", withCookie(token))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("статус %d, ожидали 200", rec.Code)
 	}
@@ -279,7 +279,7 @@ func TestMe(t *testing.T) {
 	}
 	for name, opts := range unauth {
 		t.Run(name, func(t *testing.T) {
-			if rec := e.do(http.MethodGet, "/api/auth/me", "", opts...); rec.Code != http.StatusUnauthorized {
+			if rec := e.do(http.MethodGet, "/api/v1/auth/me", "", opts...); rec.Code != http.StatusUnauthorized {
 				t.Fatalf("статус %d, ожидали 401", rec.Code)
 			}
 		})
@@ -290,22 +290,22 @@ func TestLogout(t *testing.T) {
 	e := newEnv(t)
 	token := login(t, e)
 
-	rec := e.do(http.MethodPost, "/api/auth/logout", "", withCookie(token))
+	rec := e.do(http.MethodPost, "/api/v1/auth/logout", "", withCookie(token))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("статус %d, ожидали 204", rec.Code)
 	}
 	if c := sessionFrom(t, rec); c.MaxAge >= 0 || c.Value != "" {
 		t.Errorf("cookie не стёрта: MaxAge=%d Value=%q", c.MaxAge, c.Value)
 	}
-	if rec := e.do(http.MethodGet, "/api/auth/me", "", withCookie(token)); rec.Code != http.StatusUnauthorized {
+	if rec := e.do(http.MethodGet, "/api/v1/auth/me", "", withCookie(token)); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("/me после выхода: статус %d, ожидали 401", rec.Code)
 	}
 
 	// Повторный выход и выход без cookie — не ошибки.
-	if rec := e.do(http.MethodPost, "/api/auth/logout", "", withCookie(token)); rec.Code != http.StatusNoContent {
+	if rec := e.do(http.MethodPost, "/api/v1/auth/logout", "", withCookie(token)); rec.Code != http.StatusNoContent {
 		t.Errorf("повторный выход: статус %d, ожидали 204", rec.Code)
 	}
-	if rec := e.do(http.MethodPost, "/api/auth/logout", ""); rec.Code != http.StatusNoContent {
+	if rec := e.do(http.MethodPost, "/api/v1/auth/logout", ""); rec.Code != http.StatusNoContent {
 		t.Errorf("выход без cookie: статус %d, ожидали 204", rec.Code)
 	}
 }
@@ -327,14 +327,14 @@ func TestOriginCheck(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec := e.do(http.MethodPost, "/api/auth/login", body, tt.opts...)
+			rec := e.do(http.MethodPost, "/api/v1/auth/login", body, tt.opts...)
 			if rec.Code != tt.want {
 				t.Fatalf("статус %d, ожидали %d", rec.Code, tt.want)
 			}
 		})
 	}
 	// Выход тоже защищён.
-	if rec := e.do(http.MethodPost, "/api/auth/logout", "", withHeader("Origin", "https://evil.example")); rec.Code != http.StatusForbidden {
+	if rec := e.do(http.MethodPost, "/api/v1/auth/logout", "", withHeader("Origin", "https://evil.example")); rec.Code != http.StatusForbidden {
 		t.Errorf("logout с чужим Origin: статус %d, ожидали 403", rec.Code)
 	}
 }

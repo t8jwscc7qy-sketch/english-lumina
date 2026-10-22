@@ -24,7 +24,7 @@ func TestLoginRejectsBadLoginFormat(t *testing.T) {
 		"кириллица":    "владимир",
 	} {
 		t.Run(name, func(t *testing.T) {
-			rec := e.do(http.MethodPost, "/api/auth/login", loginBody(login, testPassword))
+			rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(login, testPassword))
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("статус %d, ожидали 400", rec.Code)
 			}
@@ -35,7 +35,7 @@ func TestLoginRejectsBadLoginFormat(t *testing.T) {
 // Битый UTF-8 в User-Agent не должен ломать вход: PostgreSQL отверг бы такую строку.
 func TestLoginInvalidUserAgentUTF8(t *testing.T) {
 	e := newEnv(t)
-	rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword),
+	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword),
 		withHeader("User-Agent", "Mozilla/5.0 \xff\xfe broken"))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("статус %d, ожидали 204", rec.Code)
@@ -56,16 +56,16 @@ func TestLoginInvalidUserAgentUTF8(t *testing.T) {
 func TestThrottleIPv6SharesPrefix(t *testing.T) {
 	e := newEnv(t)
 	for i := 0; i < 5; i++ {
-		e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, "wrong-password-1"),
+		e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, "wrong-password-1"),
 			withRemote("[2001:db8:1:2:aaaa::"+string(rune('1'+i))+"]:5000"))
 	}
-	rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword),
+	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword),
 		withRemote("[2001:db8:1:2:ffff::9]:5000"))
 	if rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("статус %d, ожидали 429", rec.Code)
 	}
 	// Другая сеть /64 не задета.
-	rec = e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword),
+	rec = e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword),
 		withRemote("[2001:db8:1:3::1]:5000"))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("соседняя сеть: статус %d, ожидали 204", rec.Code)
@@ -80,7 +80,7 @@ func TestLoginBusyWhenVerifySlotsTaken(t *testing.T) {
 		s.verifySem <- struct{}{}
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(loginBody(testLogin, testPassword)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(loginBody(testLogin, testPassword)))
 	req.RemoteAddr = "203.0.113.7:1"
 	rec := httptest.NewRecorder()
 	s.Login(rec, req)
@@ -93,7 +93,7 @@ func TestLoginBusyWhenVerifySlotsTaken(t *testing.T) {
 
 	<-s.verifySem // освободилось место
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(loginBody(testLogin, testPassword)))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(loginBody(testLogin, testPassword)))
 	req.RemoteAddr = "203.0.113.8:1"
 	s.Login(rec, req)
 	if rec.Code != http.StatusNoContent {
@@ -110,7 +110,7 @@ func TestFailedLoginDoesNotLogLoginField(t *testing.T) {
 
 	e := newEnv(t)
 	const typed = "my-secret-pass-typed-here"
-	rec := e.do(http.MethodPost, "/api/auth/login", loginBody(typed, "x"))
+	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(typed, "x"))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("статус %d, ожидали 401", rec.Code)
 	}

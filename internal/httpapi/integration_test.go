@@ -106,7 +106,7 @@ func TestAuthFlowOnRealDatabase(t *testing.T) {
 	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
 
 	// Вход.
-	rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword))
+	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("вход: статус %d, тело %s", rec.Code, rec.Body)
 	}
@@ -126,29 +126,29 @@ func TestAuthFlowOnRealDatabase(t *testing.T) {
 	}
 
 	// Текущий пользователь.
-	if rec := e.do(http.MethodGet, "/api/auth/me", "", withCookie(token)); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), testLogin) {
+	if rec := e.do(http.MethodGet, "/api/v1/auth/me", "", withCookie(token)); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), testLogin) {
 		t.Fatalf("/me: статус %d, тело %s", rec.Code, rec.Body)
 	}
 
 	// Выход отзывает сессию в базе.
-	if rec := e.do(http.MethodPost, "/api/auth/logout", "", withCookie(token)); rec.Code != http.StatusNoContent {
+	if rec := e.do(http.MethodPost, "/api/v1/auth/logout", "", withCookie(token)); rec.Code != http.StatusNoContent {
 		t.Fatalf("выход: статус %d", rec.Code)
 	}
 	var revoked bool
 	if err := pool.QueryRow(ctx, "SELECT bool_and(revoked_at IS NOT NULL) FROM sessions").Scan(&revoked); err != nil || !revoked {
 		t.Fatalf("сессия не отозвана (err=%v)", err)
 	}
-	if rec := e.do(http.MethodGet, "/api/auth/me", "", withCookie(token)); rec.Code != http.StatusUnauthorized {
+	if rec := e.do(http.MethodGet, "/api/v1/auth/me", "", withCookie(token)); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("/me после выхода: статус %d, ожидали 401", rec.Code)
 	}
 
 	// Неверный пароль и блокировка после серии неудач.
 	for i := 0; i < 5; i++ {
-		if rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, "wrong-password-1")); rec.Code != http.StatusUnauthorized {
+		if rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, "wrong-password-1")); rec.Code != http.StatusUnauthorized {
 			t.Fatalf("неверный пароль %d: статус %d, ожидали 401", i+1, rec.Code)
 		}
 	}
-	if rec := e.do(http.MethodPost, "/api/auth/login", loginBody(testLogin, testPassword)); rec.Code != http.StatusTooManyRequests {
+	if rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword)); rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("после 5 неудач: статус %d, ожидали 429", rec.Code)
 	}
 }

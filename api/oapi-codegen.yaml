@@ -3,4 +3,4 @@ package: api
 generate:
   std-http-server: true
   models: true
-output: internal/api/api.gen.go
+output: api.gen.go

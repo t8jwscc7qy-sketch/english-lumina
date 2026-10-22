@@ -94,11 +94,11 @@ func authenticate(r *http.Request, store AuthStore) (db.User, error) {
 
 func writeAuthError(w http.ResponseWriter, err error) {
 	if errors.Is(err, errNoSession) {
-		writeJSON(w, http.StatusUnauthorized, api.Error{Error: "требуется вход"})
+		writeError(w, http.StatusUnauthorized, api.ErrorErrorCodeUnauthorized, "Нужно войти")
 		return
 	}
 	slog.Error("проверка сессии", "err", err)
-	writeJSON(w, http.StatusInternalServerError, api.Error{Error: "внутренняя ошибка"})
+	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
 }
 
 // authServer реализует api.ServerInterface.
@@ -125,18 +125,18 @@ func (s *authServer) Login(w http.ResponseWriter, r *http.Request) {
 	var req api.LoginRequest
 	r.Body = http.MaxBytesReader(w, r.Body, maxLoginBody)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, api.Error{Error: "некорректный запрос"})
+		writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidRequest, "Некорректный запрос")
 		return
 	}
 	if !loginRe.MatchString(req.Login) || len(req.Password) == 0 || len(req.Password) > maxPasswordBytes {
-		writeJSON(w, http.StatusBadRequest, api.Error{Error: "некорректный логин или пароль"})
+		writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidRequest, "Проверь логин и пароль: логин 3–32 символа, пароль до 256 байт")
 		return
 	}
 
 	// Попытка занимается до проверки пароля, иначе параллельные запросы обходят лимит.
 	ip := clientIP(r)
 	if !s.throttle.Allow(ip) {
-		writeJSON(w, http.StatusTooManyRequests, api.Error{Error: "слишком много попыток, попробуйте через минуту"})
+		writeError(w, http.StatusTooManyRequests, api.ErrorErrorCodeTooManyAttempts, "Слишком много попыток, попробуй через минуту")
 		return
 	}
 
@@ -148,7 +148,7 @@ func (s *authServer) Login(w http.ResponseWriter, r *http.Request) {
 
 	release, ok := s.acquireVerify()
 	if !ok {
-		writeJSON(w, http.StatusServiceUnavailable, api.Error{Error: "сервер занят, повторите через несколько секунд"})
+		writeError(w, http.StatusServiceUnavailable, api.ErrorErrorCodeBusy, "Сервер занят, повтори через несколько секунд")
 		return
 	}
 	hash := user.PasswordHash
@@ -168,7 +168,7 @@ func (s *authServer) Login(w http.ResponseWriter, r *http.Request) {
 	if !matched || user.ID == 0 {
 		// В журнал идёт адрес, а не логин: в поле логина могут набрать пароль.
 		slog.Info("неудачный вход", "ip", ip)
-		writeJSON(w, http.StatusUnauthorized, api.Error{Error: "неверный логин или пароль"})
+		writeError(w, http.StatusUnauthorized, api.ErrorErrorCodeInvalidCredentials, "Неверный логин или пароль")
 		return
 	}
 
@@ -225,7 +225,7 @@ func (s *authServer) acquireVerify() (release func(), ok bool) {
 
 func (s *authServer) fail(w http.ResponseWriter, err error) {
 	slog.Error("ошибка авторизации", "err", err)
-	writeJSON(w, http.StatusInternalServerError, api.Error{Error: "внутренняя ошибка"})
+	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
 }
 
 func setSessionCookie(w http.ResponseWriter, value string, maxAge int) {

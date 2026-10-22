@@ -13,7 +13,7 @@ import (
 func checkOrigin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && !originAllowed(r) {
-			writeJSON(w, http.StatusForbidden, api.Error{Error: "запрос с чужого источника"})
+			writeError(w, http.StatusForbidden, api.ErrorErrorCodeForbiddenOrigin, "Запрос с чужого источника")
 			return
 		}
 		next.ServeHTTP(w, r)

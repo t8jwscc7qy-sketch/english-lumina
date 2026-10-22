@@ -5,7 +5,7 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
-  /api/auth/login:
+  /api/v1/auth/login:
     post:
       operationId: login
       summary: Вход по логину и паролю
@@ -37,7 +37,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /api/auth/logout:
+  /api/v1/auth/logout:
     post:
       operationId: logout
       summary: Выход (идемпотентный)
@@ -46,7 +46,7 @@ paths:
           description: Сессия отозвана, cookie стёрта
         "403":
           $ref: "#/components/responses/Forbidden"
-  /api/auth/me:
+  /api/v1/auth/me:
     get:
       operationId: getMe
       summary: Текущий пользователь
@@ -84,7 +84,16 @@ components:
       required: [error]
       properties:
         error:
-          type: string
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Машинный код ошибки
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, internal]
+            message:
+              type: string
+              description: Текст для пользователя на русском
   responses:
     BadRequest:
       description: Некорректный запрос
