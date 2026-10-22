@@ -1,0 +1,33 @@
+# Секреты
+.env
+.env.*
+!.env.example
+
+# Скачанные базы и кэш импорта
+data/
+.cache/
+
+# Сборки и зависимости
+node_modules/
+web/dist/
+bin/
+*.test
+*.out
+
+# Система и редакторы
+.DS_Store
+.vscode/
+.idea/
+
+# Локальное окружение Claude Code
+.claude/settings.local.json
+
+# Установленные сторонние навыки и агенты (не публикуем)
+skills-lock.json
+.agents/
+.impeccable/
+.claude/skills/*
+!.claude/skills/db-migration/
+!.claude/skills/go-conventions/
+!.claude/skills/new-source/
+.claude/agents/impeccable-*.md
