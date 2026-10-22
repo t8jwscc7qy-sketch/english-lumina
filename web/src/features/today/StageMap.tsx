@@ -51,12 +51,13 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
                     animate={{ y: [0, -4, 0] }}
                     transition={{ duration: 1.2, repeat: Infinity, ease: steps(2) }}
                   >
-                    <Mascot scale={4} />
+                    <Mascot scale={4} className="max-md:h-auto max-md:w-9" />
                   </motion.div>
                 ) : (
                   <PixelArtSvg
                     art={flagArt(isTarget ? 'target' : stage === 'done' ? 'done' : 'future')}
                     scale={4}
+                    className="max-md:h-auto max-md:w-[27px]"
                   />
                 )}
               </div>
@@ -94,7 +95,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
                 className={cn(
                   'h-5 text-sm',
                   stage === 'current'
-                    ? 'font-semibold max-md:text-xs'
+                    ? 'font-semibold whitespace-nowrap max-md:text-xs'
                     : 'text-muted-foreground max-md:hidden',
                 )}
               >
