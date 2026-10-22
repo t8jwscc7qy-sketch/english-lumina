@@ -6,7 +6,9 @@
 
 ## Статус
 
-Этап 0 (окружение) закончен: есть Go-сервер с `GET /health` (`cmd/server`, `internal/httpapi`, `internal/config`), PostgreSQL в Docker. Остального кода ещё нет. Не описывай несуществующие файлы, команды и модули как готовые. Раздел «Команды» заполняется только командами, которые реально работают.
+Этап 0 (окружение) закончен: есть Go-сервер с `GET /health` (`cmd/server`, `internal/httpapi`, `internal/config`), PostgreSQL в Docker, схема БД (`migrations/`, `queries/`, `internal/db`).
+
+Авторизация сделана (спек и план в `docs/superpowers/`): вход, выход и `/me` (`api/openapi.yaml` → `internal/api`), пароли argon2id и ограничитель перебора (`internal/auth`), создание единственного пользователя `cmd/createuser`. Проверено тестами (включая интеграционный на настоящей БД) и запуском сервера; успешный вход вручную с реальным паролем не проверялся. Отложено: список разрешённых `Host` (защита от DNS rebinding), таймауты сервера, отзыв старой сессии при входе, очистка мёртвых сессий. Остального кода ещё нет. Не описывай несуществующие файлы, команды и модули как готовые. Раздел «Команды» заполняется только командами, которые реально работают.
 
 ## Ключевые решения
 
@@ -95,6 +97,10 @@ cmd/server  cmd/import  internal/  migrations/  queries/  api/  web/  docs/
 - `colima start` — запустить Docker-движок (после перезагрузки Mac).
 - `docker compose up -d --wait` — поднять PostgreSQL 17 (порт 5432, только localhost).
 - `docker compose down` — остановить (данные сохраняются; флаг `-v` запрещён в deny).
-- `go run ./cmd/server` — запустить сервер (читает `.env`, порт `HTTP_ADDR`, по умолчанию :8080); проверка: `curl localhost:8080/health`.
-- `go vet ./... && go test -race ./...` — проверка кода и тесты.
+- `go run ./cmd/server` — запустить сервер (читает `.env`, адрес `HTTP_ADDR`, по умолчанию `127.0.0.1:8080`); проверка: `curl localhost:8080/health`.
+- `go vet ./... && go test -race ./...` — проверка кода и тесты. Интеграционный тест входа сам создаёт и удаляет временную схему в базе из `DATABASE_URL`; если базы нет, он пропускается.
+- `golangci-lint run` — линтер.
+- `goose -dir migrations postgres "$DATABASE_URL" up` — применить миграции (переменные из `.env`, например `set -a; . ./.env; set +a`).
+- `go run ./cmd/createuser` — создать единственного пользователя; запускать в обычном терминале (нужен ввод пароля), не через `!` в Claude Code.
+- `go generate ./internal/api` — перегенерировать Go-код из `api/openapi.yaml` (нужен `oapi-codegen` в PATH; он лежит в `~/go/bin`).
 - `.env` создаётся из `.env.example` с случайным паролем: `sed "s/change-me/$(openssl rand -hex 16)/g" .env.example > .env && chmod 600 .env`.
