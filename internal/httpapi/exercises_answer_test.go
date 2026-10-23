@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -299,5 +300,29 @@ func TestSaveExerciseNoEmptyLevelTopic(t *testing.T) {
 				t.Fatalf("темы: %v", ex.Topics)
 			}
 		}
+	}
+}
+
+// Упражнение без допустимых ответов: сбой 500, а в логе понятная причина без «<nil>».
+func TestAnswerEmptyAnswersMessage(t *testing.T) {
+	var buf strings.Builder
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(old) })
+
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	id := seedExercise(t, e, 1, "")
+	ex := e.store.exercises[id]
+	ex.Answer = []byte(`{"answers":[]}`)
+	e.store.exercises[id] = ex
+
+	rec := e.do(http.MethodPost, answerPath, answerBody(id, "a", "k"), withCookie(token))
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("статус %d, ждали 500", rec.Code)
+	}
+	log := buf.String()
+	if strings.Contains(log, "<nil>") || !strings.Contains(log, "нет допустимых ответов") {
+		t.Fatalf("лог: %s", log)
 	}
 }

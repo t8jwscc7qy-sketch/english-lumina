@@ -19,35 +19,15 @@ import (
 )
 
 const (
-	maxAnswerBody   = 4 << 10
-	maxGivenLen     = 200
-	maxAnswerKey    = 64
-	defaultOpponent = 1500.0 // сложность, если у упражнения нет ключа level:*
-	opponentPhi     = 100.0
-	opponentSigma   = 0.06
+	maxAnswerBody = 4 << 10
+	maxGivenLen   = 200
+	maxAnswerKey  = 64
 )
 
 var (
 	errExerciseNotFound = errors.New("упражнения нет или оно чужое")
 	errAlreadyAnswered  = errors.New("на упражнение уже отвечали с другим ключом")
 )
-
-// levelDifficulty — рейтинг «соперника» по уровню предложения.
-var levelDifficulty = map[string]float64{"A1": 800, "A2": 1000, "B1": 1200, "B2": 1400, "C1": 1600, "C2": 1800}
-
-// opponentFor берёт сложность из ключа level:* упражнения; без него — 1500.
-func opponentFor(topics []string) rating.Rating {
-	mu := defaultOpponent
-	for _, t := range topics {
-		if lvl, ok := strings.CutPrefix(t, "level:"); ok {
-			if d, ok := levelDifficulty[lvl]; ok {
-				mu = d
-				break
-			}
-		}
-	}
-	return rating.Rating{Mu: mu, Phi: opponentPhi, Sigma: opponentSigma}
-}
 
 // AnswerExercise проверяет ответ, обновляет рейтинги всех тем упражнения и пишет событие.
 // Всё в одной транзакции; блокировка строки упражнения сериализует параллельные ответы.
@@ -90,7 +70,10 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("payload упражнения %d: %w", ex.ID, err)
 		}
 		if err := json.Unmarshal(ex.Answer, &answer); err != nil || len(answer.Answers) == 0 {
-			return fmt.Errorf("ответ упражнения %d: %v", ex.ID, err)
+			if err == nil {
+				return fmt.Errorf("в упражнении %d нет допустимых ответов", ex.ID)
+			}
+			return fmt.Errorf("ответ упражнения %d: %w", ex.ID, err)
 		}
 		key := fmt.Sprintf("exercise:%d:%s", ex.ID, req.Key)
 
@@ -126,7 +109,7 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 		if correct {
 			score = 1
 		}
-		opponent := opponentFor(ex.Topics)
+		opponent := exercises.Opponent(ex.Topics)
 		before := make(map[string]float64, len(ex.Topics))
 		after := make(map[string]float64, len(ex.Topics))
 		updated := make(map[string]api.Rating, len(ex.Topics))

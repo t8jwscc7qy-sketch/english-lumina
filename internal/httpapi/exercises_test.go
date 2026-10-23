@@ -430,3 +430,71 @@ func TestNextExerciseLevelTopicRejectsHarderSentence(t *testing.T) {
 		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
 	}
 }
+
+// Перед словом-целью стоит «an»: отвлекающие тоже на гласную, иначе артикль выдаёт ответ.
+func TestNextExerciseLevelTopicArticleAgreement(t *testing.T) {
+	setup := func(lemmas ...string) (env, string) {
+		e := newExerciseEnv(t)
+		token := login(t, e)
+		e.store.settings = &db.Setting{UserID: 1, CurrentLevel: "A2", TargetLevel: "B2", DailyMinMinutes: 15, Timezone: "UTC"}
+		var rows []db.RandomLexemesByLevelRow
+		for i, l := range lemmas {
+			rows = append(rows, db.RandomLexemesByLevelRow{ID: int64(i + 1), Lemma: l, Pos: "noun"})
+		}
+		e.store.levelLexemes = map[string][]db.RandomLexemesByLevelRow{"A2": rows}
+		e.store.examples = []db.ListExamplesRow{{EnID: 7, EnText: "She ate an apple.", RuText: "Она съела яблоко."}}
+		knownWords(e, "she", "ate", "an", "apple")
+		e.store.topicRatings = map[topicKey]db.TopicRating{}
+		for _, tp := range []string{"grammar:articles", "grammar:prepositions", "grammar:future", "grammar:modals", "grammar:past_simple", "level:B1"} {
+			e.store.topicRatings[topicKey{1, tp}] = rated(tp, 1700, 3)
+		}
+		e.store.topicRatings[topicKey{1, "level:A2"}] = rated("level:A2", 1300, 3)
+		return e, token
+	}
+	e, token := setup("apple", "orange", "egg", "ear", "table", "dog")
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	for _, c := range ex.Choices {
+		if !strings.ContainsRune("aeiou", rune(c[0])) {
+			t.Errorf("вариант %q не на гласную после an: %v", c, ex.Choices)
+		}
+	}
+	// Гласных отвлекающих всего два: предложение пропускается, упражнения нет.
+	e, token = setup("apple", "orange", "egg", "table", "dog")
+	if rec := getNext(t, e, token); rec.Code != http.StatusNotFound {
+		t.Fatalf("статус %d, ждали 404", rec.Code)
+	}
+}
+
+// Пул не пуст, но ни одно предложение не даёт темы: 404 no_exercise, а не сбой.
+func TestNextExercisePoolWithoutTopics(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "Dogs run fast."), poolSentence(11, "Birds sing loud.")}
+	knownWords(e, "dogs", "run", "fast", "birds", "sing", "loud")
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusNotFound || errorCode(t, rec.Body.String()) != api.ErrorErrorCodeNoExercise {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	if len(e.store.exercises) != 0 {
+		t.Fatal("запись создана без упражнения")
+	}
+}
+
+// «Mr.» с точкой в середине предложения не мешает собрать упражнение.
+func TestNextExerciseSentenceWithMr(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "Mr. Smith has a dog.")}
+	knownWords(e, "mr", "smith", "has", "a", "dog")
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	if ex := decodeExercise(t, rec); ex.Prompt != "Mr. Smith has _____ dog." {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+}
