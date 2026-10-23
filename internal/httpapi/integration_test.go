@@ -2,97 +2,19 @@ package httpapi
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/auth"
-	"github.com/t8jwscc7qy-sketch/english-lumina/internal/config"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/testdb"
 )
-
-// integrationPool поднимает временную схему в базе из DATABASE_URL, применяет к ней миграцию
-// и удаляет схему после теста. Рабочие таблицы в public не затрагиваются.
-// Нет настроек или базы — тест пропускается.
-func integrationPool(t *testing.T) *pgxpool.Pool {
-	t.Helper()
-	t.Chdir(moduleRoot(t)) // config.Load читает .env из текущего каталога
-	cfg, err := config.Load()
-	if err != nil {
-		t.Skipf("нет настроек базы: %v", err)
-	}
-	ctx := context.Background()
-
-	admin, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		t.Skipf("подключение к базе: %v", err)
-	}
-	if err := admin.Ping(ctx); err != nil {
-		admin.Close()
-		t.Skipf("база недоступна: %v", err)
-	}
-	schema := pgx.Identifier{fmt.Sprintf("test_%d", time.Now().UnixNano())}.Sanitize()
-	if _, err := admin.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
-		admin.Close()
-		t.Fatalf("создание схемы: %v", err)
-	}
-	t.Cleanup(func() {
-		if _, err := admin.Exec(ctx, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
-			t.Errorf("удаление схемы %s: %v", schema, err)
-		}
-		admin.Close()
-	})
-
-	pcfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
-	if err != nil {
-		t.Fatalf("разбор DATABASE_URL: %v", err)
-	}
-	pcfg.ConnConfig.RuntimeParams["search_path"] = schema
-	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
-	if err != nil {
-		t.Fatalf("пул: %v", err)
-	}
-	t.Cleanup(pool.Close) // закроется раньше, чем удалится схема
-
-	migration, err := os.ReadFile("migrations/00001_init.sql")
-	if err != nil {
-		t.Fatalf("чтение миграции: %v", err)
-	}
-	up, _, _ := strings.Cut(string(migration), "-- +goose Down")
-	if _, err := pool.Exec(ctx, up); err != nil {
-		t.Fatalf("применение миграции: %v", err)
-	}
-	return pool
-}
-
-func moduleRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("go.mod не найден")
-		}
-		dir = parent
-	}
-}
 
 // Весь путь на настоящей базе: настоящие запросы sqlc, настоящий пароль и токен.
 func TestAuthFlowOnRealDatabase(t *testing.T) {
-	pool := integrationPool(t)
+	pool := testdb.Pool(t)
 	ctx := context.Background()
 	q := db.New(pool)
 
@@ -155,7 +77,7 @@ func TestAuthFlowOnRealDatabase(t *testing.T) {
 
 // Настройки на настоящей базе: upsert sqlc, тип date и CHECK таблицы settings.
 func TestSettingsFlowOnRealDatabase(t *testing.T) {
-	pool := integrationPool(t)
+	pool := testdb.Pool(t)
 	ctx := context.Background()
 	q := db.New(pool)
 

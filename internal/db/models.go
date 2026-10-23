@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DataSource struct {
+	ID          int64
+	Name        string
+	Version     string
+	License     string
+	Url         string
+	Attribution string
+	RowCount    *int32
+	ImportedAt  pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Event struct {
 	ID             int64
 	UserID         int64
@@ -20,6 +32,21 @@ type Event struct {
 	RecordedAt     pgtype.Timestamptz
 	Payload        json.RawMessage
 	IdempotencyKey *string
+}
+
+type Lexeme struct {
+	ID        int64
+	Lemma     string
+	Pos       string
+	SourceID  int64
+	CreatedAt pgtype.Timestamptz
+}
+
+type LexemeCefr struct {
+	LexemeID int64
+	SourceID int64
+	Level    string
+	Extra    json.RawMessage
 }
 
 type Session struct {
