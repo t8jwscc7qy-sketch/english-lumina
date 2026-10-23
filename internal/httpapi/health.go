@@ -7,6 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/auth"
 )
 
 // Pinger проверяет доступность базы данных (его реализует *pgxpool.Pool).
@@ -16,11 +19,14 @@ type Pinger interface {
 
 const pingTimeout = 2 * time.Second
 
-// NewHandler собирает маршруты сервера.
-func NewHandler(db Pinger) http.Handler {
+// NewHandler собирает маршруты сервера: /health открыт, /api/auth/* описан в api/openapi.yaml.
+func NewHandler(db Pinger, store AuthStore, throttle *auth.Throttle) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", health(db))
-	return mux
+	return api.HandlerWithOptions(newAuthServer(store, throttle), api.StdHTTPServerOptions{
+		BaseRouter:  mux,
+		Middlewares: []api.MiddlewareFunc{checkOrigin},
+	})
 }
 
 func health(db Pinger) http.HandlerFunc {
@@ -43,4 +49,12 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		slog.Error("запись ответа", "err", err)
 	}
+}
+
+// writeError отвечает ошибкой единого формата: {"error":{"code":"...","message":"..."}}.
+func writeError(w http.ResponseWriter, status int, code api.ErrorErrorCode, message string) {
+	var body api.Error
+	body.Error.Code = code
+	body.Error.Message = message
+	writeJSON(w, status, body)
 }

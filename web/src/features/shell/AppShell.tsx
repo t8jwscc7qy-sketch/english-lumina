@@ -1,0 +1,109 @@
+import {
+  BookOpen,
+  CircleAlert,
+  Layers,
+  LogOut,
+  Pencil,
+  Settings,
+  Sun,
+  TrendingUp,
+  type LucideIcon,
+} from 'lucide-react'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { Post, Wordmark } from '@/components/brand/Wordmark'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { useLogout, useMe } from '@/features/auth/auth'
+import { ThemeToggle } from './ThemeToggle'
+
+const NAV: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
+  { to: '/', label: 'Сегодня', icon: Sun, end: true },
+  { to: '/cards', label: 'Карточки', icon: Layers },
+  { to: '/exercises', label: 'Упражнения', icon: Pencil },
+  { to: '/words', label: 'Слова', icon: BookOpen },
+  { to: '/mistakes', label: 'Ошибки', icon: CircleAlert },
+  { to: '/progress', label: 'Прогресс', icon: TrendingUp },
+  { to: '/settings', label: 'Настройки', icon: Settings },
+]
+
+/** Оболочка приложения: слева тёмная панель, справа рабочая область. На узких окнах панель сжимается до иконок. */
+export function AppShell() {
+  const me = useMe()
+  const logout = useLogout()
+  const navigate = useNavigate()
+
+  async function onLogout() {
+    try {
+      await logout.mutateAsync()
+    } catch {
+      // сервер не ответил: локально мы всё равно вышли
+    }
+    navigate('/login', { replace: true })
+  }
+
+  return (
+    <div className="flex min-h-dvh">
+      <a
+        href="#content"
+        className="surface sr-only px-4 py-2 font-semibold focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50"
+      >
+        Перейти к содержимому
+      </a>
+
+      <aside className="w-20 shrink-0 bg-rail text-rail-foreground [--focus:var(--sky)] lg:w-60">
+        <div className="sticky top-0 flex h-dvh flex-col gap-6 p-4">
+          <div className="flex justify-center lg:justify-start">
+            <Wordmark scale={3} className="hidden max-w-full lg:block" />
+            <Post scale={3} className="lg:hidden" />
+          </div>
+
+          <nav aria-label="Разделы" className="flex flex-1 flex-col gap-1">
+            {NAV.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end ?? false}
+                className={({ isActive }) =>
+                  cn(
+                    'flex h-11 items-center gap-3 rounded-lg px-3 text-base font-semibold transition-colors max-lg:justify-center max-lg:px-0',
+                    isActive
+                      ? 'bg-white/12 text-rail-foreground'
+                      : 'text-rail-muted hover:bg-white/6 hover:text-rail-foreground',
+                  )
+                }
+              >
+                <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
+                <span className="max-lg:sr-only">{label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="flex flex-col gap-3 border-t border-white/10 pt-4">
+            <p className="truncate text-sm text-rail-muted max-lg:sr-only">
+              Ты вошёл как{' '}
+              <span className="font-semibold text-rail-foreground">{me.data?.login}</span>
+            </p>
+            <div className="flex items-center gap-1 max-lg:flex-col">
+              <ThemeToggle className="text-rail-foreground hover:bg-white/10" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                disabled={logout.isPending}
+                className="text-rail-foreground hover:bg-white/10 max-lg:size-9 max-lg:px-0"
+                aria-label="Выйти"
+              >
+                <LogOut className="size-5" strokeWidth={1.75} aria-hidden />
+                <span className="max-lg:sr-only">Выйти</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main id="content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+        <Outlet />
+      </main>
+    </div>
+  )
+}

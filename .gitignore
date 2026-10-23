@@ -21,6 +21,8 @@ bin/
 
 # Локальное окружение Claude Code
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.superpowers/
 
 # Установленные сторонние навыки и агенты (не публикуем)
 skills-lock.json

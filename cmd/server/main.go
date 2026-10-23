@@ -13,7 +13,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/auth"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/config"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/httpapi"
 )
 
@@ -41,7 +43,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           httpapi.NewHandler(pool),
+		Handler:           httpapi.NewHandler(pool, db.New(pool), auth.NewThrottle(5, time.Minute, time.Now)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
