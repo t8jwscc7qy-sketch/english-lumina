@@ -43,13 +43,17 @@ func (e CefrLevel) Valid() bool {
 
 // Defines values for ErrorErrorCode.
 const (
+	ErrorErrorCodeAlreadyAnswered    ErrorErrorCode = "already_answered"
 	ErrorErrorCodeBusy               ErrorErrorCode = "busy"
 	ErrorErrorCodeForbiddenOrigin    ErrorErrorCode = "forbidden_origin"
 	ErrorErrorCodeInternal           ErrorErrorCode = "internal"
+	ErrorErrorCodeInvalidAnswer      ErrorErrorCode = "invalid_answer"
 	ErrorErrorCodeInvalidCredentials ErrorErrorCode = "invalid_credentials"
 	ErrorErrorCodeInvalidRequest     ErrorErrorCode = "invalid_request"
 	ErrorErrorCodeNoExamples         ErrorErrorCode = "no_examples"
+	ErrorErrorCodeNoExercise         ErrorErrorCode = "no_exercise"
 	ErrorErrorCodeNotFound           ErrorErrorCode = "not_found"
+	ErrorErrorCodeNotImplemented     ErrorErrorCode = "not_implemented"
 	ErrorErrorCodeOnboardingRequired ErrorErrorCode = "onboarding_required"
 	ErrorErrorCodeTooManyAttempts    ErrorErrorCode = "too_many_attempts"
 	ErrorErrorCodeUnauthorized       ErrorErrorCode = "unauthorized"
@@ -59,11 +63,15 @@ const (
 // Valid indicates whether the value is a known member of the ErrorErrorCode enum.
 func (e ErrorErrorCode) Valid() bool {
 	switch e {
+	case ErrorErrorCodeAlreadyAnswered:
+		return true
 	case ErrorErrorCodeBusy:
 		return true
 	case ErrorErrorCodeForbiddenOrigin:
 		return true
 	case ErrorErrorCodeInternal:
+		return true
+	case ErrorErrorCodeInvalidAnswer:
 		return true
 	case ErrorErrorCodeInvalidCredentials:
 		return true
@@ -71,7 +79,11 @@ func (e ErrorErrorCode) Valid() bool {
 		return true
 	case ErrorErrorCodeNoExamples:
 		return true
+	case ErrorErrorCodeNoExercise:
+		return true
 	case ErrorErrorCodeNotFound:
+		return true
+	case ErrorErrorCodeNotImplemented:
 		return true
 	case ErrorErrorCodeOnboardingRequired:
 		return true
@@ -80,6 +92,21 @@ func (e ErrorErrorCode) Valid() bool {
 	case ErrorErrorCodeUnauthorized:
 		return true
 	case ErrorErrorCodeWordNotFound:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ExerciseKind.
+const (
+	Gap ExerciseKind = "gap"
+)
+
+// Valid indicates whether the value is a known member of the ExerciseKind enum.
+func (e ExerciseKind) Valid() bool {
+	switch e {
+	case Gap:
 		return true
 	default:
 		return false
@@ -123,6 +150,28 @@ type AddCardRequest struct {
 type AddCardResponse struct {
 	CardId  int64 `json:"cardId"`
 	Created bool  `json:"created"`
+}
+
+// AnswerRequest defines model for AnswerRequest.
+type AnswerRequest struct {
+	ExerciseId int64 `json:"exerciseId"`
+
+	// Given Ответ пользователя
+	Given string `json:"given"`
+
+	// Key Ключ идемпотентности, один на попытку
+	Key string `json:"key"`
+}
+
+// AnswerResult defines model for AnswerResult.
+type AnswerResult struct {
+	// Answer Верный ответ
+	Answer  string `json:"answer"`
+	Correct bool   `json:"correct"`
+
+	// Ratings Рейтинги затронутых тем после обновления
+	Ratings     []Rating `json:"ratings"`
+	Translation string   `json:"translation"`
 }
 
 // CardIntervals Через сколько секунд карточка вернётся при каждой оценке
@@ -190,6 +239,28 @@ type ExampleSentence struct {
 	Text      string `json:"text"`
 }
 
+// Exercise defines model for Exercise.
+type Exercise struct {
+	// Choices Варианты ответа; пустой список — ответ вводится вручную
+	Choices []string `json:"choices"`
+	Id      int64    `json:"id"`
+
+	// Kind Вид упражнения (пока только пропуск)
+	Kind ExerciseKind `json:"kind"`
+
+	// Prompt Предложение с пропуском, английский
+	Prompt string `json:"prompt"`
+
+	// Topic Основная тема упражнения
+	Topic string `json:"topic"`
+
+	// Translation Перевод-подсказка на русском
+	Translation string `json:"translation"`
+}
+
+// ExerciseKind Вид упражнения (пока только пропуск)
+type ExerciseKind string
+
 // Level defines model for Level.
 type Level string
 
@@ -219,6 +290,14 @@ type QueueCard struct {
 
 	// State 0 новая, 1 обучение, 2 повторение, 3 переобучение
 	State int `json:"state"`
+}
+
+// Rating defines model for Rating.
+type Rating struct {
+	Attempts  int     `json:"attempts"`
+	Deviation float64 `json:"deviation"`
+	Rating    float64 `json:"rating"`
+	Topic     string  `json:"topic"`
 }
 
 // ReviewCardRequest defines model for ReviewCardRequest.
@@ -275,6 +354,11 @@ type TextRange struct {
 	Start int `json:"start"`
 }
 
+// TopicList defines model for TopicList.
+type TopicList struct {
+	Topics []Rating `json:"topics"`
+}
+
 // Word defines model for Word.
 type Word struct {
 	// FrequencyRank Место слова в списке частот (1 — самое частое): лучшее среди его форм. Нет, если слова нет в списке (реже 50 000-го) или это фраза.
@@ -327,6 +411,9 @@ type AddCardJSONRequestBody = AddCardRequest
 // ReviewCardJSONRequestBody defines body for ReviewCard for application/json ContentType.
 type ReviewCardJSONRequestBody = ReviewCardRequest
 
+// AnswerExerciseJSONRequestBody defines body for AnswerExercise for application/json ContentType.
+type AnswerExerciseJSONRequestBody = AnswerRequest
+
 // PutSettingsJSONRequestBody defines body for PutSettings for application/json ContentType.
 type PutSettingsJSONRequestBody = Settings
 
@@ -350,6 +437,15 @@ type ServerInterface interface {
 	// ReviewCard Оценить карточку
 	// (POST /api/v1/cards/review)
 	ReviewCard(w http.ResponseWriter, r *http.Request)
+	// AnswerExercise Ответить на упражнение
+	// (POST /api/v1/exercises/answer)
+	AnswerExercise(w http.ResponseWriter, r *http.Request)
+	// GetNextExercise Следующее упражнение
+	// (GET /api/v1/exercises/next)
+	GetNextExercise(w http.ResponseWriter, r *http.Request)
+	// ListExerciseTopics Темы с рейтингом
+	// (GET /api/v1/exercises/topics)
+	ListExerciseTopics(w http.ResponseWriter, r *http.Request)
 	// GetSettings Настройки обучения текущего пользователя
 	// (GET /api/v1/settings)
 	GetSettings(w http.ResponseWriter, r *http.Request)
@@ -451,6 +547,48 @@ func (siw *ServerInterfaceWrapper) ReviewCard(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReviewCard(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AnswerExercise operation middleware
+func (siw *ServerInterfaceWrapper) AnswerExercise(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AnswerExercise(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNextExercise operation middleware
+func (siw *ServerInterfaceWrapper) GetNextExercise(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetNextExercise(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListExerciseTopics operation middleware
+func (siw *ServerInterfaceWrapper) ListExerciseTopics(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListExerciseTopics(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -661,6 +799,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/cards", wrapper.AddCard)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/cards/queue", wrapper.GetCardQueue)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/cards/review", wrapper.ReviewCard)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/next", wrapper.GetNextExercise)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/exercises/answer", wrapper.AnswerExercise)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/topics", wrapper.ListExerciseTopics)
 
 	return m
 }

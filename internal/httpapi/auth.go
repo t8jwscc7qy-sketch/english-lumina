@@ -62,6 +62,16 @@ type AuthStore interface {
 	AppendEvent(ctx context.Context, arg db.AppendEventParams) (int64, error)
 	ListWordFrequencies(ctx context.Context, arg db.ListWordFrequenciesParams) ([]db.ListWordFrequenciesRow, error)
 
+	InsertExercise(ctx context.Context, arg db.InsertExerciseParams) (int64, error)
+	GetExerciseForUpdate(ctx context.Context, arg db.GetExerciseForUpdateParams) (db.Exercise, error)
+	MarkExerciseAnswered(ctx context.Context, id int64) error
+	ListTopicRatings(ctx context.Context, userID int64) ([]db.TopicRating, error)
+	GetTopicRatingForUpdate(ctx context.Context, arg db.GetTopicRatingForUpdateParams) (db.TopicRating, error)
+	UpsertTopicRating(ctx context.Context, arg db.UpsertTopicRatingParams) error
+	SampleSentences(ctx context.Context, arg db.SampleSentencesParams) ([]db.SampleSentencesRow, error)
+	SentenceLevels(ctx context.Context, words []string) ([]db.SentenceLevelsRow, error)
+	UsedSentences(ctx context.Context, arg db.UsedSentencesParams) ([]int64, error)
+
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
 	// Хранилище, переданное в fn, работает на этой транзакции; вложенный InTx использует ту же транзакцию.
 	InTx(ctx context.Context, fn func(AuthStore) error) error

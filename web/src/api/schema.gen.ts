@@ -193,6 +193,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exercises/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Следующее упражнение
+         * @description Упражнение с пропуском: предложение, перевод-подсказка и варианты ответа (пустой список — ввод вручную). Верного ответа в теле нет. Если подходящего не нашлось, 404 с кодом no_exercise.
+         */
+        get: operations["getNextExercise"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exercises/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ответить на упражнение
+         * @description Номер упражнения в теле, а не в пути: параметры пути заставляют генератор добавить новую зависимость. Повтор с тем же key возвращает тот же результат и ничего не пересчитывает. Ответ на уже отвеченное упражнение с другим key даёт 409 already_answered.
+         */
+        post: operations["answerExercise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exercises/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Темы с рейтингом */
+        get: operations["listExerciseTopics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -343,13 +400,57 @@ export interface components {
             /** @description Следующая карточка; нет, если повторять нечего */
             card?: components["schemas"]["QueueCard"];
         };
+        Exercise: {
+            /** Format: int64 */
+            id: number;
+            /**
+             * @description Вид упражнения (пока только пропуск)
+             * @enum {string}
+             */
+            kind: "gap";
+            /** @description Предложение с пропуском, английский */
+            prompt: string;
+            /** @description Перевод-подсказка на русском */
+            translation: string;
+            /** @description Варианты ответа; пустой список — ответ вводится вручную */
+            choices: string[];
+            /** @description Основная тема упражнения */
+            topic: string;
+        };
+        AnswerRequest: {
+            /** Format: int64 */
+            exerciseId: number;
+            /** @description Ответ пользователя */
+            given: string;
+            /** @description Ключ идемпотентности, один на попытку */
+            key: string;
+        };
+        Rating: {
+            topic: string;
+            /** Format: double */
+            rating: number;
+            /** Format: double */
+            deviation: number;
+            attempts: number;
+        };
+        AnswerResult: {
+            correct: boolean;
+            /** @description Верный ответ */
+            answer: string;
+            translation: string;
+            /** @description Рейтинги затронутых тем после обновления */
+            ratings: components["schemas"]["Rating"][];
+        };
+        TopicList: {
+            topics: components["schemas"]["Rating"][];
+        };
         Error: {
             error: {
                 /**
                  * @description Машинный код ошибки
                  * @enum {string}
                  */
-                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "internal";
+                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "already_answered" | "invalid_answer" | "not_implemented" | "internal";
                 /** @description Текст для пользователя на русском */
                 message: string;
             };
@@ -705,6 +806,110 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    getNextExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Упражнение */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Подходящего упражнения нет (код no_exercise) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    answerExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description Результат (или тот же результат при повторе с тем же ключом) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerResult"];
+                };
+            };
+            /** @description Некорректный запрос или пустой ответ (код invalid_request или invalid_answer) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Упражнения нет или оно чужое (код not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description На упражнение уже отвечали с другим ключом (код already_answered) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listExerciseTopics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Рейтинги тем пользователя (для полосы слабых тем) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
 }
