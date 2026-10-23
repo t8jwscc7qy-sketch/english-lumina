@@ -116,6 +116,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/words/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Примеры предложений для слова (из Tatoeba)
+         * @description Параметры в query: `lemma` (слово как в списке, до 64 символов) и `pos` (часть речи, до 32 символов); они не объявлены как parameters, потому что генератор тогда требует новую зависимость, и сервер читает их сам. Формы слова строятся по правилам (без лемматизатора), поэтому неправильные формы редких слов и омонимы не различаются. Не больше 5 примеров: предложения из 4–12 слов, ближе к 8, с самым коротким переводом.
+         */
+        get: operations["listWordExamples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -176,6 +196,31 @@ export interface components {
         };
         WordList: {
             words: components["schemas"]["Word"][];
+        };
+        ExampleSentence: {
+            text: string;
+            /** @description Автор предложения на Tatoeba (атрибуция по лицензии CC BY) */
+            author: string;
+            /**
+             * Format: int64
+             * @description Номер предложения на tatoeba.org
+             */
+            tatoebaId: number;
+        };
+        TextRange: {
+            /** @description Начало в символах (не в байтах), включительно */
+            start: number;
+            /** @description Конец в символах, не включается */
+            end: number;
+        };
+        Example: {
+            en: components["schemas"]["ExampleSentence"];
+            ru: components["schemas"]["ExampleSentence"];
+            /** @description Где в английском предложении найденное слово; нет, если место определить не удалось */
+            highlight?: components["schemas"]["TextRange"];
+        };
+        ExampleList: {
+            examples: components["schemas"]["Example"][];
         };
         Error: {
             error: {
@@ -402,6 +447,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WordList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listWordExamples: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Примеры (может быть пусто) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExampleList"];
                 };
             };
             400: components["responses"]["BadRequest"];

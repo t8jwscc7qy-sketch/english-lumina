@@ -1,6 +1,36 @@
 import { expect, test } from '@playwright/test'
 import { mockApi } from './mock-api'
 
+test.describe('примеры предложений', () => {
+  test('«Примеры» раскрывает предложения с подсветкой, переводом и атрибуцией Tatoeba', async ({ page }) => {
+    await mockApi(page, { loggedIn: true })
+    await page.goto('/words')
+    await page.getByRole('searchbox', { name: 'Слово' }).fill('run')
+    const first = page.getByRole('listitem').first()
+    const button = first.getByRole('button', { name: /примеры/i })
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+    await button.click()
+
+    await expect(first.getByText('Я люблю бегать по утрам перед работой.')).toBeVisible()
+    await expect(first.locator('mark').first()).toHaveText('run')
+    await expect(first.getByRole('link', { name: '#1234567' })).toHaveAttribute('href', 'https://tatoeba.org/en/sentences/show/1234567')
+    await expect(first.getByText(/CK/)).toBeVisible()
+
+    await button.click()
+    await expect(first.getByText('Я люблю бегать по утрам перед работой.')).toBeHidden()
+  })
+
+  test('раскрытие работает с клавиатуры', async ({ page }) => {
+    await mockApi(page, { loggedIn: true })
+    await page.goto('/words')
+    await page.getByRole('searchbox', { name: 'Слово' }).fill('run')
+    const button = page.getByRole('listitem').first().getByRole('button', { name: /примеры/i })
+    await button.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Они бежали вдоль реки.')).toBeVisible()
+  })
+})
+
 test.describe('поиск слов', () => {
   test('из меню: ввод находит слова по началу и показывает уровни', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
@@ -61,6 +91,13 @@ for (const theme of ['light', 'dark'] as const) {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow).toBeLessThanOrEqual(0)
       await page.screenshot({ path: `test-results/screens/words-${theme}-${size.name}.png`, fullPage: true })
+
+      await page.getByRole('searchbox', { name: 'Слово' }).fill('run')
+      await page.getByRole('listitem').first().getByRole('button', { name: /примеры/i }).click()
+      await expect(page.getByText('Они бежали вдоль реки.')).toBeVisible()
+      const overflow2 = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      expect(overflow2).toBeLessThanOrEqual(0)
+      await page.screenshot({ path: `test-results/screens/words-examples-${theme}-${size.name}.png`, fullPage: true })
       await context.close()
     })
   }

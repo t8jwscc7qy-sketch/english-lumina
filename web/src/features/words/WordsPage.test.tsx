@@ -49,12 +49,6 @@ describe('WordsPage', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('честно говорит, что примеров предложений пока нет', () => {
-    stub(() => list())
-    renderPage()
-    expect(screen.getByText(/примеры предложений появятся/i)).toBeInTheDocument()
-  })
-
   it('показывает слово, часть речи, уровень и источник', async () => {
     stub(() => list(RUN))
     renderPage()
@@ -127,5 +121,129 @@ describe('WordsPage', () => {
     await search('x')
     expect(await screen.findByText('<img src=x onerror=alert(1)>')).toBeInTheDocument()
     expect(container.querySelector('img')).toBeNull()
+  })
+})
+
+const EXAMPLES = {
+  examples: [
+    {
+      en: { text: 'I like to run every morning.', author: 'CK', tatoebaId: 11 },
+      ru: { text: 'Я люблю бегать по утрам.', author: 'marafon', tatoebaId: 22 },
+      highlight: { start: 10, end: 13 },
+    },
+    {
+      en: { text: 'Nothing matches here at all.', author: 'CM', tatoebaId: 12 },
+      ru: { text: 'Ничего не совпадает.', author: 'ksenija', tatoebaId: 23 },
+    },
+  ],
+}
+
+// Отвечает на поиск слов и на примеры по адресу.
+function stubWithExamples(examples: () => Response | Promise<Response>) {
+  const fn = vi.fn(async (url: string) =>
+    url.includes('/words/examples') ? examples() : jsonResponse(200, { words: [RUN] }),
+  )
+  vi.stubGlobal('fetch', fn)
+  return fn
+}
+
+const exampleCalls = (fn: ReturnType<typeof vi.fn>) =>
+  fn.mock.calls.map((c) => c[0] as string).filter((u) => u.includes('/words/examples'))
+
+describe('примеры предложений', () => {
+  it('кнопка «Примеры» подгружает примеры слова, подсвечивает форму и показывает атрибуцию Tatoeba', async () => {
+    const fetchMock = stubWithExamples(() => jsonResponse(200, EXAMPLES))
+    const user = userEvent.setup()
+    renderPage()
+    await search('run')
+    const button = await screen.findByRole('button', { name: /примеры/i })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(button)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    expect(exampleCalls(fetchMock)).toEqual(['/api/v1/words/examples?lemma=run&pos=verb'])
+
+    const panel = within(document.getElementById(button.getAttribute('aria-controls')!)!)
+    expect(await panel.findByText('Я люблю бегать по утрам.')).toBeInTheDocument()
+    expect(panel.getByText('run').tagName).toBe('MARK')
+    expect(panel.getByText('Ничего не совпадает.')).toBeInTheDocument()
+    // Без подсветки предложение всё равно показывается целиком.
+    expect(panel.getByText('Nothing matches here at all.')).toBeInTheDocument()
+
+    // Атрибуция по лицензии CC BY: номер и автор обеих сторон, ссылка на tatoeba.org.
+    const link = panel.getByRole('link', { name: '#11' })
+    expect(link).toHaveAttribute('href', 'https://tatoeba.org/en/sentences/show/11')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    expect(panel.getByRole('link', { name: '#22' })).toHaveAttribute('href', 'https://tatoeba.org/en/sentences/show/22')
+    expect(panel.getByText(/CK/)).toBeInTheDocument()
+    expect(panel.getByText(/marafon/)).toBeInTheDocument()
+  })
+
+  it('повторное нажатие сворачивает, а новое раскрытие берёт примеры из кэша', async () => {
+    const fetchMock = stubWithExamples(() => jsonResponse(200, EXAMPLES))
+    const user = userEvent.setup()
+    renderPage()
+    await search('run')
+    const button = await screen.findByRole('button', { name: /примеры/i })
+    await user.click(button)
+    await screen.findByText('Я люблю бегать по утрам.')
+    await user.click(button)
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Я люблю бегать по утрам.')).not.toBeInTheDocument()
+    await user.click(button)
+    expect(await screen.findByText('Я люблю бегать по утрам.')).toBeInTheDocument()
+    expect(exampleCalls(fetchMock)).toHaveLength(1)
+  })
+
+  it('не запрашивает примеры, пока их не раскрыли', async () => {
+    const fetchMock = stubWithExamples(() => jsonResponse(200, EXAMPLES))
+    renderPage()
+    await search('run')
+    await screen.findByRole('button', { name: /примеры/i })
+    expect(exampleCalls(fetchMock)).toHaveLength(0)
+  })
+
+  it('если примеров нет, говорит об этом', async () => {
+    stubWithExamples(() => jsonResponse(200, { examples: [] }))
+    renderPage()
+    await search('run')
+    await userEvent.setup().click(await screen.findByRole('button', { name: /примеры/i }))
+    expect(await screen.findByText(/примеров нет/i)).toBeInTheDocument()
+  })
+
+  it('пока грузятся, показывает ожидание', async () => {
+    stubWithExamples(() => new Promise<Response>(() => {}))
+    renderPage()
+    await search('run')
+    await userEvent.setup().click(await screen.findByRole('button', { name: /примеры/i }))
+    expect(await screen.findByText(/загружаем примеры/i)).toBeInTheDocument()
+  })
+
+  it('при сбое показывает ошибку и даёт повторить', async () => {
+    let ok = false
+    stubWithExamples(() => (ok ? jsonResponse(200, EXAMPLES) : errorResponse(500, 'internal', 'Внутренняя ошибка')))
+    renderPage()
+    await search('run')
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /примеры/i }))
+    expect(await screen.findByText('Внутренняя ошибка')).toBeInTheDocument()
+    ok = true
+    await user.click(screen.getByRole('button', { name: 'Повторить' }))
+    expect(await screen.findByText('Я люблю бегать по утрам.')).toBeInTheDocument()
+  })
+
+  it('слово с косой чертой передаётся в запросе как есть, но экранировано', async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.includes('/words/examples')
+        ? jsonResponse(200, { examples: [] })
+        : jsonResponse(200, { words: [{ lemma: 'cafe/café', pos: 'noun', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }] }] }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    await search('cafe')
+    await userEvent.setup().click(await screen.findByRole('button', { name: /примеры/i }))
+    await screen.findByText(/примеров нет/i)
+    expect(exampleCalls(fetchMock)).toEqual(['/api/v1/words/examples?lemma=cafe%2Fcaf%C3%A9&pos=noun'])
   })
 })
