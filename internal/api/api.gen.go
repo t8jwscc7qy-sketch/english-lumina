@@ -8,6 +8,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // Defines values for ErrorErrorCode.
@@ -114,6 +115,27 @@ type Settings struct {
 	Timezone string `json:"timezone"`
 }
 
+// Source defines model for Source.
+type Source struct {
+	// Attribution Текст, который обязаны показать по лицензии
+	Attribution string    `json:"attribution"`
+	ImportedAt  time.Time `json:"importedAt"`
+
+	// License Условия лицензии по-русски
+	License  string `json:"license"`
+	Name     string `json:"name"`
+	RowCount int    `json:"rowCount"`
+
+	// Url Откуда скачан файл
+	Url     string `json:"url"`
+	Version string `json:"version"`
+}
+
+// SourceList defines model for SourceList.
+type SourceList struct {
+	Sources []Source `json:"sources"`
+}
+
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
@@ -146,6 +168,9 @@ type ServerInterface interface {
 	// PutSettings Сохранить настройки обучения (создаёт или заменяет целиком)
 	// (PUT /api/v1/settings)
 	PutSettings(w http.ResponseWriter, r *http.Request)
+	// ListSources Загруженные источники данных с лицензиями и атрибуцией
+	// (GET /api/v1/sources)
+	ListSources(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -218,6 +243,20 @@ func (siw *ServerInterfaceWrapper) PutSettings(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PutSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSources operation middleware
+func (siw *ServerInterfaceWrapper) ListSources(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSources(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -352,6 +391,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/auth/me", wrapper.GetMe)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/settings", wrapper.GetSettings)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/settings", wrapper.PutSettings)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/sources", wrapper.ListSources)
 
 	return m
 }

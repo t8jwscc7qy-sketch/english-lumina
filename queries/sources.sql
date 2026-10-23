@@ -27,3 +27,7 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (lexeme_id, source_id) DO UPDATE SET
     level = EXCLUDED.level,
     extra = EXCLUDED.extra;
+
+-- name: ListDataSources :many
+-- Только завершённые импорты: недогруженный источник (imported_at пуст) показывать нельзя.
+SELECT * FROM data_sources WHERE imported_at IS NOT NULL ORDER BY name, version;

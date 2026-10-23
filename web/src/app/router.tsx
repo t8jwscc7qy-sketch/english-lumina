@@ -3,6 +3,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { ComingSoonPage, NotFoundPage } from '@/features/placeholder/ComingSoonPage'
 import { OnboardingPage } from '@/features/settings/OnboardingPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { SourcesPage } from '@/features/sources/SourcesPage'
 import { AppShell } from '@/features/shell/AppShell'
 import { TodayPage } from '@/features/today/TodayPage'
 import { RedirectIfAuthed, RedirectIfOnboarded, RequireAuth, RequireOnboarded } from './guards'
@@ -45,6 +46,7 @@ export const routes: RouteObject[] = [
       { path: 'mistakes', element: soon('Ошибки', 'Здесь будет банк ошибок.') },
       { path: 'progress', element: soon('Прогресс', 'Здесь будет линия прогресса и прогноз.') },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'sources', element: <SourcesPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

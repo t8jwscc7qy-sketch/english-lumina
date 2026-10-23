@@ -126,3 +126,40 @@ func TestSettingsFlowOnRealDatabase(t *testing.T) {
 		t.Fatalf("цель ниже уровня: статус %d, ожидали 400", rec.Code)
 	}
 }
+
+// Список источников на настоящей базе: недогруженный источник (без imported_at) в ответ не попадает.
+func TestSourcesOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	done, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "done", Version: "1", License: "l", Url: "https://example.com/d", Attribution: "attr done"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := int32(5)
+	if err := q.FinishDataSource(ctx, db.FinishDataSourceParams{ID: done.ID, RowCount: &n}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "half", Version: "1", License: "l", Url: "https://example.com/h", Attribution: "attr half"}); err != nil {
+		t.Fatal(err)
+	}
+
+	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	rec := e.do(http.MethodGet, "/api/v1/sources", "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"attribution":"attr done"`) || !strings.Contains(body, `"rowCount":5`) || strings.Contains(body, "half") {
+		t.Fatalf("тело %s: ожидали только завершённый источник", body)
+	}
+}

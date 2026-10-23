@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getMe, getSettings, login, logout, putSettings } from './client'
+import { ApiError, getMe, getSettings, getSources, login, logout, putSettings } from './client'
 
 function mockFetch(response: Response | Error) {
   const fn = vi.fn(async (_url: string, _init?: RequestInit) => {
@@ -122,5 +122,14 @@ describe('settings', () => {
   it('404 onboarding_required становится ApiError с этим кодом', async () => {
     mockFetch(json(404, { error: { code: 'onboarding_required', message: 'Сначала настрой' } }))
     await expect(getSettings()).rejects.toMatchObject({ status: 404, code: 'onboarding_required' })
+  })
+})
+
+describe('sources', () => {
+  it('getSources читает /api/v1/sources и отдаёт список', async () => {
+    const list = { sources: [{ name: 'cefrj', version: '1.5', license: 'l', url: 'u', attribution: 'a', rowCount: 3, importedAt: '2026-10-23T12:00:00Z' }] }
+    const fetchMock = mockFetch(json(200, list))
+    expect(await getSources()).toEqual(list)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/sources')
   })
 })
