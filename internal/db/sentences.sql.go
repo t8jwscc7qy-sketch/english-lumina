@@ -9,6 +9,69 @@ import (
 	"context"
 )
 
+const listExamples = `-- name: ListExamples :many
+SELECT e.tatoeba_id AS en_tatoeba_id, e.text AS en_text, e.author AS en_author,
+       r.tatoeba_id AS ru_tatoeba_id, r.text AS ru_text, r.author AS ru_author
+FROM sentences e
+CROSS JOIN LATERAL (
+    SELECT rs.tatoeba_id, rs.text, rs.author
+    FROM sentence_pairs p
+    JOIN sentences rs ON rs.id = p.ru_id
+    WHERE p.en_id = e.id
+    ORDER BY rs.word_count, rs.tatoeba_id
+    LIMIT 1
+) r
+WHERE e.lang = 'en'
+  AND e.word_count BETWEEN 4 AND 12
+  AND to_tsvector('simple', e.text) @@ to_tsquery('simple', $1::text)
+ORDER BY abs(e.word_count - 8), e.tatoeba_id
+LIMIT $2::int
+`
+
+type ListExamplesParams struct {
+	Query   string
+	MaxRows int32
+}
+
+type ListExamplesRow struct {
+	EnTatoebaID int64
+	EnText      string
+	EnAuthor    string
+	RuTatoebaID int64
+	RuText      string
+	RuAuthor    string
+}
+
+// Примеры для слова: английские предложения из 4–12 слов, где встречается любая из форм (query — выражение
+// to_tsquery('simple', ...), его строит Go из слов, без знаков синтаксиса), и самый короткий русский перевод.
+// Ближе к 8 словам лучше: «Run.» ничему не учит, абзац мешает.
+func (q *Queries) ListExamples(ctx context.Context, arg ListExamplesParams) ([]ListExamplesRow, error) {
+	rows, err := q.db.Query(ctx, listExamples, arg.Query, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExamplesRow{}
+	for rows.Next() {
+		var i ListExamplesRow
+		if err := rows.Scan(
+			&i.EnTatoebaID,
+			&i.EnText,
+			&i.EnAuthor,
+			&i.RuTatoebaID,
+			&i.RuText,
+			&i.RuAuthor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertSentence = `-- name: UpsertSentence :one
 WITH ins AS (
     INSERT INTO sentences (lang, tatoeba_id, text, author, word_count, source_id)

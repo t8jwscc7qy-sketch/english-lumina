@@ -121,6 +121,28 @@ type Error struct {
 // ErrorErrorCode Машинный код ошибки
 type ErrorErrorCode string
 
+// Example defines model for Example.
+type Example struct {
+	En        ExampleSentence `json:"en"`
+	Highlight *TextRange      `json:"highlight,omitempty"`
+	Ru        ExampleSentence `json:"ru"`
+}
+
+// ExampleList defines model for ExampleList.
+type ExampleList struct {
+	Examples []Example `json:"examples"`
+}
+
+// ExampleSentence defines model for ExampleSentence.
+type ExampleSentence struct {
+	// Author Автор предложения на Tatoeba (атрибуция по лицензии CC BY)
+	Author string `json:"author"`
+
+	// TatoebaId Номер предложения на tatoeba.org
+	TatoebaId int64  `json:"tatoebaId"`
+	Text      string `json:"text"`
+}
+
 // Level defines model for Level.
 type Level string
 
@@ -167,6 +189,15 @@ type Source struct {
 // SourceList defines model for SourceList.
 type SourceList struct {
 	Sources []Source `json:"sources"`
+}
+
+// TextRange defines model for TextRange.
+type TextRange struct {
+	// End Конец в символах, не включается
+	End int `json:"end"`
+
+	// Start Начало в символах (не в байтах), включительно
+	Start int `json:"start"`
 }
 
 // Word defines model for Word.
@@ -236,6 +267,9 @@ type ServerInterface interface {
 	// SearchWords Поиск слова по началу (без учёта регистра)
 	// (GET /api/v1/words)
 	SearchWords(w http.ResponseWriter, r *http.Request)
+	// ListWordExamples Примеры предложений для слова (из Tatoeba)
+	// (GET /api/v1/words/examples)
+	ListWordExamples(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -336,6 +370,20 @@ func (siw *ServerInterfaceWrapper) SearchWords(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchWords(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWordExamples operation middleware
+func (siw *ServerInterfaceWrapper) ListWordExamples(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWordExamples(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -472,6 +520,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/settings", wrapper.PutSettings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/sources", wrapper.ListSources)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/words", wrapper.SearchWords)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/words/examples", wrapper.ListWordExamples)
 
 	return m
 }

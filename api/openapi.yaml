@@ -134,6 +134,26 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/words/examples:
+    get:
+      operationId: listWordExamples
+      summary: Примеры предложений для слова (из Tatoeba)
+      description: >
+        Параметры в query: `lemma` (слово как в списке, до 64 символов) и `pos` (часть речи, до 32 символов);
+        они не объявлены как parameters, потому что генератор тогда требует новую зависимость, и сервер читает их сам.
+        Формы слова строятся по правилам (без лемматизатора), поэтому неправильные формы редких слов и омонимы
+        не различаются. Не больше 5 примеров: предложения из 4–12 слов, ближе к 8, с самым коротким переводом.
+      responses:
+        "200":
+          description: Примеры (может быть пусто)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   schemas:
     LoginRequest:
@@ -249,6 +269,48 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Word"
+    ExampleSentence:
+      type: object
+      required: [text, author, tatoebaId]
+      properties:
+        text:
+          type: string
+        author:
+          type: string
+          description: Автор предложения на Tatoeba (атрибуция по лицензии CC BY)
+        tatoebaId:
+          type: integer
+          format: int64
+          description: Номер предложения на tatoeba.org
+    TextRange:
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          type: integer
+          description: Начало в символах (не в байтах), включительно
+        end:
+          type: integer
+          description: Конец в символах, не включается
+    Example:
+      type: object
+      required: [en, ru]
+      properties:
+        en:
+          $ref: "#/components/schemas/ExampleSentence"
+        ru:
+          $ref: "#/components/schemas/ExampleSentence"
+        highlight:
+          $ref: "#/components/schemas/TextRange"
+          description: Где в английском предложении найденное слово; нет, если место определить не удалось
+    ExampleList:
+      type: object
+      required: [examples]
+      properties:
+        examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/Example"
     Error:
       type: object
       required: [error]
