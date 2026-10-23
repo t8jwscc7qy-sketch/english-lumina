@@ -42,6 +42,32 @@ func (q *Queries) AppendEvent(ctx context.Context, arg AppendEventParams) (int64
 	return id, err
 }
 
+const getEventByKey = `-- name: GetEventByKey :one
+SELECT id, user_id, type, schema_version, occurred_at, recorded_at, payload, idempotency_key FROM events WHERE user_id = $1 AND idempotency_key = $2
+`
+
+type GetEventByKeyParams struct {
+	UserID         int64
+	IdempotencyKey *string
+}
+
+// Событие по ключу идемпотентности (ErrNoRows, если такого ещё нет).
+func (q *Queries) GetEventByKey(ctx context.Context, arg GetEventByKeyParams) (Event, error) {
+	row := q.db.QueryRow(ctx, getEventByKey, arg.UserID, arg.IdempotencyKey)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.SchemaVersion,
+		&i.OccurredAt,
+		&i.RecordedAt,
+		&i.Payload,
+		&i.IdempotencyKey,
+	)
+	return i, err
+}
+
 const listEventsAfter = `-- name: ListEventsAfter :many
 SELECT id, user_id, type, schema_version, occurred_at, recorded_at, payload, idempotency_key FROM events
 WHERE user_id = $1 AND id > $2

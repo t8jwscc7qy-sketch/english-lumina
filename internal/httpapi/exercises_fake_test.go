@@ -183,3 +183,12 @@ func (f *fakeStore) snapshotExercises() exerciseSnapshot {
 func (f *fakeStore) restoreExercises(s exerciseSnapshot) {
 	f.exercises, f.topicRatings, f.nextExerciseID, f.upserts = s.exercises, s.ratings, s.nextID, s.upserts
 }
+
+func (f *fakeStore) GetEventByKey(_ context.Context, arg db.GetEventByKeyParams) (db.Event, error) {
+	for _, ev := range f.events {
+		if ev.UserID == arg.UserID && ev.IdempotencyKey != nil && arg.IdempotencyKey != nil && *ev.IdempotencyKey == *arg.IdempotencyKey {
+			return ev, nil
+		}
+	}
+	return db.Event{}, pgx.ErrNoRows
+}

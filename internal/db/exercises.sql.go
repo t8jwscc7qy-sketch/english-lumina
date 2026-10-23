@@ -332,6 +332,8 @@ type UpsertTopicRatingParams struct {
 	AttemptsDelta int32
 }
 
+// Безусловно перезаписывает rating/deviation/volatility. Вызывать только внутри транзакции, после блокировки строки
+// упражнения (GetExerciseForUpdate) и GetTopicRatingForUpdate по этой теме, иначе параллельный ответ потеряет обновление.
 func (q *Queries) UpsertTopicRating(ctx context.Context, arg UpsertTopicRatingParams) error {
 	_, err := q.db.Exec(ctx, upsertTopicRating,
 		arg.UserID,

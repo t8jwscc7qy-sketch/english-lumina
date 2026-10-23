@@ -679,7 +679,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, already_answered, invalid_answer, not_implemented, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, already_answered, invalid_answer, internal]
             message:
               type: string
               description: Текст для пользователя на русском

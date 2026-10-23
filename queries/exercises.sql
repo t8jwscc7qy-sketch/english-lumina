@@ -23,6 +23,8 @@ SELECT * FROM topic_ratings WHERE user_id = $1 ORDER BY topic;
 SELECT * FROM topic_ratings WHERE user_id = $1 AND topic = $2 FOR UPDATE;
 
 -- name: UpsertTopicRating :exec
+-- Безусловно перезаписывает rating/deviation/volatility. Вызывать только внутри транзакции, после блокировки строки
+-- упражнения (GetExerciseForUpdate) и GetTopicRatingForUpdate по этой теме, иначе параллельный ответ потеряет обновление.
 INSERT INTO topic_ratings (user_id, topic, rating, deviation, volatility, attempts, updated_at)
 VALUES (sqlc.arg(user_id), sqlc.arg(topic), sqlc.arg(rating), sqlc.arg(deviation), sqlc.arg(volatility), sqlc.arg(attempts_delta)::int, now())
 ON CONFLICT (user_id, topic) DO UPDATE SET

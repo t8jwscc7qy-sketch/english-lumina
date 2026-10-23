@@ -450,7 +450,7 @@ export interface components {
                  * @description Машинный код ошибки
                  * @enum {string}
                  */
-                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "already_answered" | "invalid_answer" | "not_implemented" | "internal";
+                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "already_answered" | "invalid_answer" | "internal";
                 /** @description Текст для пользователя на русском */
                 message: string;
             };

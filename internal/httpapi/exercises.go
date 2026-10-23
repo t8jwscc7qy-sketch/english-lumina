@@ -200,12 +200,3 @@ func posTopic(pos string) string {
 	}
 	return "pos:" + pos
 }
-
-// AnswerExercise пока заглушка (следующая задача); вход проверяется уже сейчас.
-func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
-	if _, err := authenticate(r, s.store); err != nil {
-		writeAuthError(w, err)
-		return
-	}
-	writeError(w, http.StatusNotImplemented, api.ErrorErrorCodeNotImplemented, "Упражнения ещё не готовы")
-}

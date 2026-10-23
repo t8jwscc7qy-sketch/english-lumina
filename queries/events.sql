@@ -9,3 +9,7 @@ SELECT * FROM events
 WHERE user_id = $1 AND id > $2
 ORDER BY id
 LIMIT $3;
+
+-- name: GetEventByKey :one
+-- Событие по ключу идемпотентности (ErrNoRows, если такого ещё нет).
+SELECT * FROM events WHERE user_id = $1 AND idempotency_key = $2;

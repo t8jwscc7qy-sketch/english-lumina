@@ -61,6 +61,7 @@ type AuthStore interface {
 	CountCards(ctx context.Context, arg db.CountCardsParams) (db.CountCardsRow, error)
 	ListCardLexemeIDs(ctx context.Context, arg db.ListCardLexemeIDsParams) ([]int64, error)
 	AppendEvent(ctx context.Context, arg db.AppendEventParams) (int64, error)
+	GetEventByKey(ctx context.Context, arg db.GetEventByKeyParams) (db.Event, error)
 	ListWordFrequencies(ctx context.Context, arg db.ListWordFrequenciesParams) ([]db.ListWordFrequenciesRow, error)
 
 	InsertExercise(ctx context.Context, arg db.InsertExerciseParams) (int64, error)

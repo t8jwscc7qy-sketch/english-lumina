@@ -53,7 +53,6 @@ const (
 	ErrorErrorCodeNoExamples         ErrorErrorCode = "no_examples"
 	ErrorErrorCodeNoExercise         ErrorErrorCode = "no_exercise"
 	ErrorErrorCodeNotFound           ErrorErrorCode = "not_found"
-	ErrorErrorCodeNotImplemented     ErrorErrorCode = "not_implemented"
 	ErrorErrorCodeOnboardingRequired ErrorErrorCode = "onboarding_required"
 	ErrorErrorCodeTooManyAttempts    ErrorErrorCode = "too_many_attempts"
 	ErrorErrorCodeUnauthorized       ErrorErrorCode = "unauthorized"
@@ -82,8 +81,6 @@ func (e ErrorErrorCode) Valid() bool {
 	case ErrorErrorCodeNoExercise:
 		return true
 	case ErrorErrorCodeNotFound:
-		return true
-	case ErrorErrorCodeNotImplemented:
 		return true
 	case ErrorErrorCodeOnboardingRequired:
 		return true
