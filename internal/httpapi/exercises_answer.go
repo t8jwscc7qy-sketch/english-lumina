@@ -103,7 +103,7 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			var old struct {
-				Given string `json:"given"`
+				Correct bool `json:"correct"`
 			}
 			if err := json.Unmarshal(prev.Payload, &old); err != nil {
 				return fmt.Errorf("событие %d: %w", prev.ID, err)
@@ -113,7 +113,7 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			result = api.AnswerResult{
-				Correct: exercises.Check(answer.Answers, old.Given), Answer: answer.Answers[0], Translation: payload.Translation,
+				Correct: old.Correct, Answer: answer.Answers[0], Translation: payload.Translation,
 				Ratings: currentRatings(rows, ex.Topics),
 			}
 			return nil
@@ -132,15 +132,15 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 		updated := make(map[string]api.Rating, len(ex.Topics))
 		// Темы блокируем в одном порядке у всех запросов, чтобы два ответа не ждали друг друга по кругу.
 		for _, topic := range sortedCopy(ex.Topics) {
-			cur, attempts := rating.New(), int32(0)
-			row, err := tx.GetTopicRatingForUpdate(ctx, db.GetTopicRatingForUpdateParams{UserID: user.ID, Topic: topic})
-			switch {
-			case errors.Is(err, pgx.ErrNoRows):
-			case err != nil:
+			// Сначала гарантируем строку, потом блокируем её: у новой темы иначе блокировать нечего.
+			if err := tx.EnsureTopicRating(ctx, db.EnsureTopicRatingParams{UserID: user.ID, Topic: topic}); err != nil {
 				return err
-			default:
-				cur, attempts = rating.Rating{Mu: row.Rating, Phi: row.Deviation, Sigma: row.Volatility}, row.Attempts
 			}
+			row, err := tx.GetTopicRatingForUpdate(ctx, db.GetTopicRatingForUpdateParams{UserID: user.ID, Topic: topic})
+			if err != nil {
+				return err
+			}
+			cur, attempts := rating.Rating{Mu: row.Rating, Phi: row.Deviation, Sigma: row.Volatility}, row.Attempts
 			next := rating.Update(cur, opponent, score)
 			if err := tx.UpsertTopicRating(ctx, db.UpsertTopicRatingParams{
 				UserID: user.ID, Topic: topic, Rating: next.Mu, Deviation: next.Phi, Volatility: next.Sigma, AttemptsDelta: 1,
@@ -150,7 +150,7 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 			before[topic], after[topic] = cur.Mu, next.Mu
 			updated[topic] = api.Rating{Topic: topic, Rating: next.Mu, Deviation: next.Phi, Attempts: int(attempts) + 1}
 		}
-		if err := tx.MarkExerciseAnswered(ctx, ex.ID); err != nil {
+		if err := tx.MarkExerciseAnswered(ctx, db.MarkExerciseAnsweredParams{ID: ex.ID, AnsweredAt: ts(now)}); err != nil {
 			return err
 		}
 		evPayload, err := json.Marshal(map[string]any{

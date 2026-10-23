@@ -204,7 +204,7 @@ func TestAnswerInvalidBody(t *testing.T) {
 		"неизвестное поле":     `{"exerciseId":1,"given":"a","key":"k","extra":1}`,
 		"не JSON":              `abc`,
 		"отрицательный номер":  answerBody(-5, "a", "k"),
-		"слишком большое тело": `{"exerciseId":1,"given":"a","key":"k","pad":"` + strings.Repeat("x", 5000) + `"}`,
+		"слишком большое тело": answerBody(id, "a", "k") + strings.Repeat(" ", 5000), // корректный JSON, но тело больше 4 КБ
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -258,5 +258,46 @@ func TestAnswerDifficultyFromLevel(t *testing.T) {
 	res := decodeResult(t, e.do(http.MethodPost, answerPath, answerBody(id, "a", "k"), withCookie(token)))
 	if len(res.Ratings) != 1 || res.Ratings[0].Rating <= 1500 {
 		t.Fatalf("результат: %+v", res)
+	}
+}
+
+func TestAnswerTimesMatch(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	id := seedExercise(t, e, 1, "A1")
+	e.do(http.MethodPost, answerPath, answerBody(id, "a", "k"), withCookie(token))
+	evs := answerEvents(e)
+	if len(evs) != 1 || !e.store.exercises[id].AnsweredAt.Time.Equal(evs[0].OccurredAt.Time) {
+		t.Fatalf("answered_at %v и occurred_at %v должны совпадать", e.store.exercises[id].AnsweredAt, evs)
+	}
+}
+
+func TestAnswerReplayCorrectFromEvent(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	id := seedExercise(t, e, 1, "A1")
+	e.do(http.MethodPost, answerPath, answerBody(id, "the", "k"), withCookie(token)) // неверно
+	ex := e.store.exercises[id]
+	ex.Answer = []byte(`{"answers":["a","the"]}`) // теперь пересчёт дал бы true
+	e.store.exercises[id] = ex
+	res := decodeResult(t, e.do(http.MethodPost, answerPath, answerBody(id, "zzz", "k"), withCookie(token)))
+	if res.Correct {
+		t.Fatal("при повторе correct должен браться из первого ответа")
+	}
+}
+
+func TestSaveExerciseNoEmptyLevelTopic(t *testing.T) {
+	e := newExerciseEnv(t)
+	srv := newAuthServer(e.store, nil)
+	_, err := srv.saveExercise(t.Context(), 1, "grammar:articles", gapCandidate{sentenceID: 1, translation: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ex := range e.store.exercises {
+		for _, topic := range ex.Topics {
+			if topic == "level:" {
+				t.Fatalf("темы: %v", ex.Topics)
+			}
+		}
 	}
 }

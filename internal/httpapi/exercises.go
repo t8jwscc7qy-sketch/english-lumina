@@ -172,7 +172,11 @@ func (s *authServer) usedSentences(ctx context.Context, userID int64, topic stri
 
 func (s *authServer) saveExercise(ctx context.Context, userID int64, topic string, c gapCandidate) (api.Exercise, error) {
 	topics := []string{topic}
-	for _, t := range []string{"level:" + c.level, posTopic(c.pos)} {
+	extra := []string{posTopic(c.pos)}
+	if c.level != "" {
+		extra = append([]string{"level:" + c.level}, extra...)
+	}
+	for _, t := range extra {
 		if t != "" && !slices.Contains(topics, t) {
 			topics = append(topics, t)
 		}

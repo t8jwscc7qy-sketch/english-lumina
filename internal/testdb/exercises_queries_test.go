@@ -5,8 +5,10 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
 )
@@ -162,7 +164,7 @@ func TestExerciseQueries(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := q.MarkExerciseAnswered(ctx, id); err != nil {
+		if err := q.MarkExerciseAnswered(ctx, db.MarkExerciseAnsweredParams{ID: id, AnsweredAt: pgtype.Timestamptz{Time: time.Now(), Valid: true}}); err != nil {
 			t.Fatal(err)
 		}
 		ex, _ = q.GetExerciseForUpdate(ctx, db.GetExerciseForUpdateParams{ID: id, UserID: u.ID})
@@ -170,7 +172,7 @@ func TestExerciseQueries(t *testing.T) {
 			t.Fatal("answered_at не проставлен")
 		}
 		first := ex.AnsweredAt.Time
-		if err := q.MarkExerciseAnswered(ctx, id); err != nil {
+		if err := q.MarkExerciseAnswered(ctx, db.MarkExerciseAnsweredParams{ID: id, AnsweredAt: pgtype.Timestamptz{Time: time.Now(), Valid: true}}); err != nil {
 			t.Fatal(err)
 		}
 		ex, _ = q.GetExerciseForUpdate(ctx, db.GetExerciseForUpdateParams{ID: id, UserID: u.ID})

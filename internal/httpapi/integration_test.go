@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/auth"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/rating"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/testdb"
 )
 
@@ -852,7 +855,7 @@ func TestExerciseAnswerOnRealDatabase(t *testing.T) {
 	}
 
 	// Два параллельных ответа с разными ключами на новое упражнение: один 200, один 409.
-	ex2 := seedRealExercise(t, q, en.ID)
+	ex2 := seedRealExercise(t, q, en.ID, "grammar:articles", "level:B1")
 	codes := make(chan int, 2)
 	for _, key := range []string{"p1", "p2"} {
 		go func() {
@@ -869,15 +872,45 @@ func TestExerciseAnswerOnRealDatabase(t *testing.T) {
 	if n := count("SELECT attempts FROM topic_ratings WHERE topic = 'level:B1'"); n != 1 {
 		t.Fatalf("попыток по level:B1 %d, ждали 1", n)
 	}
+
+	// Два параллельных ответа на РАЗНЫЕ упражнения с общей новой темой: оба 200, обновления не теряются.
+	a := seedRealExercise(t, q, en.ID, "grammar:modals", "level:C1")
+	b := seedRealExercise(t, q, en.ID, "grammar:modals", "level:C1")
+	var start, wg sync.WaitGroup
+	start.Add(1)
+	codes2 := make([]int, 2)
+	for i, id := range []int64{a, b} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start.Wait()
+			codes2[i] = e.do(http.MethodPost, answerPath, answerBody(id, "a", fmt.Sprintf("q%d", i)), withCookie(token)).Code
+		}()
+	}
+	start.Done()
+	wg.Wait()
+	if codes2[0] != 200 || codes2[1] != 200 {
+		t.Fatalf("общая тема: коды %v, ждали 200 и 200", codes2)
+	}
+	var mu float64
+	var n int
+	if err := pool.QueryRow(ctx, "SELECT rating, attempts FROM topic_ratings WHERE topic = 'level:C1'").Scan(&mu, &n); err != nil {
+		t.Fatal(err)
+	}
+	opp := rating.Rating{Mu: 1600, Phi: 100, Sigma: 0.06}
+	want := rating.Update(rating.Update(rating.New(), opp, 1), opp, 1) // оба обновления одинаковы, порядок не важен
+	if n != 2 || math.Abs(mu-want.Mu) > 1e-9 {
+		t.Fatalf("level:C1: попыток %d, рейтинг %.6f; ждали 2 и %.6f", n, mu, want.Mu)
+	}
 }
 
-// seedRealExercise вставляет неотвеченное упражнение с темами grammar:articles и level:B1.
-func seedRealExercise(t *testing.T, q *db.Queries, sentenceID int64) int64 {
+// seedRealExercise вставляет неотвеченное упражнение с заданными темами.
+func seedRealExercise(t *testing.T, q *db.Queries, sentenceID int64, topics ...string) int64 {
 	t.Helper()
 	payload, _ := json.Marshal(exercisePayload{Prompt: "I have _____ big dog.", Translation: "У меня большая собака.", Choices: []string{"a", "an", "the", "-"}, Topic: "grammar:articles"})
 	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"a"}})
 	id, err := q.InsertExercise(context.Background(), db.InsertExerciseParams{
-		UserID: 1, Kind: "gap", SentenceID: sentenceID, Topics: []string{"grammar:articles", "level:B1"}, Payload: payload, Answer: answer,
+		UserID: 1, Kind: "gap", SentenceID: sentenceID, Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		t.Fatal(err)

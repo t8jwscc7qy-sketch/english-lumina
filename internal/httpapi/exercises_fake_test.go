@@ -40,14 +40,27 @@ func (f *fakeStore) GetExerciseForUpdate(_ context.Context, arg db.GetExerciseFo
 	return e, nil
 }
 
-func (f *fakeStore) MarkExerciseAnswered(_ context.Context, id int64) error {
-	e, ok := f.exercises[id]
+func (f *fakeStore) MarkExerciseAnswered(_ context.Context, arg db.MarkExerciseAnsweredParams) error {
+	e, ok := f.exercises[arg.ID]
 	if !ok {
 		return pgx.ErrNoRows
 	}
 	if !e.AnsweredAt.Valid { // как в базе: повтор время не меняет
-		e.AnsweredAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
-		f.exercises[id] = e
+		e.AnsweredAt = arg.AnsweredAt
+		f.exercises[arg.ID] = e
+	}
+	return nil
+}
+
+// EnsureTopicRating: как в базе, создаёт начальную строку, если её нет (upserts не увеличивает).
+func (f *fakeStore) EnsureTopicRating(_ context.Context, arg db.EnsureTopicRatingParams) error {
+	if f.topicRatings == nil {
+		f.topicRatings = map[topicKey]db.TopicRating{}
+	}
+	k := topicKey{arg.UserID, arg.Topic}
+	if _, ok := f.topicRatings[k]; !ok {
+		f.topicRatings[k] = db.TopicRating{UserID: arg.UserID, Topic: arg.Topic, Rating: 1500, Deviation: 350, Volatility: 0.06,
+			UpdatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true}}
 	}
 	return nil
 }

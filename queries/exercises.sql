@@ -8,7 +8,8 @@ RETURNING id;
 SELECT * FROM exercises WHERE id = $1 AND user_id = $2 FOR UPDATE;
 
 -- name: MarkExerciseAnswered :exec
-UPDATE exercises SET answered_at = now() WHERE id = $1 AND answered_at IS NULL;
+-- Время передаёт вызывающий: то же значение идёт в occurred_at события.
+UPDATE exercises SET answered_at = sqlc.arg(answered_at) WHERE id = sqlc.arg(id) AND answered_at IS NULL;
 
 -- name: UsedSentences :many
 -- Предложения, на которые пользователь уже ответил в теме (чтобы не повторять). Выданные, но не отвеченные
@@ -22,9 +23,17 @@ SELECT * FROM topic_ratings WHERE user_id = $1 ORDER BY topic;
 -- Рейтинг темы; строка блокируется. Нет строки (ErrNoRows) — по теме ещё не отвечали, берутся начальные значения.
 SELECT * FROM topic_ratings WHERE user_id = $1 AND topic = $2 FOR UPDATE;
 
+-- name: EnsureTopicRating :exec
+-- Создаёт рейтинг темы с начальными значениями, если его ещё нет. Вызывать перед GetTopicRatingForUpdate: так
+-- блокировать есть что даже у новой темы, и два параллельных ответа не потеряют обновление друг друга.
+INSERT INTO topic_ratings (user_id, topic, rating, deviation, volatility, attempts, updated_at)
+VALUES ($1, $2, 1500, 350, 0.06, 0, now())
+ON CONFLICT (user_id, topic) DO NOTHING;
+
 -- name: UpsertTopicRating :exec
--- Безусловно перезаписывает rating/deviation/volatility. Вызывать только внутри транзакции, после блокировки строки
--- упражнения (GetExerciseForUpdate) и GetTopicRatingForUpdate по этой теме, иначе параллельный ответ потеряет обновление.
+-- Перезаписывает rating/deviation/volatility, а attempts увеличивает на delta. Безопасно только в транзакции после
+-- GetExerciseForUpdate и EnsureTopicRating + GetTopicRatingForUpdate по этой теме (блокировка строки рейтинга
+-- сериализует параллельные ответы); без неё параллельный ответ потерял бы обновление.
 INSERT INTO topic_ratings (user_id, topic, rating, deviation, volatility, attempts, updated_at)
 VALUES (sqlc.arg(user_id), sqlc.arg(topic), sqlc.arg(rating), sqlc.arg(deviation), sqlc.arg(volatility), sqlc.arg(attempts_delta)::int, now())
 ON CONFLICT (user_id, topic) DO UPDATE SET

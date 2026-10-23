@@ -8,7 +8,27 @@ package db
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const ensureTopicRating = `-- name: EnsureTopicRating :exec
+INSERT INTO topic_ratings (user_id, topic, rating, deviation, volatility, attempts, updated_at)
+VALUES ($1, $2, 1500, 350, 0.06, 0, now())
+ON CONFLICT (user_id, topic) DO NOTHING
+`
+
+type EnsureTopicRatingParams struct {
+	UserID int64
+	Topic  string
+}
+
+// Создаёт рейтинг темы с начальными значениями, если его ещё нет. Вызывать перед GetTopicRatingForUpdate: так
+// блокировать есть что даже у новой темы, и два параллельных ответа не потеряют обновление друг друга.
+func (q *Queries) EnsureTopicRating(ctx context.Context, arg EnsureTopicRatingParams) error {
+	_, err := q.db.Exec(ctx, ensureTopicRating, arg.UserID, arg.Topic)
+	return err
+}
 
 const getExerciseForUpdate = `-- name: GetExerciseForUpdate :one
 SELECT id, user_id, kind, sentence_id, topics, payload, answer, created_at, answered_at FROM exercises WHERE id = $1 AND user_id = $2 FOR UPDATE
@@ -124,11 +144,17 @@ func (q *Queries) ListTopicRatings(ctx context.Context, userID int64) ([]TopicRa
 }
 
 const markExerciseAnswered = `-- name: MarkExerciseAnswered :exec
-UPDATE exercises SET answered_at = now() WHERE id = $1 AND answered_at IS NULL
+UPDATE exercises SET answered_at = $1 WHERE id = $2 AND answered_at IS NULL
 `
 
-func (q *Queries) MarkExerciseAnswered(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, markExerciseAnswered, id)
+type MarkExerciseAnsweredParams struct {
+	AnsweredAt pgtype.Timestamptz
+	ID         int64
+}
+
+// Время передаёт вызывающий: то же значение идёт в occurred_at события.
+func (q *Queries) MarkExerciseAnswered(ctx context.Context, arg MarkExerciseAnsweredParams) error {
+	_, err := q.db.Exec(ctx, markExerciseAnswered, arg.AnsweredAt, arg.ID)
 	return err
 }
 
@@ -332,8 +358,9 @@ type UpsertTopicRatingParams struct {
 	AttemptsDelta int32
 }
 
-// Безусловно перезаписывает rating/deviation/volatility. Вызывать только внутри транзакции, после блокировки строки
-// упражнения (GetExerciseForUpdate) и GetTopicRatingForUpdate по этой теме, иначе параллельный ответ потеряет обновление.
+// Перезаписывает rating/deviation/volatility, а attempts увеличивает на delta. Безопасно только в транзакции после
+// GetExerciseForUpdate и EnsureTopicRating + GetTopicRatingForUpdate по этой теме (блокировка строки рейтинга
+// сериализует параллельные ответы); без неё параллельный ответ потерял бы обновление.
 func (q *Queries) UpsertTopicRating(ctx context.Context, arg UpsertTopicRatingParams) error {
 	_, err := q.db.Exec(ctx, upsertTopicRating,
 		arg.UserID,

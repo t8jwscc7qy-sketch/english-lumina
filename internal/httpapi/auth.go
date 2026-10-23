@@ -66,7 +66,8 @@ type AuthStore interface {
 
 	InsertExercise(ctx context.Context, arg db.InsertExerciseParams) (int64, error)
 	GetExerciseForUpdate(ctx context.Context, arg db.GetExerciseForUpdateParams) (db.Exercise, error)
-	MarkExerciseAnswered(ctx context.Context, id int64) error
+	MarkExerciseAnswered(ctx context.Context, arg db.MarkExerciseAnsweredParams) error
+	EnsureTopicRating(ctx context.Context, arg db.EnsureTopicRatingParams) error
 	ListTopicRatings(ctx context.Context, userID int64) ([]db.TopicRating, error)
 	GetTopicRatingForUpdate(ctx context.Context, arg db.GetTopicRatingForUpdateParams) (db.TopicRating, error)
 	UpsertTopicRating(ctx context.Context, arg db.UpsertTopicRatingParams) error
