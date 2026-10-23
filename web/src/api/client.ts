@@ -77,3 +77,10 @@ export async function putSettings(settings: Settings): Promise<Settings> {
   })
   return (await res.json()) as Settings
 }
+
+export type SourceList = components['schemas']['SourceList']
+
+export async function getSources(): Promise<SourceList> {
+  const res = await request('/api/v1/sources')
+  return (await res.json()) as SourceList
+}

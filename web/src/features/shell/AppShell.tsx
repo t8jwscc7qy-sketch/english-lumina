@@ -4,6 +4,7 @@ import {
   Layers,
   LogOut,
   Pencil,
+  Scale,
   Settings,
   Sun,
   TrendingUp,
@@ -24,6 +25,7 @@ const NAV: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
   { to: '/mistakes', label: 'Ошибки', icon: CircleAlert },
   { to: '/progress', label: 'Прогресс', icon: TrendingUp },
   { to: '/settings', label: 'Настройки', icon: Settings },
+  { to: '/sources', label: 'Источники', icon: Scale },
 ]
 
 /** Оболочка приложения: слева тёмная панель, справа рабочая область. На узких окнах панель сжимается до иконок. */
