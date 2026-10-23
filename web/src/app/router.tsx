@@ -1,6 +1,8 @@
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { ComingSoonPage, NotFoundPage } from '@/features/placeholder/ComingSoonPage'
+import { OnboardingPage } from '@/features/settings/OnboardingPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
 import { AppShell } from '@/features/shell/AppShell'
 import { TodayPage } from '@/features/today/TodayPage'
 import { RedirectIfAuthed, RedirectIfOnboarded, RequireAuth, RequireOnboarded } from './guards'
@@ -21,7 +23,7 @@ export const routes: RouteObject[] = [
     element: (
       <RequireAuth>
         <RedirectIfOnboarded>
-          <ComingSoonPage title="Настройка" text="Здесь будет онбординг." />
+          <OnboardingPage />
         </RedirectIfOnboarded>
       </RequireAuth>
     ),
@@ -42,6 +44,7 @@ export const routes: RouteObject[] = [
       { path: 'words', element: soon('Слова', 'Здесь будет поиск слов с примерами.') },
       { path: 'mistakes', element: soon('Ошибки', 'Здесь будет банк ошибок.') },
       { path: 'progress', element: soon('Прогресс', 'Здесь будет линия прогресса и прогноз.') },
+      { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
