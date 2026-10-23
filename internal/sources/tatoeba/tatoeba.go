@@ -164,9 +164,41 @@ func parseLine(line string) (Row, error) {
 	return row, nil
 }
 
-// Load будет записывать пару в базу (Task 4).
+// Load записывает пару: английское и русское предложение и связь между ними. Состояния между вызовами нет,
+// поэтому повторный запуск после отката безопасен. Если предложение с таким номером уже лежит в базе
+// с другим текстом или автором, это ошибка: в данных один номер означает два разных предложения.
 func (s *Source) Load(ctx context.Context, q *db.Queries, sourceID int64, row any) error {
-	return errors.New("tatoeba: Load не реализован")
+	r, ok := row.(Row)
+	if !ok {
+		return fmt.Errorf("tatoeba: ожидали Row, получили %T", row)
+	}
+	enID, err := upsertSentence(ctx, q, "en", r.EnID, r.EnText, r.EnAuthor, sourceID)
+	if err != nil {
+		return err
+	}
+	ruID, err := upsertSentence(ctx, q, "ru", r.RuID, r.RuText, r.RuAuthor, sourceID)
+	if err != nil {
+		return err
+	}
+	if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: enID, RuID: ruID, SourceID: sourceID}); err != nil {
+		return fmt.Errorf("пара #%d и #%d: %w", r.EnID, r.RuID, err)
+	}
+	return nil
+}
+
+func upsertSentence(ctx context.Context, q *db.Queries, lang string, tatoebaID int64, text, author string, sourceID int64) (int64, error) {
+	got, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{
+		Lang: lang, TatoebaID: tatoebaID, Text: text, Author: author,
+		WordCount: int16(len(strings.Fields(text))), //nolint:gosec // длина текста ограничена 1000 символами
+		SourceID:  sourceID,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("предложение %s #%d: %w", lang, tatoebaID, err)
+	}
+	if got.Text != text || got.Author != author {
+		return 0, fmt.Errorf("конфликт данных: предложение %s #%d уже есть с другим текстом или автором", lang, tatoebaID)
+	}
+	return got.ID, nil
 }
 
 var _ importer.Source = (*Source)(nil)
