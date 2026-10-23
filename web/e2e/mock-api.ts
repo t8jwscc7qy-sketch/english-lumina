@@ -291,7 +291,7 @@ export async function mockApi(
       if (results.has(body.key)) return route.fulfill({ json: results.get(body.key) })
       const fx = exQueue.find((e) => e.id === body.exerciseId)
       if (!fx) return route.fulfill(apiError(404, 'not_found', 'Такого упражнения нет'))
-      const correct = body.given.trim().toLowerCase() === fx.answer
+      const correct = body.given.trim().toLowerCase() === fx.answer.toLowerCase()
       const r = ratings.get(fx.topic) ?? { topic: fx.topic, rating: 1500, deviation: 350, attempts: 0 }
       r.rating += correct ? 40 : -40
       r.deviation -= 20

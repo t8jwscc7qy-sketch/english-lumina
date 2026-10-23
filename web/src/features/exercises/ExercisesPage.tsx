@@ -75,9 +75,9 @@ export function ExercisesPage() {
       {next.isError && noExercise && (
         <section className="surface flex flex-col items-start gap-3 p-6">
           <h2 className="text-title">Подходящих упражнений пока нет</h2>
-          <p className="text-muted-foreground">Упражнения строятся из примеров предложений. Добавь слова в карточки или загляни позже.</p>
+          <p className="text-muted-foreground">Попробуй позже или поменяй уровень в настройках.</p>
           <Button asChild variant="secondary">
-            <Link to="/words">Добавить слова</Link>
+            <Link to="/settings">Настройки</Link>
           </Button>
         </section>
       )}

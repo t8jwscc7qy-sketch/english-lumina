@@ -30,6 +30,27 @@ test.describe('упражнения', () => {
     await expect(page.locator('mark')).toHaveCount(0)
   })
 
+  test('ответ с заглавной буквы в начале предложения: после ошибки подсвечен «The» и стоит в предложении', async ({ page }) => {
+    const { answers } = await mockApi(page, {
+      loggedIn: true,
+      exercises: {
+        queue: [{
+          id: 21, kind: 'gap', prompt: '_____ dog runs.', translation: 'Собака бежит.',
+          choices: ['An', 'A', 'The'], topic: 'grammar:articles', answer: 'The',
+        }],
+      },
+    })
+    await page.goto('/exercises')
+    await expect(page.getByLabel('Упражнение').getByText('dog runs.')).toBeVisible()
+    await page.keyboard.press('1') // An
+    await expect(page.getByRole('status').getByText('Неверно', { exact: true })).toBeVisible()
+    expect(answers[0]).toMatchObject({ given: 'An' })
+    await expect(page.getByText('Верный ответ:')).toContainText('The')
+    await expect(page.locator('mark')).toHaveText('The')
+    await expect(page.getByLabel('Упражнение').locator('p[lang="en"]')).toHaveText('The dog runs.')
+    await expect(page.getByRole('button', { name: /The/ })).toContainText('The')
+  })
+
   test('неверный ответ клавишей показывает верный', async ({ page }) => {
     const { answers } = await mockApi(page, { loggedIn: true })
     await page.goto('/exercises')
@@ -65,8 +86,9 @@ test.describe('упражнения', () => {
     await mockApi(page, { loggedIn: true, exercises: { none: true } })
     await page.goto('/exercises')
     await expect(page.getByRole('heading', { name: 'Подходящих упражнений пока нет' })).toBeVisible()
-    await expect(page.getByText('Добавь слова в карточки')).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Добавить слова' })).toHaveAttribute('href', '/words')
+    await expect(page.getByText('Попробуй позже или поменяй уровень в настройках')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Настройки' }).last()).toHaveAttribute('href', '/settings')
+    await expect(page.getByRole('link', { name: 'Добавить слова' })).toHaveCount(0)
     await expect(page.getByLabel('Упражнение')).toHaveCount(0)
   })
 

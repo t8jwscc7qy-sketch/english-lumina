@@ -143,7 +143,26 @@ describe('ExercisesPage', () => {
     stubApi({ next: () => errorResponse(404, 'no_exercise', 'Нет упражнений') })
     renderPage()
     expect(await screen.findByText('Подходящих упражнений пока нет')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Добавить слова|Слова/ })).toBeInTheDocument()
+    expect(screen.getByText(/Попробуй позже или поменяй уровень в настройках/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Настройки' })).toHaveAttribute('href', '/settings')
+    expect(screen.queryByRole('link', { name: /Добавить слова/ })).not.toBeInTheDocument()
+  })
+
+  it('ответ с заглавной в начале предложения: верный вариант «The» подсвечен и стоит в предложении', async () => {
+    stubApi({
+      next: () => jsonResponse(200, ex(5, '_____ dog runs.', ['An', 'A', 'The'])),
+      answer: () => jsonResponse(200, { ...result(false), answer: 'The' }),
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('_____ dog runs.')
+    await user.keyboard('1')
+    await screen.findByText('Неверно')
+    expect(screen.getByText(/Верный ответ:/)).toHaveTextContent('The')
+    expect(await screen.findByText('The', { selector: 'mark' })).toBeInTheDocument()
+    const right = screen.getByRole('button', { name: /The/ })
+    expect(right).toHaveTextContent('верно')
+    expect(screen.getByRole('button', { name: /An/ })).toHaveTextContent('твой ответ')
   })
 
   it('ошибка сети показывает «Повторить»', async () => {
