@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getMe, login, logout } from './client'
+import { ApiError, getMe, getSettings, login, logout, putSettings } from './client'
 
 function mockFetch(response: Response | Error) {
   const fn = vi.fn(async (_url: string, _init?: RequestInit) => {
@@ -91,5 +91,36 @@ describe('logout', () => {
     const [url, init = {}] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/v1/auth/logout')
     expect(init.method).toBe('POST')
+  })
+})
+
+describe('settings', () => {
+  const settings = {
+    currentLevel: 'B1',
+    targetLevel: 'B2',
+    targetDate: '2027-06-01',
+    dailyMinutes: 90,
+    timezone: 'Europe/Moscow',
+  } as const
+
+  it('getSettings читает /api/v1/settings', async () => {
+    const fetchMock = mockFetch(json(200, settings))
+    expect(await getSettings()).toEqual(settings)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/settings')
+  })
+
+  it('putSettings отправляет настройки JSON-ом методом PUT и возвращает ответ сервера', async () => {
+    const fetchMock = mockFetch(json(200, settings))
+    expect(await putSettings(settings)).toEqual(settings)
+    const [url, init = {}] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/v1/settings')
+    expect(init.method).toBe('PUT')
+    expect(new Headers(init.headers).get('Content-Type')).toBe('application/json')
+    expect(JSON.parse(init.body as string)).toEqual(settings)
+  })
+
+  it('404 onboarding_required становится ApiError с этим кодом', async () => {
+    mockFetch(json(404, { error: { code: 'onboarding_required', message: 'Сначала настрой' } }))
+    await expect(getSettings()).rejects.toMatchObject({ status: 404, code: 'onboarding_required' })
   })
 })

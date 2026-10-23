@@ -3,7 +3,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { ComingSoonPage, NotFoundPage } from '@/features/placeholder/ComingSoonPage'
 import { AppShell } from '@/features/shell/AppShell'
 import { TodayPage } from '@/features/today/TodayPage'
-import { RedirectIfAuthed, RequireAuth } from './guards'
+import { RedirectIfAuthed, RedirectIfOnboarded, RequireAuth, RequireOnboarded } from './guards'
 
 const soon = (title: string, text: string) => <ComingSoonPage title={title} text={text} />
 
@@ -17,10 +17,22 @@ export const routes: RouteObject[] = [
     ),
   },
   {
+    path: '/onboarding',
+    element: (
+      <RequireAuth>
+        <RedirectIfOnboarded>
+          <ComingSoonPage title="Настройка" text="Здесь будет онбординг." />
+        </RedirectIfOnboarded>
+      </RequireAuth>
+    ),
+  },
+  {
     path: '/',
     element: (
       <RequireAuth>
-        <AppShell />
+        <RequireOnboarded>
+          <AppShell />
+        </RequireOnboarded>
       </RequireAuth>
     ),
     children: [

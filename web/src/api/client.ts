@@ -61,3 +61,19 @@ export async function getMe(): Promise<components['schemas']['Me']> {
   const res = await request('/api/v1/auth/me')
   return (await res.json()) as components['schemas']['Me']
 }
+
+export type Settings = components['schemas']['Settings']
+
+export async function getSettings(): Promise<Settings> {
+  const res = await request('/api/v1/settings')
+  return (await res.json()) as Settings
+}
+
+export async function putSettings(settings: Settings): Promise<Settings> {
+  const res = await request('/api/v1/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  })
+  return (await res.json()) as Settings
+}
