@@ -117,8 +117,8 @@ export function SettingsForm({
         className="surface flex min-w-0 flex-col gap-6 p-6"
       >
         {isOnboarding && (
-          <header className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-1">
+          <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+            <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1">
               <h2 className="text-title">{STEPS[step]}</h2>
               <p className="text-sm text-muted-foreground">
                 {step === 0 &&
@@ -145,6 +145,7 @@ export function SettingsForm({
           <LevelPicker
             legend="Текущий уровень"
             hideLegend={isOnboarding}
+            compact={!isOnboarding}
             name="current"
             value={current}
             onChange={chooseCurrent}
@@ -156,6 +157,7 @@ export function SettingsForm({
             <LevelPicker
               legend="Цель"
               hideLegend={isOnboarding}
+              compact={!isOnboarding}
               name="target"
               value={target}
               onChange={setTarget}

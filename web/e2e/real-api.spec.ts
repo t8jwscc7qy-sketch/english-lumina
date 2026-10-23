@@ -22,3 +22,9 @@ test('настоящий сервер: гость попадает на вход
   await expect(page.getByLabel('Пароль')).toBeFocused()
   await expect(page).toHaveURL(/\/login$/)
 })
+
+test('настоящий сервер: настройки без входа закрыты (401), а не 404 или 500', async ({ request }) => {
+  const res = await request.get('/api/v1/settings')
+  expect(res.status()).toBe(401)
+  expect((await res.json()).error.code).toBe('unauthorized')
+})

@@ -1,37 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
-
-const ME = { login: 'firimon' }
-
-async function mockApi(page: Page, opts: { loggedIn: boolean }) {
-  let loggedIn = opts.loggedIn
-  await page.route('**/api/v1/auth/**', async (route) => {
-    const url = new URL(route.request().url())
-    if (url.pathname.endsWith('/me')) {
-      return loggedIn
-        ? route.fulfill({ json: ME })
-        : route.fulfill({
-            status: 401,
-            json: { error: { code: 'unauthorized', message: 'Нужно войти' } },
-          })
-    }
-    if (url.pathname.endsWith('/login')) {
-      const body = route.request().postDataJSON() as { password: string }
-      if (body.password === 'right-password-1') {
-        loggedIn = true
-        return route.fulfill({ status: 204 })
-      }
-      return route.fulfill({
-        status: 401,
-        json: { error: { code: 'invalid_credentials', message: 'Неверный логин или пароль' } },
-      })
-    }
-    if (url.pathname.endsWith('/logout')) {
-      loggedIn = false
-      return route.fulfill({ status: 204 })
-    }
-    return route.fulfill({ status: 404 })
-  })
-}
+import { expect, test } from '@playwright/test'
+import { mockApi } from './mock-api'
 
 test.describe('вход и оболочка', () => {
   test('неверный пароль, затем успешный вход ведёт на «Сегодня»', async ({ page }) => {
@@ -108,6 +76,7 @@ test.describe('стресс-проверка вёрстки', () => {
     test(`нет горизонтальной прокрутки при ширине ${width}`, async ({ browser }) => {
       const context = await browser.newContext({ viewport: { width, height: 800 } })
       const page = await context.newPage()
+      await mockApi(page, { loggedIn: true })
       await page.route('**/api/v1/auth/me', (route) => route.fulfill({ json: { login: LONG } }))
       for (const path of ['/', '/cards', '/nope']) {
         await page.goto(path)
