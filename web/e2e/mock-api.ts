@@ -102,13 +102,51 @@ export const SETTINGS: Settings = {
   timezone: 'Europe/Moscow',
 }
 
+export type ExerciseFixture = {
+  id: number
+  kind: 'gap'
+  prompt: string
+  translation: string
+  choices: string[]
+  topic: string
+  /** Верный ответ живёт только в подмене сервера, клиенту не отдаётся до ответа. */
+  answer: string
+}
+export type ExerciseOpts = {
+  queue?: ExerciseFixture[]
+  /** Сервер на GET /exercises/next отвечает 404 no_exercise. */
+  none?: boolean
+  /** POST /exercises/answer отвечает 500, пока флаг включён; тест может его снять. */
+  failAnswers?: boolean
+}
+export type ExerciseAnswer = { exerciseId: number; given: string; key: string }
+type TopicRating = { topic: string; rating: number; deviation: number; attempts: number }
+
+export const EXERCISES: ExerciseFixture[] = [
+  {
+    id: 11, kind: 'gap', prompt: 'Yesterday she _____ to the cinema with her sister.',
+    translation: 'Вчера она ходила в кино со своей сестрой.',
+    choices: ['went', 'goes', 'going', 'gone'], topic: 'grammar:past_simple', answer: 'went',
+  },
+  {
+    id: 12, kind: 'gap', prompt: 'He is _____ honest man.',
+    translation: 'Он честный человек.',
+    choices: ['an', 'a', 'the', 'some'], topic: 'grammar:articles', answer: 'an',
+  },
+  {
+    id: 13, kind: 'gap', prompt: 'We arrived _____ the station late.',
+    translation: 'Мы приехали на станцию поздно.',
+    choices: [], topic: 'grammar:prepositions', answer: 'at',
+  },
+]
+
 /**
  * Подменяет API Go-сервера. `settings: null` — онбординг не пройден (GET /settings даёт 404);
  * PUT сохраняет присланное и дальше GET его возвращает. `puts` копит тела принятых PUT.
  */
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[] },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -225,5 +263,47 @@ export async function mockApi(
     return route.fulfill({ status: 404 })
   })
 
-  return { puts, reviews }
+  // Упражнения в памяти: очередь фикстур, ответы, рейтинги тем.
+  const ex = opts.exercises ?? {}
+  const exState = { failAnswers: !!ex.failAnswers }
+  const exQueue = [...(ex.queue ?? EXERCISES)]
+  const answers: ExerciseAnswer[] = []
+  const results = new Map<string, unknown>()
+  const ratings = new Map<string, TopicRating>([
+    ['grammar:articles', { topic: 'grammar:articles', rating: 1500, deviation: 350, attempts: 0 }],
+    ['grammar:past_simple', { topic: 'grammar:past_simple', rating: 1500, deviation: 350, attempts: 0 }],
+  ])
+  const publicExercise = ({ answer: _a, ...rest }: ExerciseFixture) => rest
+
+  await page.route('**/api/v1/exercises/**', async (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/exercises/topics')) {
+      return route.fulfill({ json: { topics: [...ratings.values()] } })
+    }
+    if (path.endsWith('/exercises/next')) {
+      if (ex.none || exQueue.length === 0) return route.fulfill(apiError(404, 'no_exercise', 'Подходящих упражнений пока нет'))
+      return route.fulfill({ json: publicExercise(exQueue[0]) })
+    }
+    if (path.endsWith('/exercises/answer')) {
+      const body = route.request().postDataJSON() as ExerciseAnswer
+      answers.push(body)
+      if (exState.failAnswers) return route.fulfill(apiError(500, 'internal', 'Внутренняя ошибка, попробуй ещё раз'))
+      if (results.has(body.key)) return route.fulfill({ json: results.get(body.key) })
+      const fx = exQueue.find((e) => e.id === body.exerciseId)
+      if (!fx) return route.fulfill(apiError(404, 'not_found', 'Такого упражнения нет'))
+      const correct = body.given.trim().toLowerCase() === fx.answer
+      const r = ratings.get(fx.topic) ?? { topic: fx.topic, rating: 1500, deviation: 350, attempts: 0 }
+      r.rating += correct ? 40 : -40
+      r.deviation -= 20
+      r.attempts += 1
+      ratings.set(fx.topic, r)
+      exQueue.splice(exQueue.indexOf(fx), 1)
+      const result = { correct, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }] }
+      results.set(body.key, result)
+      return route.fulfill({ json: result })
+    }
+    return route.fulfill({ status: 404 })
+  })
+
+  return { puts, reviews, answers, exState }
 }
