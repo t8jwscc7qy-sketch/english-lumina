@@ -30,6 +30,28 @@ var topicWords = map[string][]string{
 	Modals: {"can", "could", "must", "should", "may", "might", "would"},
 }
 
+// interchangeable — группы слов, которые в большинстве предложений подходят друг другу по смыслу.
+// Упражнение не ставит слова одной группы друг другу в отвлекающие: иначе верный ответ выдаётся за неверный.
+// Группы нарочно широкие: лучше потерять вариант, чем засчитать верное слово ошибкой.
+// Известный риск: a/the по переводу не различаются («I saw a dog» и «I saw the dog» переводятся одинаково),
+// поэтому в артиклях полагаться можно только на контекст предложения.
+var interchangeable = [][]string{
+	{"can", "could", "may"}, {"may", "might", "could"}, {"would", "could", "might"}, {"should", "must"}, {"should", "would"},
+	{"over", "above"}, {"under", "below"}, {"among", "between"}, {"in", "into"}, {"around", "about"},
+	{"near", "by"}, {"for", "during"}, {"across", "through"}, {"at", "in"},
+}
+
+// Interchangeable сообщает, что слова из одной группы взаимозаменяемых (регистр не важен).
+func Interchangeable(a, b string) bool {
+	a, b = strings.ToLower(a), strings.ToLower(b)
+	for _, g := range interchangeable {
+		if slices.Contains(g, a) && slices.Contains(g, b) {
+			return true
+		}
+	}
+	return false
+}
+
 // order задаёт порядок тем в результате Topics.
 var order = []string{Articles, Prepositions, Future, Modals, PastSimple}
 

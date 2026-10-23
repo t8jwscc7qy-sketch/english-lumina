@@ -69,3 +69,19 @@ func TestWords(t *testing.T) {
 		t.Error("неизвестная тема должна дать nil")
 	}
 }
+
+func TestInterchangeable(t *testing.T) {
+	yes := [][2]string{{"may", "might"}, {"might", "may"}, {"may", "could"}, {"can", "could"}, {"over", "above"},
+		{"under", "below"}, {"among", "between"}, {"in", "into"}, {"MAY", "might"}}
+	for _, p := range yes {
+		if !Interchangeable(p[0], p[1]) {
+			t.Errorf("%s и %s должны считаться взаимозаменяемыми", p[0], p[1])
+		}
+	}
+	no := [][2]string{{"must", "can"}, {"in", "under"}, {"a", "an"}, {"may", "may2"}}
+	for _, p := range no {
+		if Interchangeable(p[0], p[1]) {
+			t.Errorf("%s и %s не группа", p[0], p[1])
+		}
+	}
+}

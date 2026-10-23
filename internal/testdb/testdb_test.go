@@ -200,7 +200,7 @@ func TestUpsertSentenceReturnsStoredRow(t *testing.T) {
 func TestExamplesFullTextIndex(t *testing.T) {
 	pool := Pool(t)
 	var def string
-	err := pool.QueryRow(context.Background(), `SELECT indexdef FROM pg_indexes WHERE indexname = 'sentences_en_fts'`).Scan(&def)
+	err := pool.QueryRow(context.Background(), `SELECT indexdef FROM pg_indexes WHERE indexname = 'sentences_en_fts' AND schemaname = current_schema()`).Scan(&def)
 	if err != nil {
 		t.Fatalf("индекса sentences_en_fts нет: %v", err)
 	}

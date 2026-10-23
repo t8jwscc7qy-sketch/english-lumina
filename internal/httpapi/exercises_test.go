@@ -73,7 +73,7 @@ func TestNextExerciseGrammarTopic(t *testing.T) {
 		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
 	}
 	ex := decodeExercise(t, rec)
-	if !strings.Contains(ex.Prompt, "_____") || ex.Kind != api.Gap || ex.Topic != "grammar:articles" || ex.Translation == "" || len(ex.Choices) != 4 {
+	if !strings.Contains(ex.Prompt, "_____") || ex.Kind != api.Gap || ex.Topic != "grammar:articles" || ex.Translation == "" || len(ex.Choices) != 3 {
 		t.Fatalf("упражнение: %+v", ex)
 	}
 	if !slices.Contains(ex.Choices, "a") {

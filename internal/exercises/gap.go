@@ -21,15 +21,22 @@ const maxAnswerLen = 200
 // Gap — упражнение «пропуск».
 type Gap struct {
 	Prompt  string   // предложение с blank на месте слова
-	Choices []string // 4 уникальных варианта в перемешанном порядке
-	Answers []string // допустимые написания правильного ответа (нижний регистр)
+	Choices []string // 3–4 уникальных варианта в перемешанном порядке
+	Answers []string // допустимые написания ответа; Answers[0] совпадает с вариантом дословно (в начале предложения — с заглавной)
 }
 
-// extras добивают варианты, если в теме меньше четырёх слов.
+// extras добивают варианты, если в теме мало слов. Только заведомо неверные: после will стоит глагол
+// в начальной форме, поэтому «is», «been», «to» там невозможны. Для артиклей добора нет
+// («this», «my» бывают верны), вариантов будет три.
 var extras = map[string][]string{
-	grammar.Articles: {"this"},
-	grammar.Future:   {"would", "shall", "can"},
+	grammar.Future: {"is", "been", "to"},
 }
+
+// minDistractors — сколько отвлекающих нужно минимум: у тем с закрытым списком вариантов бывает три (артикли).
+const (
+	minDistractors     = 3 // для BuildGapForWord
+	minGrammarDistract = 2 // для BuildGap
+)
 
 // BuildGap собирает пропуск для грамматической темы с закрытым списком слов
 // (grammar.Words). Слово-цель — первое слово предложения из этого списка.
@@ -55,19 +62,19 @@ func BuildGap(sentence, topic string, tokens []string, seed int64) (Gap, bool) {
 	if target == "" {
 		return Gap{}, false
 	}
-	rest := slices.DeleteFunc(slices.Clone(pool), func(w string) bool { return w == target })
+	rest := slices.DeleteFunc(slices.Clone(pool), func(w string) bool { return w == target || grammar.Interchangeable(w, target) })
 	rest = append(rest, extras[topic]...)
-	return build(sentence, target, rest, seed)
+	return build(sentence, target, rest, minGrammarDistract, seed)
 }
 
 // BuildGapForWord собирает пропуск на месте слова target; отвлекающие (формы слова,
 // однотипные слова) передаёт вызывающий. Нужно минимум 3 разных, не равных target. false, если
 // слова нет в предложении или отвлекающих не хватает.
 func BuildGapForWord(sentence, target string, distractors []string, seed int64) (Gap, bool) {
-	return build(sentence, strings.ToLower(target), distractors, seed)
+	return build(sentence, strings.ToLower(target), distractors, minDistractors, seed)
 }
 
-func build(sentence, target string, distractors []string, seed int64) (Gap, bool) {
+func build(sentence, target string, distractors []string, minDistr int, seed int64) (Gap, bool) {
 	// Слово должно встречаться ровно один раз: иначе выбор вхождения спорный
 	// или второе вхождение подсказывает ответ.
 	spans := findWords(sentence, target)
@@ -82,23 +89,25 @@ func build(sentence, target string, distractors []string, seed int64) (Gap, bool
 			uniq = append(uniq, d)
 		}
 	}
-	if len(uniq) < 3 {
+	if len(uniq) < minDistr {
 		return Gap{}, false
 	}
 	rng := rand.New(rand.NewPCG(uint64(seed), 0x9e3779b97f4a7c15))
 	rng.Shuffle(len(uniq), func(i, j int) { uniq[i], uniq[j] = uniq[j], uniq[i] })
-	choices := append([]string{target}, uniq[:3]...)
+	choices := append([]string{target}, uniq[:min(3, len(uniq))]...)
 	rng.Shuffle(len(choices), func(i, j int) { choices[i], choices[j] = choices[j], choices[i] })
 
+	answer := target
 	if r, _ := utf8.DecodeRuneInString(sentence[start:end]); unicode.IsUpper(r) {
 		for i, c := range choices {
 			choices[i] = capitalize(c)
 		}
+		answer = capitalize(target)
 	}
 	return Gap{
 		Prompt:  sentence[:start] + blank + sentence[end:],
 		Choices: choices,
-		Answers: []string{target},
+		Answers: []string{answer},
 	}, true
 }
 

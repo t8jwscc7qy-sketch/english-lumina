@@ -19,14 +19,14 @@ func TestBuildGapArticles(t *testing.T) {
 	if !slices.Equal(g.Answers, []string{"a"}) {
 		t.Errorf("Answers = %v", g.Answers)
 	}
-	if len(g.Choices) != 4 {
+	if len(g.Choices) != 3 {
 		t.Fatalf("Choices = %v", g.Choices)
 	}
 	seen := map[string]bool{}
 	for _, c := range g.Choices {
 		seen[c] = true
 	}
-	if len(seen) != 4 || !seen["a"] || !seen["an"] || !seen["the"] {
+	if len(seen) != 3 || !seen["a"] || !seen["an"] || !seen["the"] {
 		t.Errorf("Choices = %v", g.Choices)
 	}
 }
@@ -49,7 +49,7 @@ func TestBuildGapCapitalized(t *testing.T) {
 	if !ok {
 		t.Fatal("ожидали пропуск")
 	}
-	if g.Prompt != "_____ dog runs." || !slices.Equal(g.Answers, []string{"the"}) {
+	if g.Prompt != "_____ dog runs." || !slices.Equal(g.Answers, []string{"The"}) {
 		t.Errorf("%+v", g)
 	}
 	for _, c := range g.Choices {
@@ -189,5 +189,68 @@ func TestCheckMultipleAnswers(t *testing.T) {
 	a := []string{"color", "colour"}
 	if !Check(a, "Colour") || !Check(a, " color") || Check(a, "colr") {
 		t.Error("несколько ответов")
+	}
+}
+
+// Ответ, который сервер отдаёт клиенту (Answers[0]), обязан быть среди вариантов дословно:
+// фронт сравнивает строго и подставляет его в предложение.
+func TestBuildGapAnswerIsAmongChoices(t *testing.T) {
+	cases := []struct {
+		sentence, topic string
+		tokens          []string
+		wantAnswer      string
+	}{
+		{"The dog runs.", grammar.Articles, []string{"the", "dog", "runs"}, "The"},
+		{"In May we swim.", grammar.Prepositions, []string{"in", "may", "we", "swim"}, "In"},
+		{"I have a dog.", grammar.Articles, []string{"i", "have", "a", "dog"}, "a"},
+	}
+	for _, c := range cases {
+		g, ok := BuildGap(c.sentence, c.topic, c.tokens, 5)
+		if !ok {
+			t.Fatalf("%q: пропуск не собран", c.sentence)
+		}
+		if !slices.Contains(g.Choices, g.Answers[0]) {
+			t.Errorf("%q: ответ %q не среди вариантов %v", c.sentence, g.Answers[0], g.Choices)
+		}
+		if g.Answers[0] != c.wantAnswer {
+			t.Errorf("%q: Answers[0] = %q, ждали %q", c.sentence, g.Answers[0], c.wantAnswer)
+		}
+		if !Check(g.Answers, strings.ToLower(c.wantAnswer)) || !Check(g.Answers, c.wantAnswer) {
+			t.Errorf("%q: Check должен принимать оба регистра", c.sentence)
+		}
+	}
+}
+
+// Отвлекающие не должны быть верными ответами: ни «this» вместо артикля, ни «shall»/«would» вместо will,
+// ни взаимозаменяемые модальные и предлоги.
+func TestBuildGapNoCorrectDistractors(t *testing.T) {
+	cases := []struct {
+		sentence, topic string
+		tokens          []string
+		banned          []string
+	}{
+		{"I have a dog.", grammar.Articles, []string{"i", "have", "a", "dog"}, []string{"this", "that", "my"}},
+		{"It will rain.", grammar.Future, []string{"it", "will", "rain"}, []string{"shall", "would", "can", "may"}},
+		{"We may go.", grammar.Modals, []string{"we", "may", "go"}, []string{"might", "could", "can"}},
+		{"We could go.", grammar.Modals, []string{"we", "could", "go"}, []string{"can", "may", "might", "would"}},
+		{"The bird is above the house.", grammar.Prepositions, []string{"the", "bird", "is", "above", "the", "house"}, []string{"over"}},
+		{"The cat is under it.", grammar.Prepositions, []string{"the", "cat", "is", "under", "it"}, []string{"below"}},
+		{"Choose between us.", grammar.Prepositions, []string{"choose", "between", "us"}, []string{"among"}},
+	}
+	for _, c := range cases {
+		for seed := int64(0); seed < 20; seed++ {
+			g, ok := BuildGap(c.sentence, c.topic, c.tokens, seed)
+			if !ok {
+				t.Fatalf("%q: пропуск не собран", c.sentence)
+			}
+			if len(g.Choices) < 3 {
+				t.Errorf("%q: вариантов меньше трёх: %v", c.sentence, g.Choices)
+			}
+			for _, ch := range g.Choices {
+				if ch != g.Answers[0] && slices.Contains(c.banned, strings.ToLower(ch)) {
+					t.Errorf("%q: верный по смыслу вариант %q среди отвлекающих %v", c.sentence, ch, g.Choices)
+				}
+			}
+		}
 	}
 }
