@@ -49,6 +49,7 @@ type AuthStore interface {
 	ListDataSources(ctx context.Context) ([]db.DataSource, error)
 	SearchLexemes(ctx context.Context, arg db.SearchLexemesParams) ([]db.SearchLexemesRow, error)
 	ListLexemeLevels(ctx context.Context, ids []int64) ([]db.ListLexemeLevelsRow, error)
+	ListExamples(ctx context.Context, arg db.ListExamplesParams) ([]db.ListExamplesRow, error)
 }
 
 var errNoSession = errors.New("нет действующей сессии")

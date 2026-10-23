@@ -17,3 +17,24 @@ LIMIT 1;
 INSERT INTO sentence_pairs (en_id, ru_id, source_id)
 VALUES ($1, $2, $3)
 ON CONFLICT (en_id, ru_id) DO NOTHING;
+
+-- name: ListExamples :many
+-- Примеры для слова: английские предложения из 4–12 слов, где встречается любая из форм (query — выражение
+-- to_tsquery('simple', ...), его строит Go из слов, без знаков синтаксиса), и самый короткий русский перевод.
+-- Ближе к 8 словам лучше: «Run.» ничему не учит, абзац мешает.
+SELECT e.tatoeba_id AS en_tatoeba_id, e.text AS en_text, e.author AS en_author,
+       r.tatoeba_id AS ru_tatoeba_id, r.text AS ru_text, r.author AS ru_author
+FROM sentences e
+CROSS JOIN LATERAL (
+    SELECT rs.tatoeba_id, rs.text, rs.author
+    FROM sentence_pairs p
+    JOIN sentences rs ON rs.id = p.ru_id
+    WHERE p.en_id = e.id
+    ORDER BY rs.word_count, rs.tatoeba_id
+    LIMIT 1
+) r
+WHERE e.lang = 'en'
+  AND e.word_count BETWEEN 4 AND 12
+  AND to_tsvector('simple', e.text) @@ to_tsquery('simple', sqlc.arg(query)::text)
+ORDER BY abs(e.word_count - 8), e.tatoeba_id
+LIMIT sqlc.arg(max_rows)::int;

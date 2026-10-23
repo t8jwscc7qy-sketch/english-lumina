@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { useEffect, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { components } from '@/api/schema.gen'
+import { cn } from '@/lib/utils'
 import { useDebounced } from '@/lib/useDebounced'
+import { ExamplesPanel } from './ExamplesPanel'
 import { useWordSearch } from './words'
 
 type Word = components['schemas']['Word']
@@ -15,6 +18,8 @@ const SOURCE_NAMES: Record<string, string> = { cefrj: 'CEFR-J', octanove: 'Octan
 const sourceName = (name: string) => SOURCE_NAMES[name] ?? name
 
 function WordRow({ word }: { word: Word }) {
+  const [open, setOpen] = useState(false)
+  const panelId = useId()
   const levels = word.levels.map((l) => `${sourceName(l.source)} ${l.level}`).join(' · ')
   const notes = word.levels.flatMap((l) => l.notes).join('; ')
   return (
@@ -31,6 +36,24 @@ function WordRow({ word }: { word: Word }) {
       </div>
       <p className="text-sm text-muted-foreground">{levels}</p>
       {notes && <p className="text-sm break-words">{notes}</p>}
+      <div className="flex flex-col items-start gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          onClick={() => setOpen((v) => !v)}
+          className="-ml-3"
+        >
+          Примеры
+          <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
+        </Button>
+        {open && (
+          <div id={panelId} className="w-full">
+            <ExamplesPanel lemma={word.lemma} pos={word.pos} />
+          </div>
+        )}
+      </div>
     </li>
   )
 }
@@ -50,7 +73,7 @@ export function WordsPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-title">Слова</h1>
         <p className="text-muted-foreground">
-          Уровень слова по спискам CEFR. Примеры предложений появятся после подключения Tatoeba.
+          Уровень слова по спискам CEFR и примеры предложений из Tatoeba.
         </p>
       </header>
 

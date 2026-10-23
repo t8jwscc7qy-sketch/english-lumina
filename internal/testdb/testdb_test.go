@@ -3,6 +3,7 @@ package testdb
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -192,5 +193,20 @@ func TestUpsertSentenceReturnsStoredRow(t *testing.T) {
 	ru.Lang = "ru"
 	if r, err := q.UpsertSentence(ctx, ru); err != nil || r.ID == first.ID {
 		t.Fatalf("русская строка: %+v (%v)", r, err)
+	}
+}
+
+// Индекс под поиск примеров: без него поиск по формам слова идёт полным перебором английских предложений.
+func TestExamplesFullTextIndex(t *testing.T) {
+	pool := Pool(t)
+	var def string
+	err := pool.QueryRow(context.Background(), `SELECT indexdef FROM pg_indexes WHERE indexname = 'sentences_en_fts'`).Scan(&def)
+	if err != nil {
+		t.Fatalf("индекса sentences_en_fts нет: %v", err)
+	}
+	for _, want := range []string{"USING gin", "to_tsvector('simple'::regconfig, text)", "lang = 'en'"} {
+		if !strings.Contains(def, want) {
+			t.Fatalf("в определении индекса %q нет %q", def, want)
+		}
 	}
 }
