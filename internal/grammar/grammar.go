@@ -6,6 +6,8 @@ package grammar
 import (
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/words"
 )
@@ -58,14 +60,46 @@ var order = []string{Articles, Prepositions, Future, Modals, PastSimple}
 // beforeWill — слова, после которых will — существительное («free will», «my will»).
 var beforeWill = []string{"a", "the", "my", "his", "her", "your", "our", "their", "free"}
 
-// WillNounPrecursors возвращает слова, после которых will — существительное, а не будущее время.
-func WillNounPrecursors() []string {
-	return slices.Clone(beforeWill)
+// IsTopicWord сообщает, что tokens[i] в закрытом списке слов темы и действительно относится к ней.
+// Токены передаются как в тексте, с исходным регистром: слово с заглавной не в начале предложения
+// («in May», «Call Will») для future и modals — имя или месяц. Дальше отсекаются существительные:
+// will после «a/the/my/free», can и may после тех же слов и can перед «of» («a can of soup»).
+func IsTopicWord(topic string, tokens []string, i int) bool {
+	if i < 0 || i >= len(tokens) {
+		return false
+	}
+	tok := tokens[i]
+	w := strings.ToLower(tok)
+	if !slices.Contains(topicWords[topic], w) {
+		return false
+	}
+	if topic != Future && topic != Modals {
+		return true
+	}
+	if r, _ := utf8.DecodeRuneInString(tok); i > 0 && unicode.IsUpper(r) {
+		return false
+	}
+	prev, next := "", ""
+	if i > 0 {
+		prev = strings.ToLower(tokens[i-1])
+	}
+	if i+1 < len(tokens) {
+		next = strings.ToLower(tokens[i+1])
+	}
+	switch w {
+	case "will", "may":
+		return !slices.Contains(beforeWill, prev)
+	case "can":
+		return !slices.Contains(beforeWill, prev) && next != "of"
+	}
+	return true
 }
 
 // beforeParticiple — слова, после которых форма на -ed или неправильная форма —
 // причастие или прилагательное («have gone», «am tired»), а не прошедшее время.
-var beforeParticiple = []string{"have", "has", "had", "is", "am", "are", "was", "were", "be", "been", "get", "got", "very"}
+var beforeParticiple = []string{"have", "has", "had", "is", "am", "are", "was", "were", "be", "been", "get", "got", "very",
+	// сокращения со вспомогательным глаголом: «I've walked», «he's gone»
+	"i'm", "i've", "he's", "she's", "it's", "that's", "you're", "we're", "they're", "you've", "we've", "they've"}
 
 // notPast — слова на «ed», которые не глаголы в прошедшем времени (в том числе прилагательные).
 var notPast = []string{"speed", "hundred", "indeed", "breed", "greed", "kindred", "hatred", "sacred", "naked",
@@ -80,25 +114,24 @@ func Words(topic string) []string {
 }
 
 // Topics возвращает темы, встретившиеся среди слов, без повторов, в порядке перечисления.
-// Токены должны быть без пунктуации и в нижнем регистре (регистр всё же не важен).
+// Токены — слова без пунктуации в исходном регистре (по нему отличаются имена: «in May», «Call Will»).
 // past_simple: неправильная форма прошедшего времени или слово длиннее 4 букв на «ed»,
 // если оно не из списка исключений и перед ним нет вспомогательного глагола.
 func Topics(tokens []string) []string {
 	found := map[string]bool{}
 	for i, tok := range tokens {
-		w := strings.ToLower(tok)
+		w := normQuote(tok)
 		prev, next := "", ""
 		if i > 0 {
-			prev = strings.ToLower(tokens[i-1])
+			prev = normQuote(tokens[i-1])
 		}
 		if i+1 < len(tokens) {
-			next = strings.ToLower(tokens[i+1])
+			next = normQuote(tokens[i+1])
 		}
-		for topic, list := range topicWords {
-			if !slices.Contains(list, w) || (topic == Future && slices.Contains(beforeWill, prev)) {
-				continue
+		for topic := range topicWords {
+			if IsTopicWord(topic, tokens, i) {
+				found[topic] = true
 			}
-			found[topic] = true
 		}
 		if w == "going" && next == "to" {
 			found[Future] = true
@@ -116,4 +149,9 @@ func Topics(tokens []string) []string {
 		}
 	}
 	return out
+}
+
+// normQuote — слово в нижнем регистре с обычным апострофом.
+func normQuote(s string) string {
+	return strings.ReplaceAll(strings.ToLower(s), "’", "'")
 }

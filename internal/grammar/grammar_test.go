@@ -43,6 +43,27 @@ func TestTopics(t *testing.T) {
 		{"free will", nil},
 		{"my will", nil},
 		{"I want to go", nil},
+		// M1: имена и месяцы с заглавной не в начале предложения — не модальные
+		{"We met in May", []string{"grammar:prepositions", "grammar:past_simple"}},
+		{"I called Will yesterday", []string{"grammar:past_simple"}},
+		{"Please call Will", nil},
+		{"May is my friend", []string{"grammar:modals"}},
+		{"Will is my friend", []string{"grammar:future"}},
+		{"I can swim", []string{"grammar:modals"}},
+		// существительные can/may
+		{"I opened a can of soup", []string{"grammar:articles", "grammar:prepositions", "grammar:past_simple"}},
+		{"The can is empty", []string{"grammar:articles"}},
+		{"a can of beans", []string{"grammar:articles", "grammar:prepositions"}},
+		{"Here is my can", nil},
+		// M2: сокращения со вспомогательным глаголом — не past_simple
+		{"I've gone home", nil},
+		{"I've walked home", nil},
+		{"He's walked home", nil},
+		{"They've walked", nil},
+		{"She's walked", nil},
+		{"We've walked", nil},
+		{"I’ve walked home", nil},
+		{"You're tired", nil},
 	}
 	for _, tt := range tests {
 		got := Topics(strings.Fields(tt.in))

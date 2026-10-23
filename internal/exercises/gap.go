@@ -39,21 +39,17 @@ const (
 )
 
 // BuildGap собирает пропуск для грамматической темы с закрытым списком слов
-// (grammar.Words). Слово-цель — первое слово предложения из этого списка.
+// (grammar.Words). Токены — в исходном регистре (см. grammar.IsTopicWord). Слово-цель — первое слово предложения из этого списка.
 // Для past_simple и тем level:/pos: нужен BuildGapForWord. false, если собрать нельзя.
 func BuildGap(sentence, topic string, tokens []string, seed int64) (Gap, bool) {
 	pool := grammar.Words(topic)
 	if len(pool) == 0 {
 		return Gap{}, false
 	}
-	willNoun := grammar.WillNounPrecursors()
 	target := ""
 	for i, tok := range tokens {
 		w := strings.ToLower(tok)
-		if !slices.Contains(pool, w) {
-			continue
-		}
-		if topic == grammar.Future && i > 0 && slices.Contains(willNoun, strings.ToLower(tokens[i-1])) {
+		if !slices.Contains(pool, w) || !grammar.IsTopicWord(topic, tokens, i) {
 			continue
 		}
 		target = w
@@ -89,6 +85,7 @@ func build(sentence, target string, distractors []string, minDistr int, seed int
 			uniq = append(uniq, d)
 		}
 	}
+	uniq = agreeWithArticle(sentence, start, target, uniq)
 	if len(uniq) < minDistr {
 		return Gap{}, false
 	}
@@ -161,4 +158,25 @@ func Check(answers []string, given string) bool {
 		}
 	}
 	return false
+}
+
+// agreeWithArticle: если перед словом стоит a/an, оставляет отвлекающие, начинающиеся на тот же звук
+// (по первой букве: гласная или согласная), иначе артикль выдаёт ответ. Эвристика грубая («an hour»), но
+// ошибка только сужает выбор. Не хватит отвлекающих — build откажется от предложения.
+func agreeWithArticle(sentence string, start int, target string, distractors []string) []string {
+	fields := strings.Fields(sentence[:start])
+	if len(fields) == 0 {
+		return distractors
+	}
+	switch strings.ToLower(strings.Trim(fields[len(fields)-1], ".,;:!?\"()")) {
+	case "a", "an":
+	default:
+		return distractors
+	}
+	vowel := func(w string) bool {
+		r, _ := utf8.DecodeRuneInString(w)
+		return strings.ContainsRune("aeiou", r)
+	}
+	want := vowel(target)
+	return slices.DeleteFunc(slices.Clone(distractors), func(d string) bool { return vowel(d) != want })
 }

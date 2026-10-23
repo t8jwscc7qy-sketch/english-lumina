@@ -21,8 +21,18 @@ type WordInfo struct {
 // Tokens режет предложение на слова в нижнем регистре. Апострофы и дефисы внутри слова остаются
 // (don't, well-known), по краям слова отбрасываются.
 func Tokens(text string) []string {
+	out := CasedTokens(text)
+	for i, t := range out {
+		out[i] = strings.ToLower(t)
+	}
+	return out
+}
+
+// CasedTokens — те же слова, что Tokens, но в исходном регистре: по заглавной букве не в начале предложения
+// грамматика отличает имена и месяцы (May, Will).
+func CasedTokens(text string) []string {
 	text = strings.ReplaceAll(text, "’", "'")
-	fields := strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
+	fields := strings.FieldsFunc(text, func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '\'' && r != '-'
 	})
 	out := fields[:0]
@@ -57,11 +67,11 @@ func SentenceLevel(tokens []string, known map[string]WordInfo) (string, bool) {
 	return best, best != ""
 }
 
-// PastSimpleTarget — первое слово, давшее тему past_simple (с тем же контекстом, что в grammar.Topics). Нет — "".
+// PastSimpleTarget — первое слово, давшее тему past_simple (с тем же контекстом, что в grammar.Topics), в нижнем регистре. Нет — "".
 func PastSimpleTarget(tokens []string) string {
 	for i := range tokens {
 		if slices.Contains(grammar.Topics(tokens[:i+1]), grammar.PastSimple) {
-			return tokens[i]
+			return strings.ToLower(tokens[i])
 		}
 	}
 	return ""

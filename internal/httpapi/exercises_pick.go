@@ -94,13 +94,14 @@ func (s *authServer) grammarCandidate(ctx context.Context, rng *idRange, topic s
 		if used[row.ID] {
 			continue
 		}
-		tokens := exercises.Tokens(row.Text)
-		if !slices.Contains(grammar.Topics(tokens), topic) {
+		cased := exercises.CasedTokens(row.Text)
+		if !slices.Contains(grammar.Topics(cased), topic) {
 			continue
 		}
+		tokens := exercises.Tokens(row.Text)
 		p := grammarPending{row: row, tokens: tokens, seed: s.rnd(1 << 62)}
 		if topic == grammar.PastSimple {
-			p.target = exercises.PastSimpleTarget(tokens)
+			p.target = exercises.PastSimpleTarget(cased)
 			if p.target == "" {
 				continue
 			}
@@ -114,7 +115,7 @@ func (s *authServer) grammarCandidate(ctx context.Context, rng *idRange, topic s
 			}
 		} else {
 			var ok bool
-			if p.gap, ok = exercises.BuildGap(row.Text, topic, tokens, p.seed); !ok {
+			if p.gap, ok = exercises.BuildGap(row.Text, topic, cased, p.seed); !ok {
 				continue
 			}
 		}

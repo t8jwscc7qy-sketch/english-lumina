@@ -254,3 +254,56 @@ func TestBuildGapNoCorrectDistractors(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildGapForWordArticleAgreement(t *testing.T) {
+	pool := []string{"table", "apple", "orange", "dog", "cat", "egg", "house", "ear", "ice", "bed"}
+	// «an _____»: отвлекающие тоже на гласную, иначе артикль выдаёт ответ.
+	g, ok := BuildGapForWord("She ate an apple.", "apple", pool, 1)
+	if !ok {
+		t.Fatal("ожидали пропуск")
+	}
+	for _, c := range g.Choices {
+		if !strings.ContainsRune("aeiou", rune(c[0])) {
+			t.Errorf("вариант %q не на гласную после an: %v", c, g.Choices)
+		}
+	}
+	// «a _____» — на согласную.
+	g, ok = BuildGapForWord("She has a dog.", "dog", pool, 1)
+	if !ok {
+		t.Fatal("ожидали пропуск")
+	}
+	for _, c := range g.Choices {
+		if strings.ContainsRune("aeiou", rune(c[0])) {
+			t.Errorf("вариант %q на гласную после a: %v", c, g.Choices)
+		}
+	}
+	// Подходящих меньше трёх (гласных всего две: orange, egg) — предложение пропускаем.
+	if _, ok := BuildGapForWord("She ate an apple.", "apple", []string{"orange", "egg", "table", "dog"}, 1); ok {
+		t.Error("гласных отвлекающих меньше трёх — ждали false")
+	}
+	// Без артикля фильтра нет.
+	if g, ok := BuildGapForWord("She likes apple pie.", "apple", pool, 1); !ok || len(g.Choices) != 4 {
+		t.Errorf("без артикля: %+v %v", g, ok)
+	}
+}
+
+// Месяц May не должен становиться целью пропуска для modals; цель — настоящий can.
+func TestBuildGapSkipsCapitalizedMay(t *testing.T) {
+	s := "We met in May and we can swim."
+	g, ok := BuildGap(s, grammar.Modals, CasedTokens(s), 1)
+	if !ok || g.Prompt != "We met in May and we _____ swim." {
+		t.Fatalf("%+v %v", g, ok)
+	}
+	if _, ok := BuildGap("We met in May.", grammar.Modals, CasedTokens("We met in May."), 1); ok {
+		t.Error("May — месяц, пропуска быть не должно")
+	}
+}
+
+// «Mr.» с точкой внутри предложения не мешает собрать пропуск.
+func TestBuildGapWithMrDot(t *testing.T) {
+	s := "Mr. Smith has a dog."
+	g, ok := BuildGap(s, grammar.Articles, CasedTokens(s), 1)
+	if !ok || g.Prompt != "Mr. Smith has _____ dog." || g.Answers[0] != "a" {
+		t.Fatalf("%+v %v", g, ok)
+	}
+}
