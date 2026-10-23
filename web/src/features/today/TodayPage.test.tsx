@@ -90,7 +90,10 @@ describe('TodayPage', () => {
     expect(within(group).getByText('Карточки к повторению')).toBeInTheDocument()
     expect(within(group).getByText('Упражнения на слабые темы')).toBeInTheDocument()
     expect(within(group).getByText('Работа над ошибками')).toBeInTheDocument()
-    expect(within(group).getAllByRole('article')).toHaveLength(3)
+    const links = within(group).getAllByRole('link')
+    expect(links).toHaveLength(3)
+    // У ссылки-плитки есть доступное имя (раньше article внутри ссылки оставлял его пустым в настоящем браузере).
+    for (const link of links) expect(link).toHaveAccessibleName(/.+/)
   })
 
   it('показывает серию и минимальный день с полоской', async () => {

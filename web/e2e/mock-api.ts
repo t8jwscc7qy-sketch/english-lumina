@@ -53,7 +53,31 @@ export const WORDS: WordFixture[] = [
     ],
   },
   { lemma: 'cafe/café', pos: 'noun', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }] },
+  // Слово без примеров в Tatoeba: добавить в карточки нельзя (409 no_examples).
+  { lemma: 'zebra', pos: 'noun', level: 'A2', levels: [{ source: 'cefrj', level: 'A2', notes: [] }] },
 ]
+
+/** Предложения для карточек: пропуск (gap) в символах. */
+const CARD_SENTENCES: Record<string, unknown> = {
+  run: {
+    en: { text: 'I like to run every morning before work.', author: 'CK', tatoebaId: 1234567 },
+    ru: { text: 'Я люблю бегать по утрам перед работой.', author: 'marafon', tatoebaId: 7654321 },
+    gap: { start: 10, end: 13 },
+  },
+  runner: {
+    en: { text: 'My brother is a good runner.', author: 'CM', tatoebaId: 2345678 },
+    ru: { text: 'Мой брат хороший бегун.', author: 'ksenija', tatoebaId: 8765432 },
+    gap: { start: 21, end: 27 },
+  },
+  runway: {
+    en: { text: 'The plane landed on the runway.', author: 'Hybrid', tatoebaId: 3456789 },
+    ru: { text: 'Самолёт приземлился на взлётную полосу.', author: 'a', tatoebaId: 9876543 },
+    gap: { start: 24, end: 30 },
+  },
+}
+
+type MockCard = { id: number; lemma: string; pos: string; level: string; due: boolean }
+export type CardReview = { cardId: number; rating: number; key: string }
 
 export const EXAMPLES = {
   examples: [
@@ -83,7 +107,7 @@ export const SETTINGS: Settings = {
  */
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[] },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[] },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -142,14 +166,63 @@ export async function mockApi(
   )
 
   // Поиск как у сервера: по началу слова без учёта регистра.
+  // Карточки в памяти: слова из opts.dueCards уже добавлены и просрочены (лежат в очереди).
+  const cards: MockCard[] = (opts.dueCards ?? []).map((lemma, i) => {
+    const w = WORDS.find((x) => x.lemma === lemma)
+    return { id: i + 1, lemma, pos: w?.pos ?? 'verb', level: w?.level ?? 'A1', due: true }
+  })
+  const reviews: CardReview[] = []
+  const seenKeys = new Set<string>()
+  let nextCardId = 100
+  const queueCard = (c: MockCard) => ({
+    cardId: c.id, lemma: c.lemma, pos: c.pos, level: c.level, state: 0,
+    intervals: { again: 60, hard: 360, good: 600, easy: 345_600 },
+    ...(CARD_SENTENCES[c.lemma] ? { sentence: CARD_SENTENCES[c.lemma] } : {}),
+  })
+  const queueBody = () => {
+    const due = cards.filter((c) => c.due)
+    return { dueCount: due.length, totalCount: cards.length, ...(due[0] ? { card: queueCard(due[0]) } : {}) }
+  }
+  const apiError = (status: number, code: string, message: string) => ({ status, json: { error: { code, message } } })
+
   await page.route('**/api/v1/words**', (route) => {
     const q = (new URL(route.request().url()).searchParams.get('q') ?? '').trim().toLowerCase()
-    const words = q ? WORDS.filter((w) => w.lemma.toLowerCase().startsWith(q)) : []
+    const words = q
+      ? WORDS.filter((w) => w.lemma.toLowerCase().startsWith(q)).map((w) => ({ ...w, inCards: cards.some((c) => c.lemma === w.lemma) }))
+      : []
     return route.fulfill({ json: { words } })
   })
 
   // Примеры для слова. Регистрируется после поиска слов: Playwright сначала пробует поздние маршруты.
   await page.route('**/api/v1/words/examples**', (route) => route.fulfill({ json: EXAMPLES }))
 
-  return { puts }
+  await page.route('**/api/v1/cards**', async (route) => {
+    const url = new URL(route.request().url())
+    const method = route.request().method()
+    if (url.pathname.endsWith('/cards/queue')) return route.fulfill({ json: queueBody() })
+    if (url.pathname.endsWith('/cards/review')) {
+      const body = route.request().postDataJSON() as CardReview
+      reviews.push(body)
+      const card = cards.find((c) => c.id === body.cardId)
+      if (!card) return route.fulfill(apiError(404, 'not_found', 'Такой карточки нет'))
+      if (!seenKeys.has(body.key)) {
+        seenKeys.add(body.key) // повтор с тем же ключом ничего не меняет
+        card.due = false
+      }
+      return route.fulfill({ json: queueBody() })
+    }
+    if (method === 'POST') {
+      const { lemma, pos } = route.request().postDataJSON() as { lemma: string; pos: string }
+      const word = WORDS.find((w) => w.lemma === lemma && w.pos === pos)
+      if (!word) return route.fulfill(apiError(404, 'word_not_found', 'Такого слова нет в словаре'))
+      if (!CARD_SENTENCES[lemma]) return route.fulfill(apiError(409, 'no_examples', 'Для этого слова нет подходящих примеров, карточку не собрать'))
+      const existing = cards.find((c) => c.lemma === lemma)
+      if (existing) return route.fulfill({ status: 200, json: { cardId: existing.id, created: false } })
+      cards.push({ id: nextCardId++, lemma, pos, level: word.level, due: true })
+      return route.fulfill({ status: 201, json: { cardId: cards[cards.length - 1].id, created: true } })
+    }
+    return route.fulfill({ status: 404 })
+  })
+
+  return { puts, reviews }
 }
