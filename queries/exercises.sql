@@ -106,3 +106,16 @@ GROUP BY l.id, l.lemma, l.pos
 HAVING min(c.level) = sqlc.arg(level)::text
 ORDER BY random()
 LIMIT sqlc.arg(max_rows)::int;
+
+-- name: ListEnglishAlternatives :many
+-- Другие английские предложения (4–10 слов) с тем же русским переводом, что у en_id: для «порядка слов»
+-- они тоже верные ответы. Само предложение не возвращается.
+SELECT DISTINCT e.id, e.text
+FROM sentence_pairs mine
+JOIN sentence_pairs p ON p.ru_id = mine.ru_id AND p.en_id <> mine.en_id
+JOIN sentences e ON e.id = p.en_id
+WHERE mine.en_id = sqlc.arg(en_id)::bigint
+  AND e.lang = 'en'
+  AND e.word_count BETWEEN 4 AND 10
+ORDER BY e.id
+LIMIT sqlc.arg(max_rows)::int;
