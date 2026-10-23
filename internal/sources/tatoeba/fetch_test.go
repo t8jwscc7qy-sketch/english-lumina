@@ -201,7 +201,7 @@ func TestFetchRejectsOversizedMember(t *testing.T) {
 	}
 }
 
-// Заявленный в заголовке размер нельзя считать правдой: читаем не больше лимита, сколько бы ни было на самом деле.
+// Заявленный в заголовке размер нельзя считать правдой: данные больше заявленного не извлекаются.
 func TestFetchDoesNotTrustDeclaredSize(t *testing.T) {
 	payload := []byte(strings.Repeat("a", 5000))
 	var comp bytes.Buffer
@@ -228,8 +228,10 @@ func TestFetchDoesNotTrustDeclaredSize(t *testing.T) {
 
 	src, _ := serve(t, buf.Bytes(), sum(buf.Bytes()), 1000)
 	cache := t.TempDir()
-	if _, err := src.Fetch(context.Background(), cache); err == nil || !strings.Contains(err.Error(), "лимит") {
-		t.Fatalf("ожидали ошибку лимита (фактический размер больше), получили %v", err)
+	// Подделку ловит уже сам archive/zip (ErrFormat, если данных больше заявленного); наш лимит чтения
+	// остаётся второй линией защиты. Важно, что файл не извлечён и кэш чист.
+	if _, err := src.Fetch(context.Background(), cache); err == nil || !strings.Contains(err.Error(), "распаковка") {
+		t.Fatalf("ожидали ошибку распаковки (фактический размер больше заявленного), получили %v", err)
 	}
 	dir, _, _ := cachePaths(cache)
 	if got := names(t, dir); !slices.Equal(got, []string{"rus-eng.zip"}) {
