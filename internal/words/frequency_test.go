@@ -54,3 +54,16 @@ func TestBestRank(t *testing.T) {
 		t.Fatal("пустая карта рангов не должна давать место")
 	}
 }
+
+func TestFrequencyKeysWholeWords(t *testing.T) {
+	// Слова с дефисом режутся Forms на фразу, но в списке частот они стоят целиком.
+	keys := FrequencyKeys("good-looking", Forms("good-looking", "adjective"))
+	ranks := map[string]int{"good-looking": 5762, "good": 100}
+	if r, ok := BestRankOf(keys, ranks); !ok || r != 5762 {
+		t.Fatalf("good-looking: %d %v, ключи %v", r, ok, keys)
+	}
+	// Фразы с пробелом по-прежнему без частоты.
+	if k := FrequencyKeys("look after", Forms("look after", "verb")); len(k) != 0 {
+		t.Fatalf("у фразы ключей нет: %v", k)
+	}
+}

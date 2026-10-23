@@ -21,4 +21,8 @@ describe('describeFrequency', () => {
   it('слова нет в списке: редкое, реже последнего места', () => {
     expect(norm(describeFrequency(undefined))).toBe('редкое слово, реже № 50 000')
   })
+
+  it('фраза без места: частоты для фраз нет, а не «редкое»', () => {
+    expect(describeFrequency(undefined, 'look after')).toBe('для фраз частоты нет')
+  })
 })

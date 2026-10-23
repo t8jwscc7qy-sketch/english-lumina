@@ -12,7 +12,8 @@ function band(rank: number): string {
 }
 
 /** Фраза о частоте слова для результата поиска; rank — место в списке (1 — самое частое), нет — слова нет в списке. */
-export function describeFrequency(rank?: number): string {
+export function describeFrequency(rank?: number, lemma = ''): string {
+  if (rank === undefined && /\s/.test(lemma)) return 'для фраз частоты нет'
   if (rank === undefined) return `редкое слово, реже № ${number.format(LIST_SIZE)}`
   return `${band(rank)} слово, № ${number.format(rank)} из ${number.format(LIST_SIZE)}`
 }

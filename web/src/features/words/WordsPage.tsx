@@ -78,7 +78,7 @@ function WordRow({ word }: { word: Word }) {
         </span>
       </div>
       <p className="text-sm text-muted-foreground">{levels}</p>
-      <p className="text-sm text-muted-foreground">{`Частота: ${describeFrequency(word.frequencyRank)}`}</p>
+      <p className="text-sm text-muted-foreground">{`Частота: ${describeFrequency(word.frequencyRank, word.lemma)}`}</p>
       {notes && <p className="text-sm break-words">{notes}</p>}
       <div className="flex flex-col items-start gap-3">
         <div className="flex flex-wrap items-start gap-x-2 gap-y-1">

@@ -79,12 +79,12 @@ func (s *authServer) SearchWords(w http.ResponseWriter, r *http.Request) {
 
 	// Частота: у слов словаря леммы, а в списке частот написания (run, runs, running), поэтому по формам слов
 	// одним запросом берём места, и у каждого слова выбираем самое частое из его форм.
-	formsOf := make([][][]string, len(found))
+	keysOf := make([][]string, len(found))
 	var wanted []string
 	seen := map[string]bool{}
 	for i, f := range found {
-		formsOf[i] = words.Forms(f.Lemma, f.Pos)
-		for _, form := range words.SingleWords(formsOf[i]) {
+		keysOf[i] = words.FrequencyKeys(f.Lemma, words.Forms(f.Lemma, f.Pos))
+		for _, form := range keysOf[i] {
 			if !seen[form] {
 				seen[form] = true
 				wanted = append(wanted, form)
@@ -107,7 +107,7 @@ func (s *authServer) SearchWords(w http.ResponseWriter, r *http.Request) {
 		word := api.Word{
 			Lemma: f.Lemma, Pos: f.Pos, Level: api.CefrLevel(f.Level), Levels: append([]api.WordLevel{}, byWord[f.ID]...), InCards: inCards[f.ID],
 		}
-		if rank, ok := words.BestRank(formsOf[i], ranks); ok {
+		if rank, ok := words.BestRankOf(keysOf[i], ranks); ok {
 			word.FrequencyRank = &rank
 		}
 		out.Words = append(out.Words, word)
