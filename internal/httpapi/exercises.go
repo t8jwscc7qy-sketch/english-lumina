@@ -26,6 +26,9 @@ const (
 )
 
 // allLevels упорядочены от низшего к высшему (в данных бывает и C2).
+// orderTopic — тема «порядка слов»; выбирается как любая другая слабая тема.
+const orderTopic = "skill:order"
+
 var allLevels = []string{"A1", "A2", "B1", "B2", "C1", "C2"}
 
 var grammarTopics = []string{grammar.Articles, grammar.Prepositions, grammar.Future, grammar.Modals, grammar.PastSimple}
@@ -35,6 +38,7 @@ type exercisePayload struct {
 	Prompt      string   `json:"prompt"`
 	Translation string   `json:"translation"`
 	Choices     []string `json:"choices"`
+	Tiles       []string `json:"tiles,omitempty"` // только для order
 	Topic       string   `json:"topic"`
 }
 
@@ -48,8 +52,9 @@ type gapCandidate struct {
 	sentenceID  int64
 	translation string
 	gap         exercises.Gap
-	level       string // уровень предложения
-	pos         string // часть речи слова (только для level:*)
+	level       string           // уровень предложения
+	pos         string           // часть речи слова (только для level:*)
+	order       *exercises.Order // «порядок слов»: вместо gap
 }
 
 // GetNextExercise выбирает тему по рейтингам (слабая раньше), собирает пропуск и записывает упражнение.
@@ -61,7 +66,7 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	available, err := s.availableTopics(ctx, user.ID)
+	available, userLevel, err := s.availableTopics(ctx, user.ID)
 	if err != nil {
 		s.failExercises(w, err)
 		return
@@ -90,9 +95,12 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		}
 		var cand gapCandidate
 		var found bool
-		if strings.HasPrefix(topic, "level:") {
+		switch {
+		case topic == orderTopic:
+			cand, found, err = s.orderCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
+		case strings.HasPrefix(topic, "level:"):
 			cand, found, err = s.levelCandidate(ctx, topic, used)
-		} else {
+		default:
 			cand, found, err = s.grammarCandidate(ctx, &rng, topic, used)
 		}
 		if err != nil {
@@ -137,25 +145,36 @@ func (s *authServer) failExercises(w http.ResponseWriter, err error) {
 	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
 }
 
-// availableTopics: пять грамматических тем, уровень пользователя и следующий за ним. Без настроек — только грамматика.
-func (s *authServer) availableTopics(ctx context.Context, userID int64) ([]string, error) {
-	out := slices.Clone(grammarTopics)
+// availableTopics: пять грамматических тем, «порядок слов», уровень пользователя и следующий за ним.
+// Без настроек — без level:*. Вторым значением отдаёт текущий уровень пользователя (пусто без настроек).
+func (s *authServer) availableTopics(ctx context.Context, userID int64) ([]string, string, error) {
+	out := append(slices.Clone(grammarTopics), orderTopic)
 	st, err := s.store.GetSettings(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return out, nil
+		return out, "", nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	i := slices.Index(allLevels, st.CurrentLevel)
 	if i < 0 {
-		return out, nil
+		return out, "", nil
 	}
 	out = append(out, "level:"+allLevels[i])
 	if i+1 < len(allLevels) {
 		out = append(out, "level:"+allLevels[i+1])
 	}
-	return out, nil
+	return out, allLevels[i], nil
+}
+
+// orderMaxLevel — самый высокий уровень предложения для «порядка слов»: уровень пользователя плюс один.
+// Уровень неизвестен — предела нет.
+func orderMaxLevel(userLevel string) string {
+	i := slices.Index(allLevels, userLevel)
+	if i < 0 {
+		return ""
+	}
+	return allLevels[min(i+1, len(allLevels)-1)]
 }
 
 func (s *authServer) usedSentences(ctx context.Context, userID int64, topic string) (map[int64]bool, error) {
@@ -181,21 +200,31 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 			topics = append(topics, t)
 		}
 	}
-	payload, err := json.Marshal(exercisePayload{Prompt: c.gap.Prompt, Translation: c.translation, Choices: c.gap.Choices, Topic: topic})
+	kind, prompt, choices, answers := api.Gap, c.gap.Prompt, c.gap.Choices, c.gap.Answers
+	var tiles []string
+	if c.order != nil {
+		// «Порядок слов»: пользователь видит перевод и перемешанные плитки.
+		kind, prompt, choices, answers, tiles = api.Order, c.translation, []string{}, c.order.Answers, c.order.Tiles
+	}
+	payload, err := json.Marshal(exercisePayload{Prompt: prompt, Translation: c.translation, Choices: choices, Tiles: tiles, Topic: topic})
 	if err != nil {
 		return api.Exercise{}, err
 	}
-	answer, err := json.Marshal(exerciseAnswer{Answers: c.gap.Answers})
+	answer, err := json.Marshal(exerciseAnswer{Answers: answers})
 	if err != nil {
 		return api.Exercise{}, err
 	}
 	id, err := s.store.InsertExercise(ctx, db.InsertExerciseParams{
-		UserID: userID, Kind: string(api.Gap), SentenceID: c.sentenceID, Topics: topics, Payload: payload, Answer: answer,
+		UserID: userID, Kind: string(kind), SentenceID: c.sentenceID, Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		return api.Exercise{}, err
 	}
-	return api.Exercise{Id: id, Kind: api.Gap, Prompt: c.gap.Prompt, Translation: c.translation, Choices: c.gap.Choices, Topic: topic}, nil
+	ex := api.Exercise{Id: id, Kind: kind, Prompt: prompt, Translation: c.translation, Choices: choices, Topic: topic}
+	if tiles != nil {
+		ex.Tiles = &tiles
+	}
+	return ex, nil
 }
 
 func posTopic(pos string) string {
