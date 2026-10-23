@@ -113,3 +113,10 @@ type User struct {
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
 }
+
+type WordFrequency struct {
+	SourceID int64
+	Word     string
+	Count    int64
+	Rank     int32
+}
