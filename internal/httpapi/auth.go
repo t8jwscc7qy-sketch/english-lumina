@@ -44,6 +44,8 @@ type AuthStore interface {
 	GetActiveSession(ctx context.Context, tokenHash []byte) (db.Session, error)
 	TouchSession(ctx context.Context, id int64) error
 	RevokeSession(ctx context.Context, tokenHash []byte) error
+	GetSettings(ctx context.Context, userID int64) (db.Setting, error)
+	UpsertSettings(ctx context.Context, arg db.UpsertSettingsParams) (db.Setting, error)
 }
 
 var errNoSession = errors.New("нет действующей сессии")

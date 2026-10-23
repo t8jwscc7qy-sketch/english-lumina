@@ -59,6 +59,47 @@ paths:
                 $ref: "#/components/schemas/Me"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/settings:
+    get:
+      operationId: getSettings
+      summary: Настройки обучения текущего пользователя
+      responses:
+        "200":
+          description: Настройки сохранены ранее
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Настроек ещё нет, нужно пройти онбординг (код onboarding_required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: putSettings
+      summary: Сохранить настройки обучения (создаёт или заменяет целиком)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Settings"
+      responses:
+        "200":
+          description: Настройки сохранены
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 components:
   schemas:
     LoginRequest:
@@ -79,6 +120,29 @@ components:
       properties:
         login:
           type: string
+    Level:
+      type: string
+      enum: [A1, A2, B1, B2, C1]
+    Settings:
+      type: object
+      required: [currentLevel, targetLevel, dailyMinutes, timezone]
+      properties:
+        currentLevel:
+          $ref: "#/components/schemas/Level"
+        targetLevel:
+          $ref: "#/components/schemas/Level"
+        targetDate:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          nullable: true
+          description: Календарный день цели (YYYY-MM-DD) или null
+        dailyMinutes:
+          type: integer
+          minimum: 5
+          maximum: 240
+        timezone:
+          type: string
+          description: Часовой пояс IANA, например Europe/Moscow
     Error:
       type: object
       required: [error]
@@ -90,7 +154,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, internal]
             message:
               type: string
               description: Текст для пользователя на русском

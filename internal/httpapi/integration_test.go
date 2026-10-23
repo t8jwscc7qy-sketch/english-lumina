@@ -152,3 +152,55 @@ func TestAuthFlowOnRealDatabase(t *testing.T) {
 		t.Fatalf("после 5 неудач: статус %d, ожидали 429", rec.Code)
 	}
 }
+
+// Настройки на настоящей базе: upsert sqlc, тип date и CHECK таблицы settings.
+func TestSettingsFlowOnRealDatabase(t *testing.T) {
+	pool := integrationPool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+
+	if rec := e.do(http.MethodGet, settingsPath, "", withCookie(token)); rec.Code != http.StatusNotFound {
+		t.Fatalf("GET до онбординга: статус %d, ожидали 404", rec.Code)
+	}
+
+	date := time.Now().AddDate(0, 8, 0).Format(dateLayout)
+	body := settingsBody(t, func(m map[string]any) { m["targetDate"] = date })
+	rec := e.do(http.MethodPut, settingsPath, body, withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("PUT: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	got := e.do(http.MethodGet, settingsPath, "", withCookie(token))
+	if got.Code != http.StatusOK || got.Body.String() != rec.Body.String() {
+		t.Fatalf("GET: статус %d, тело %s; ожидали %s", got.Code, got.Body, rec.Body)
+	}
+
+	// Повторный PUT заменяет строку, а не добавляет вторую.
+	body = settingsBody(t, func(m map[string]any) { m["dailyMinutes"] = 30; m["targetDate"] = nil })
+	if rec := e.do(http.MethodPut, settingsPath, body, withCookie(token)); rec.Code != http.StatusOK {
+		t.Fatalf("второй PUT: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	var rows, minutes int
+	var hasDate bool
+	if err := pool.QueryRow(ctx, "SELECT count(*), max(daily_min_minutes), bool_or(target_date IS NOT NULL) FROM settings").Scan(&rows, &minutes, &hasDate); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 1 || minutes != 30 || hasDate {
+		t.Fatalf("строк %d, минут %d, дата есть %v; ожидали 1, 30, false", rows, minutes, hasDate)
+	}
+
+	// Цель ниже уровня отсекается до базы и ничего не меняет.
+	bad := settingsBody(t, func(m map[string]any) { m["currentLevel"] = "C1"; m["targetLevel"] = "A1" })
+	if rec := e.do(http.MethodPut, settingsPath, bad, withCookie(token)); rec.Code != http.StatusBadRequest {
+		t.Fatalf("цель ниже уровня: статус %d, ожидали 400", rec.Code)
+	}
+}

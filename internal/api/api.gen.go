@@ -17,6 +17,7 @@ const (
 	ErrorErrorCodeInternal           ErrorErrorCode = "internal"
 	ErrorErrorCodeInvalidCredentials ErrorErrorCode = "invalid_credentials"
 	ErrorErrorCodeInvalidRequest     ErrorErrorCode = "invalid_request"
+	ErrorErrorCodeOnboardingRequired ErrorErrorCode = "onboarding_required"
 	ErrorErrorCodeTooManyAttempts    ErrorErrorCode = "too_many_attempts"
 	ErrorErrorCodeUnauthorized       ErrorErrorCode = "unauthorized"
 )
@@ -34,9 +35,38 @@ func (e ErrorErrorCode) Valid() bool {
 		return true
 	case ErrorErrorCodeInvalidRequest:
 		return true
+	case ErrorErrorCodeOnboardingRequired:
+		return true
 	case ErrorErrorCodeTooManyAttempts:
 		return true
 	case ErrorErrorCodeUnauthorized:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for Level.
+const (
+	A1 Level = "A1"
+	A2 Level = "A2"
+	B1 Level = "B1"
+	B2 Level = "B2"
+	C1 Level = "C1"
+)
+
+// Valid indicates whether the value is a known member of the Level enum.
+func (e Level) Valid() bool {
+	switch e {
+	case A1:
+		return true
+	case A2:
+		return true
+	case B1:
+		return true
+	case B2:
+		return true
+	case C1:
 		return true
 	default:
 		return false
@@ -57,6 +87,9 @@ type Error struct {
 // ErrorErrorCode Машинный код ошибки
 type ErrorErrorCode string
 
+// Level defines model for Level.
+type Level string
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Login    string `json:"login"`
@@ -66,6 +99,19 @@ type LoginRequest struct {
 // Me defines model for Me.
 type Me struct {
 	Login string `json:"login"`
+}
+
+// Settings defines model for Settings.
+type Settings struct {
+	CurrentLevel Level `json:"currentLevel"`
+	DailyMinutes int   `json:"dailyMinutes"`
+
+	// TargetDate Календарный день цели (YYYY-MM-DD) или null
+	TargetDate  *string `json:"targetDate,omitempty"`
+	TargetLevel Level   `json:"targetLevel"`
+
+	// Timezone Часовой пояс IANA, например Europe/Moscow
+	Timezone string `json:"timezone"`
 }
 
 // BadRequest defines model for BadRequest.
@@ -80,6 +126,9 @@ type Unauthorized = Error
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
+// PutSettingsJSONRequestBody defines body for PutSettings for application/json ContentType.
+type PutSettingsJSONRequestBody = Settings
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Login Вход по логину и паролю
@@ -91,6 +140,12 @@ type ServerInterface interface {
 	// GetMe Текущий пользователь
 	// (GET /api/v1/auth/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// GetSettings Настройки обучения текущего пользователя
+	// (GET /api/v1/settings)
+	GetSettings(w http.ResponseWriter, r *http.Request)
+	// PutSettings Сохранить настройки обучения (создаёт или заменяет целиком)
+	// (PUT /api/v1/settings)
+	PutSettings(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -135,6 +190,34 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutSettings operation middleware
+func (siw *ServerInterfaceWrapper) PutSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutSettings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -267,6 +350,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/auth/login", wrapper.Login)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/auth/logout", wrapper.Logout)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/auth/me", wrapper.GetMe)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/settings", wrapper.GetSettings)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/settings", wrapper.PutSettings)
 
 	return m
 }

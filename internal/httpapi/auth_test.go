@@ -47,6 +47,8 @@ type fakeStore struct {
 	sessions map[string]db.Session // ключ — string(token_hash)
 	nextID   int64
 	touched  int
+	settings *db.Setting // nil — онбординг не пройден
+	upserts  int
 }
 
 func newFakeStore(t *testing.T) *fakeStore {
