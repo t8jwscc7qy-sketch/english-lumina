@@ -1,0 +1,164 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
+import type { QueueCard } from '@/api/client'
+import { Button } from '@/components/ui/button'
+import { TatoebaCredit } from '@/features/words/TatoebaCredit'
+import { useCardQueue, useReviewCard } from './cards'
+import { Cloze } from './Cloze'
+import { formatInterval } from './format'
+
+type Rating = 1 | 2 | 3 | 4
+
+const RATINGS: { rating: Rating; label: string; field: keyof QueueCard['intervals'] }[] = [
+  { rating: 1, label: 'Забыл', field: 'again' },
+  { rating: 2, label: 'Трудно', field: 'hard' },
+  { rating: 3, label: 'Хорошо', field: 'good' },
+  { rating: 4, label: 'Легко', field: 'easy' },
+]
+
+/** Ключ идемпотентности: новый для каждой показанной карточки. Повтор оценки с тем же ключом сервер не применяет дважды. */
+function newKey(): string {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function isTypingTarget(t: EventTarget | null): boolean {
+  return t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
+}
+
+export function CardsPage() {
+  const queue = useCardQueue()
+  const review = useReviewCard()
+  const [revealed, setRevealed] = useState(false)
+  const keyRef = useRef(newKey())
+  const busyRef = useRef(false)
+  const card = queue.data?.card
+  const hasSentence = !!card?.sentence
+
+  useEffect(() => {
+    document.title = 'Карточки — Verst'
+  }, [])
+
+  const rate = useCallback(
+    (rating: Rating) => {
+      if (!card || busyRef.current) return // защита от двойного нажатия: пока идёт запрос, новых оценок нет
+      busyRef.current = true
+      review.mutate(
+        { cardId: card.cardId, rating, key: keyRef.current },
+        {
+          onSuccess: () => {
+            keyRef.current = newKey() // следующая карточка — новый ключ; при ошибке ключ остаётся, и повтор безопасен
+            setRevealed(false)
+          },
+          onSettled: () => {
+            busyRef.current = false
+          },
+        },
+      )
+    },
+    [card, review],
+  )
+
+  // Клавиатура: Пробел или Enter открывает ответ, 1–4 оценивают (только когда ответ открыт).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target) || !card) return
+      if (!revealed && hasSentence && (e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault()
+        setRevealed(true)
+        return
+      }
+      if ((revealed || !hasSentence) && ['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault()
+        rate(Number(e.key) as Rating)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [card, revealed, hasSentence, rate])
+
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 xl:p-8">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h1 className="text-title">Карточки</h1>
+        {queue.data && queue.data.dueCount > 0 && (
+          <p aria-live="polite" className="text-sm text-muted-foreground tabular-nums">
+            {`Осталось: ${queue.data.dueCount}`}
+          </p>
+        )}
+      </header>
+
+      {queue.isPending && <p role="status">Загружаем карточки…</p>}
+
+      {queue.isError && (
+        <div className="surface flex flex-col items-start gap-4 p-6">
+          <p role="alert" className="text-muted-foreground">
+            {queue.error.message}
+          </p>
+          <Button onClick={() => queue.refetch()}>Повторить</Button>
+        </div>
+      )}
+
+      {queue.data && !card && (
+        <section className="surface flex flex-col items-start gap-3 p-6">
+          <h2 className="text-title">На сегодня всё</h2>
+          <p className="text-muted-foreground">{`Всего карточек: ${queue.data.totalCount}. Новые слова добавляются со страницы «Слова».`}</p>
+          <Button asChild variant="secondary">
+            <Link to="/words">Добавить слова</Link>
+          </Button>
+        </section>
+      )}
+
+      {card && (
+        <article aria-label="Карточка" className="surface flex flex-col gap-6 p-6">
+          <p className="text-sm text-muted-foreground">{`${card.level} · ${card.pos}`}</p>
+
+          {card.sentence ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-xl leading-relaxed break-words">
+                <Cloze text={card.sentence.en.text} gap={card.sentence.gap} revealed={revealed} />
+              </p>
+              <p className="break-words text-muted-foreground">{card.sentence.ru.text}</p>
+              {revealed && <TatoebaCredit en={card.sentence.en} ru={card.sentence.ru} />}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-display break-words">{card.lemma}</p>
+              <p className="text-muted-foreground">Предложений для этого слова не нашлось. Вспомни значение и оцени себя.</p>
+            </div>
+          )}
+
+          {card.sentence && !revealed ? (
+            <Button size="lg" onClick={() => setRevealed(true)} aria-keyshortcuts="Space Enter">
+              Показать ответ
+            </Button>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {RATINGS.map((r) => (
+                <Button
+                  key={r.rating}
+                  variant={r.rating === 3 ? 'default' : 'secondary'}
+                  size="lg"
+                  disabled={review.isPending}
+                  onClick={() => rate(r.rating)}
+                  aria-keyshortcuts={String(r.rating)}
+                  className="h-auto flex-col gap-0.5 py-3"
+                >
+                  <span>{r.label}</span>
+                  <span className="text-xs font-normal">{`через ${formatInterval(card.intervals[r.field])}`}</span>
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {review.isError && (
+            <p role="alert" className="rounded-lg border border-coral bg-card p-3 text-sm font-semibold text-coral-text">
+              {review.error.message}
+            </p>
+          )}
+        </article>
+      )}
+    </div>
+  )
+}
