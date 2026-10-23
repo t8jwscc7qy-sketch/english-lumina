@@ -223,3 +223,23 @@ var irregularNouns = map[string][]string{
 var irregularAdjectives = map[string][]string{
 	"good": {"better", "best"}, "bad": {"worse", "worst"}, "far": {"farther", "further", "farthest", "furthest"},
 }
+
+// irregularPastSet — неправильные формы прошедшего времени и причастия (went, gone, taken):
+// всё из таблицы irregularVerbs, кроме основы, форм на -s и -ing.
+// Глаголы, у которых прошедшее совпадает с основой (put, read, cut), сюда не попадают.
+var irregularPastSet = func() map[string]bool {
+	set := map[string]bool{}
+	for _, forms := range irregularVerbs {
+		for _, f := range forms {
+			if !strings.HasSuffix(f, "s") && !strings.HasSuffix(f, "ing") {
+				set[f] = true
+			}
+		}
+	}
+	return set
+}()
+
+// IrregularPast сообщает, что слово — неправильная форма прошедшего времени (регистр не важен).
+func IrregularPast(word string) bool {
+	return irregularPastSet[strings.ToLower(word)]
+}

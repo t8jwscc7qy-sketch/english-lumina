@@ -106,3 +106,18 @@ func TestTSQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestIrregularPast(t *testing.T) {
+	yes := []string{"went", "Went", "gone", "saw", "taken", "bought", "lied", "bit"}
+	no := []string{"go", "goes", "going", "walked", "put", "read", "beginning", "lies", "dog", ""}
+	for _, w := range yes {
+		if !IrregularPast(w) {
+			t.Errorf("IrregularPast(%q) = false, ожидали true", w)
+		}
+	}
+	for _, w := range no {
+		if IrregularPast(w) {
+			t.Errorf("IrregularPast(%q) = true, ожидали false", w)
+		}
+	}
+}
