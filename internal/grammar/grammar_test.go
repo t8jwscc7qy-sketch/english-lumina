@@ -22,6 +22,27 @@ func TestTopics(t *testing.T) {
 		{"THE DOG", []string{"grammar:articles"}},
 		{"a an the a", []string{"grammar:articles"}},
 		{"", nil},
+		// going только в «going to»
+		{"I am going home", nil},
+		{"I am going to run", []string{"grammar:future"}},
+		// причастия и пассив — не past_simple
+		{"I have gone home", nil},
+		{"It was written well", nil},
+		{"She has got it", nil},
+		// -ed: исключения и прилагательные-причастия
+		{"a hundred men", []string{"grammar:articles"}},
+		{"the speed", []string{"grammar:articles"}},
+		{"I am tired", nil},
+		{"He got married", nil},
+		{"very excited", nil},
+		{"I need it", nil},
+		// неоднозначные слова
+		{"a bit tired", []string{"grammar:articles"}},
+		{"on the left", []string{"grammar:articles", "grammar:prepositions"}},
+		// will как существительное
+		{"free will", nil},
+		{"my will", nil},
+		{"I want to go", nil},
 	}
 	for _, tt := range tests {
 		got := Topics(strings.Fields(tt.in))
@@ -38,7 +59,7 @@ func TestWords(t *testing.T) {
 	if got := Words("grammar:articles"); !reflect.DeepEqual(got, []string{"a", "an", "the"}) {
 		t.Errorf("articles = %v", got)
 	}
-	if got := Words("grammar:future"); !reflect.DeepEqual(got, []string{"will", "going"}) {
+	if got := Words("grammar:future"); !reflect.DeepEqual(got, []string{"will"}) {
 		t.Errorf("future = %v", got)
 	}
 	if len(Words("grammar:prepositions")) < 25 || len(Words("grammar:modals")) != 7 {

@@ -108,8 +108,11 @@ func TestTSQuery(t *testing.T) {
 }
 
 func TestIrregularPast(t *testing.T) {
-	yes := []string{"went", "Went", "gone", "saw", "taken", "bought", "lied", "bit"}
-	no := []string{"go", "goes", "going", "walked", "put", "read", "beginning", "lies", "dog", ""}
+	yes := []string{"went", "Went", "bought", "lied", "found", "ate", "said", "showed"}
+	// причастия (gone, taken...) и неоднозначные слова (saw, bit, left...) — не прошедшее время.
+	no := []string{"go", "goes", "going", "walked", "put", "read", "beginning", "lies", "dog", "",
+		"gone", "seen", "taken", "written", "given", "known", "eaten", "broken", "drunk", "worn", "lain", "gotten",
+		"bit", "left", "rose", "saw", "lay", "bore", "shot", "led", "got"}
 	for _, w := range yes {
 		if !IrregularPast(w) {
 			t.Errorf("IrregularPast(%q) = false, ожидали true", w)

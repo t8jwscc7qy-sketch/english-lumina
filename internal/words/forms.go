@@ -224,16 +224,25 @@ var irregularAdjectives = map[string][]string{
 	"good": {"better", "best"}, "bad": {"worse", "worst"}, "far": {"farther", "further", "farthest", "furthest"},
 }
 
-// irregularPastSet — неправильные формы прошедшего времени и причастия (went, gone, taken):
-// всё из таблицы irregularVerbs, кроме основы, форм на -s и -ing.
-// Глаголы, у которых прошедшее совпадает с основой (put, read, cut), сюда не попадают.
+// ambiguousPast — формы, которые чаще встречаются в другой роли (saw — пила, bit — кусочек,
+// left — левый): как прошедшее время их не засчитываем, спорное пропускаем.
+var ambiguousPast = map[string]bool{
+	"bit": true, "left": true, "rose": true, "saw": true, "lay": true, "bore": true,
+	"shot": true, "led": true, "got": true, "read": true, "put": true, "cut": true, "hit": true,
+}
+
+// irregularPastSet — неправильные формы именно прошедшего времени (went, bought).
+// В таблице irregularVerbs порядок: -s, -ing, прошедшее, причастие, поэтому берём третью форму
+// (и «lied» у lie); причастия вроде gone и taken не входят. Совпадающие формы (got, made) остаются:
+// отличить причастие по контексту должен вызывающий код.
 var irregularPastSet = func() map[string]bool {
 	set := map[string]bool{}
 	for _, forms := range irregularVerbs {
-		for _, f := range forms {
-			if !strings.HasSuffix(f, "s") && !strings.HasSuffix(f, "ing") {
-				set[f] = true
-			}
+		if len(forms) > 2 && !ambiguousPast[forms[2]] {
+			set[forms[2]] = true
+		}
+		if len(forms) > 4 && !ambiguousPast[forms[4]] {
+			set[forms[4]] = true // lied
 		}
 	}
 	return set
