@@ -256,11 +256,11 @@ export function SettingsForm({
             </Button>
           )}
           {isOnboarding && !lastStep ? (
-            <Button type="submit" disabled={step === 0 && !current}>
+            <Button key="next" type="submit" disabled={step === 0 && !current}>
               Дальше
             </Button>
           ) : (
-            <Button type="submit" size="lg" disabled={!canSave || save.isPending}>
+            <Button key="save" type="submit" size="lg" disabled={!canSave || save.isPending}>
               {save.isPending ? 'Сохраняем…' : isOnboarding ? 'Начать' : 'Сохранить'}
             </Button>
           )}

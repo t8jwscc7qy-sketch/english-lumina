@@ -77,10 +77,12 @@ export function forecastBackward(
   const daysUntil = Math.round(
     (startOfDay(targetDate).getTime() - startOfDay(today).getTime()) / MS_PER_DAY,
   )
-  if (daysUntil <= 0) return { kind: 'past' }
+  if (daysUntil < 0) return { kind: 'past' }
+  // Сегодняшний день допустим (сервер его принимает): считаем как один оставшийся день, то есть «не успеть».
+  const days = Math.max(daysUntil, 1)
   const minutesPerDay = {
-    min: (base * SELF_STUDY_FACTOR.min * 60) / daysUntil,
-    max: (base * SELF_STUDY_FACTOR.max * 60) / daysUntil,
+    min: (base * SELF_STUDY_FACTOR.min * 60) / days,
+    max: (base * SELF_STUDY_FACTOR.max * 60) / days,
   }
   // Нереалистично, если даже оптимистичная граница выше предела.
   return { kind: 'needed', minutesPerDay, unrealistic: minutesPerDay.min > MAX_MINUTES_PER_DAY }

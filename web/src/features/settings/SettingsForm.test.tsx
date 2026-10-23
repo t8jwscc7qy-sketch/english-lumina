@@ -79,6 +79,20 @@ describe('онбординг', () => {
   })
 })
 
+describe('двойной клик в онбординге', () => {
+  it('по «Дальше» на шаге 2 не сохраняет настройки и не перескакивает шаг 3', async () => {
+    const user = userEvent.setup()
+    const put = stubPut(() => jsonResponse(200, saved))
+    render({ initial: null, mode: 'onboarding' })
+    await user.click(group('Текущий уровень').getByRole('radio', { name: /^B1/ }))
+    await user.click(screen.getByRole('button', { name: 'Дальше' }))
+    await user.dblClick(screen.getByRole('button', { name: 'Дальше' }))
+    expect(put).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Начать' })).toBeEnabled()
+    expect(screen.getByLabelText(/своё число минут/i)).toBeInTheDocument()
+  })
+})
+
 describe('настройки', () => {
   it('уровень выше цели поднимает цель', async () => {
     const user = userEvent.setup()

@@ -47,9 +47,14 @@ describe('forecastBackward', () => {
     expect(f.unrealistic).toBe(true)
   })
 
-  it('дата сегодня или в прошлом: past', () => {
-    expect(forecastBackward('B1', 'B2', today, today)).toEqual({ kind: 'past' })
+  it('дата в прошлом: past', () => {
     expect(forecastBackward('B1', 'B2', plusDays(today, -5), today)).toEqual({ kind: 'past' })
+  })
+
+  it('дата сегодня допустима: это нереалистично, но не «прошла»', () => {
+    const f = forecastBackward('B1', 'B2', today, today)
+    if (f.kind !== 'needed') throw new Error('ожидали «нужно»')
+    expect(f.unrealistic).toBe(true)
   })
 
   it('цель равна уровню: reached, даже если дата в прошлом', () => {
