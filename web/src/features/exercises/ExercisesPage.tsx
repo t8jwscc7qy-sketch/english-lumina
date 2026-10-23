@@ -293,6 +293,16 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
             {answer.error.message}
           </p>
           {canSkip && <Button onClick={onNext}>Дальше</Button>}
+          {locked !== undefined && (
+            <>
+              <Button onClick={() => submit(locked)} disabled={answer.isPending}>
+                Повторить
+              </Button>
+              <Button variant="secondary" onClick={onNext} disabled={loadingNext}>
+                {loadingNext ? 'Подбираем…' : 'Пропустить'}
+              </Button>
+            </>
+          )}
         </div>
       )}
 

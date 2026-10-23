@@ -1,6 +1,8 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act } from 'react'
+import { focusManager, onlineManager } from '@tanstack/react-query'
 import { RedirectIfAuthed } from '@/app/guards'
 import { meKey } from '@/features/auth/auth'
 import { errorResponse, jsonResponse, renderAt } from '@/test/render'
@@ -197,15 +199,20 @@ describe('ExercisesPage', () => {
     expect(answers).toHaveLength(1)
   })
 
-  it('смена фокуса окна не меняет упражнение и не шлёт повторный GET', async () => {
+  it('смена фокуса окна и возврат сети не меняют упражнение и не шлют повторный GET', async () => {
     const { fn } = stubApi({ next: () => jsonResponse(200, ex(1)) })
     renderPage()
     await findPrompt('She is _____ engineer.')
-    fireEvent.focus(window)
-    document.dispatchEvent(new Event('visibilitychange'))
-    window.dispatchEvent(new Event('online'))
+    const gets = () => fn.mock.calls.filter(([u]) => String(u).endsWith('/exercises/next')).length
+    expect(gets()).toBe(1)
+    act(() => focusManager.setFocused(false))
+    act(() => focusManager.setFocused(true))
+    act(() => onlineManager.setOnline(false))
+    act(() => onlineManager.setOnline(true))
     await new Promise((r) => setTimeout(r, 50))
-    expect(fn.mock.calls.filter(([u]) => String(u).endsWith('/exercises/next'))).toHaveLength(1)
+    expect(gets()).toBe(1)
+    expect(screen.getByRole('article', { name: 'Упражнение' })).toBeInTheDocument()
+    await findPrompt('She is _____ engineer.')
   })
 
   it('результат объявляется через постоянный живой регион', async () => {
@@ -251,17 +258,29 @@ describe('ExercisesPage', () => {
     expect(screen.queryByText('Главная')).not.toBeInTheDocument()
   })
 
-  it.each([
-    [409, 'already_answered'],
-    [404, 'not_found'],
-  ])('ответ %i %s: сообщение и кнопка «Дальше»', async (status, code) => {
-    stubApi({ next: () => jsonResponse(200, ex(1)), answer: () => errorResponse(status, code, 'Не вышло') })
+  it('ответ 409 already_answered: сообщение и «Дальше»', async () => {
+    stubApi({ next: () => jsonResponse(200, ex(1)), answer: () => errorResponse(409, 'already_answered', 'На это упражнение уже отвечали') })
     const user = userEvent.setup()
     renderPage()
     await findPrompt('She is _____ engineer.')
     await user.keyboard('2')
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не вышло')
+    expect(await screen.findByRole('alert')).toHaveTextContent('На это упражнение уже отвечали')
     expect(screen.getByRole('button', { name: 'Дальше' })).toBeInTheDocument()
+  })
+
+  it('ответ 404 not_found: упражнение устарело, «Дальше» грузит следующее', async () => {
+    let n = 0
+    stubApi({
+      next: () => jsonResponse(200, n++ === 0 ? ex(1) : ex(2, 'They go _____ school.', ['to', 'at', 'in', 'on'])),
+      answer: () => errorResponse(404, 'not_found', 'Упражнение не найдено или устарело'),
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('2')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Упражнение не найдено или устарело')
+    await user.click(screen.getByRole('button', { name: 'Дальше' }))
+    await findPrompt('They go _____ school.')
   })
 
   it('400 invalid_answer: другой вариант уходит с новым ключом', async () => {
@@ -299,7 +318,7 @@ describe('ExercisesPage', () => {
     await user.keyboard('3') // другой вариант при неизвестном исходе не уходит
     expect(answers).toHaveLength(1)
     await user.keyboard('1')
-    await screen.findByText('Неверно').catch(() => screen.findByText('Верно'))
+    await screen.findByText('Верно')
     expect(answers).toHaveLength(2)
     expect(answers[1].key).toBe(answers[0].key)
     expect(answers[1].given).toBe('a')
@@ -315,5 +334,59 @@ describe('ExercisesPage', () => {
     stubApi({ next: () => jsonResponse(200, ex(1)), topics: () => jsonResponse(200, { topics: [{ topic: 'pos:verb', rating: 1500, deviation: 300, attempts: 1 }] }) })
     renderPage()
     expect(await screen.findByText(/мало ответов/)).toBeInTheDocument()
+  })
+
+  it('после 5xx есть «Повторить» (тот же ключ) и «Пропустить» (следующее упражнение)', async () => {
+    let n = 0
+    let m = 0
+    const { answers } = stubApi({
+      next: () => jsonResponse(200, m++ === 0 ? ex(1) : ex(2, 'They go _____ school.', ['to', 'at', 'in', 'on'])),
+      answer: () => (n++ === 0 ? errorResponse(500, 'internal', 'Сбой сервера') : jsonResponse(200, result())),
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('1')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Сбой сервера')
+    expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Повторить' }))
+    await screen.findByText('Верно')
+    expect(answers[1].key).toBe(answers[0].key)
+  })
+
+  it('«Пропустить» после сетевой ошибки грузит следующее упражнение без ответа', async () => {
+    let m = 0
+    const { answers } = stubApi({
+      next: () => jsonResponse(200, m++ === 0 ? ex(1) : ex(2, 'They go _____ school.', ['to', 'at', 'in', 'on'])),
+      answer: () => {
+        throw new TypeError('network')
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('1')
+    await screen.findByRole('alert')
+    await user.click(screen.getByRole('button', { name: 'Пропустить' }))
+    await findPrompt('They go _____ school.')
+    expect(answers).toHaveLength(1)
+  })
+
+  it('пока грузится следующее, на «Дальше» стоит «Подбираем…»', async () => {
+    let release: (r: Response) => void = () => {}
+    let m = 0
+    stubApi({
+      next: () => (m++ === 0 ? jsonResponse(200, ex(1)) : (new Promise<Response>((r) => (release = r)) as unknown as Response)),
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('2')
+    await screen.findByText('Верно')
+    await user.click(screen.getByRole('button', { name: 'Дальше' }))
+    const busy = await screen.findByRole('button', { name: 'Подбираем…' })
+    expect(busy).toBeDisabled()
+    release(jsonResponse(200, ex(2, 'They go _____ school.', ['to', 'at', 'in', 'on'])))
+    await findPrompt('They go _____ school.')
   })
 })
