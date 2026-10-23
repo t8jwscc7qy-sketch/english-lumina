@@ -252,3 +252,22 @@ var irregularPastSet = func() map[string]bool {
 func IrregularPast(word string) bool {
 	return irregularPastSet[strings.ToLower(word)]
 }
+
+// IrregularLemma возвращает начальную форму неправильного глагола по его форме прошедшего времени
+// (went → go). false, если формы нет в таблице или она спорная (saw, left).
+func IrregularLemma(past string) (string, bool) {
+	past = strings.ToLower(past)
+	if !irregularPastSet[past] {
+		return "", false
+	}
+	lemmas := make([]string, 0, 1)
+	for lemma, forms := range irregularVerbs {
+		if (len(forms) > 2 && forms[2] == past) || (len(forms) > 4 && forms[4] == past) {
+			lemmas = append(lemmas, lemma)
+		}
+	}
+	if len(lemmas) != 1 { // две начальные формы с одной формой прошедшего: не угадываем
+		return "", false
+	}
+	return lemmas[0], true
+}

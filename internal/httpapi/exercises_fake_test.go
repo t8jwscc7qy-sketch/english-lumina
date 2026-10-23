@@ -137,6 +137,29 @@ func (f *fakeStore) UsedSentences(_ context.Context, arg db.UsedSentencesParams)
 	return out, nil
 }
 
+// SentenceIDRange: границы номеров пула (0, 0, если пул пуст).
+func (f *fakeStore) SentenceIDRange(context.Context) (db.SentenceIDRangeRow, error) {
+	var out db.SentenceIDRangeRow
+	for i, s := range f.sentencePool {
+		if i == 0 || s.ID < out.MinID {
+			out.MinID = s.ID
+		}
+		if s.ID > out.MaxID {
+			out.MaxID = s.ID
+		}
+	}
+	return out, nil
+}
+
+// RandomLexemesByLevel: первые MaxRows слов уровня из levelLexemes (порядок задаёт тест).
+func (f *fakeStore) RandomLexemesByLevel(_ context.Context, arg db.RandomLexemesByLevelParams) ([]db.RandomLexemesByLevelRow, error) {
+	rows := f.levelLexemes[arg.Level]
+	if int(arg.MaxRows) < len(rows) {
+		rows = rows[:arg.MaxRows]
+	}
+	return slices.Clone(rows), nil
+}
+
 // exerciseSnapshot — снимок состояния упражнений и рейтингов для отката в InTx.
 type exerciseSnapshot struct {
 	exercises map[int64]db.Exercise

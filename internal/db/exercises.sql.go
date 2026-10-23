@@ -132,6 +132,50 @@ func (q *Queries) MarkExerciseAnswered(ctx context.Context, id int64) error {
 	return err
 }
 
+const randomLexemesByLevel = `-- name: RandomLexemesByLevel :many
+SELECT l.id, l.lemma, l.pos
+FROM lexemes l
+JOIN lexeme_cefr c ON c.lexeme_id = l.id
+WHERE l.lemma ~ '^[a-z]+$'
+GROUP BY l.id, l.lemma, l.pos
+HAVING min(c.level) = $1::text
+ORDER BY random()
+LIMIT $2::int
+`
+
+type RandomLexemesByLevelParams struct {
+	Level   string
+	MaxRows int32
+}
+
+type RandomLexemesByLevelRow struct {
+	ID    int64
+	Lemma string
+	Pos   string
+}
+
+// Случайные однословные слова уровня (уровень слова — самый низкий из оценок источников, как в поиске).
+// Слов в списках около 10 тысяч, сортировка по random() на таком объёме дешёвая.
+func (q *Queries) RandomLexemesByLevel(ctx context.Context, arg RandomLexemesByLevelParams) ([]RandomLexemesByLevelRow, error) {
+	rows, err := q.db.Query(ctx, randomLexemesByLevel, arg.Level, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RandomLexemesByLevelRow{}
+	for rows.Next() {
+		var i RandomLexemesByLevelRow
+		if err := rows.Scan(&i.ID, &i.Lemma, &i.Pos); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sampleSentences = `-- name: SampleSentences :many
 SELECT e.id, e.tatoeba_id, e.text, e.author, e.word_count,
        r.id AS ru_id, r.text AS ru_text
@@ -194,6 +238,23 @@ func (q *Queries) SampleSentences(ctx context.Context, arg SampleSentencesParams
 		return nil, err
 	}
 	return items, nil
+}
+
+const sentenceIDRange = `-- name: SentenceIDRange :one
+SELECT COALESCE(min(id), 0)::bigint AS min_id, COALESCE(max(id), 0)::bigint AS max_id FROM sentences
+`
+
+type SentenceIDRangeRow struct {
+	MinID int64
+	MaxID int64
+}
+
+// Границы номеров предложений: Go берёт случайный from_id внутри них для SampleSentences. Пусто — (0, 0).
+func (q *Queries) SentenceIDRange(ctx context.Context) (SentenceIDRangeRow, error) {
+	row := q.db.QueryRow(ctx, sentenceIDRange)
+	var i SentenceIDRangeRow
+	err := row.Scan(&i.MinID, &i.MaxID)
+	return i, err
 }
 
 const sentenceLevels = `-- name: SentenceLevels :many

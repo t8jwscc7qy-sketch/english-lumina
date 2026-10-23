@@ -124,3 +124,16 @@ func TestIrregularPast(t *testing.T) {
 		}
 	}
 }
+
+func TestIrregularLemma(t *testing.T) {
+	tests := map[string]struct {
+		lemma string
+		ok    bool
+	}{"went": {"go", true}, "Bought": {"buy", true}, "lied": {"lie", true}, "saw": {"", false}, "walked": {"", false}}
+	for in, want := range tests {
+		got, ok := IrregularLemma(in)
+		if got != want.lemma || ok != want.ok {
+			t.Errorf("IrregularLemma(%q) = %q, %v; ждали %q, %v", in, got, ok, want.lemma, want.ok)
+		}
+	}
+}

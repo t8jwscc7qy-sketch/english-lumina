@@ -72,8 +72,9 @@ type fakeStore struct {
 	exercises      map[int64]db.Exercise
 	nextExerciseID int64
 	topicRatings   map[topicKey]db.TopicRating
-	sentencePool   []db.SampleSentencesRow         // для SampleSentences, по возрастанию id
-	wordLevels     map[string]db.SentenceLevelsRow // для SentenceLevels
+	sentencePool   []db.SampleSentencesRow                 // для SampleSentences, по возрастанию id
+	wordLevels     map[string]db.SentenceLevelsRow         // для SentenceLevels
+	levelLexemes   map[string][]db.RandomLexemesByLevelRow // для RandomLexemesByLevel
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

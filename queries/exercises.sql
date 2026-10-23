@@ -78,3 +78,19 @@ FROM w
 LEFT JOIN lv ON lv.word = w.word
 LEFT JOIN fr ON fr.word = w.word
 ORDER BY w.word;
+
+-- name: SentenceIDRange :one
+-- Границы номеров предложений: Go берёт случайный from_id внутри них для SampleSentences. Пусто — (0, 0).
+SELECT COALESCE(min(id), 0)::bigint AS min_id, COALESCE(max(id), 0)::bigint AS max_id FROM sentences;
+
+-- name: RandomLexemesByLevel :many
+-- Случайные однословные слова уровня (уровень слова — самый низкий из оценок источников, как в поиске).
+-- Слов в списках около 10 тысяч, сортировка по random() на таком объёме дешёвая.
+SELECT l.id, l.lemma, l.pos
+FROM lexemes l
+JOIN lexeme_cefr c ON c.lexeme_id = l.id
+WHERE l.lemma ~ '^[a-z]+$'
+GROUP BY l.id, l.lemma, l.pos
+HAVING min(c.level) = sqlc.arg(level)::text
+ORDER BY random()
+LIMIT sqlc.arg(max_rows)::int;
