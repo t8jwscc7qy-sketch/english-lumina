@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -72,9 +73,19 @@ func (s *Source) Describe() importer.Info {
 	return importer.Info{Name: name, Version: version, License: license, URL: downloadURL, Attribution: attribution}
 }
 
-// Fetch будет скачивать zip и доставать rus.txt (Task 3).
+// Fetch скачивает zip (HTTPS, сумма, лимит размера) и достаёт из него rus.txt. Распаковка идёт при каждом
+// запуске: она дёшева и исключает устаревший или испорченный файл в кэше.
 func (s *Source) Fetch(ctx context.Context, cacheDir string) (string, error) {
-	return "", errors.New("tatoeba: Fetch не реализован")
+	dir := filepath.Join(cacheDir, "sources", name)
+	zipPath := filepath.Join(dir, "rus-eng.zip")
+	if err := importer.Download(ctx, s.client, s.url, zipPath, s.sha256, s.maxZip); err != nil {
+		return "", err
+	}
+	dest := filepath.Join(dir, "rus.txt")
+	if err := extractMember(zipPath, "rus.txt", dest, s.maxExtract); err != nil {
+		return "", err
+	}
+	return dest, nil
 }
 
 // Parse читает rus.txt построчно: «английское<TAB>русское<TAB>атрибуция». Пары, где английское длиннее
