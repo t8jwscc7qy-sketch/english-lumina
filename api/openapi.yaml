@@ -114,6 +114,26 @@ paths:
                 $ref: "#/components/schemas/SourceList"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/words:
+    get:
+      operationId: searchWords
+      summary: Поиск слова по началу (без учёта регистра)
+      description: >
+        Строка поиска передаётся в query-параметре `q` (до 64 символов; он не объявлен как parameters,
+        потому что генератор тогда требует новую зависимость, и сервер читает его сам).
+        Ищет по началу слова и по началу любого варианта через слэш. Пустой запрос даёт пустой список.
+        Не больше 50 результатов: точное совпадение, затем по началу слова, затем по алфавиту.
+      responses:
+        "200":
+          description: Найденные слова (может быть пусто)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   schemas:
     LoginRequest:
@@ -137,6 +157,10 @@ components:
     Level:
       type: string
       enum: [A1, A2, B1, B2, C1]
+    CefrLevel:
+      type: string
+      description: Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
+      enum: [A1, A2, B1, B2, C1, C2]
     Settings:
       type: object
       required: [currentLevel, targetLevel, dailyMinutes, timezone]
@@ -187,6 +211,44 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Source"
+    WordLevel:
+      type: object
+      required: [source, level, notes]
+      properties:
+        source:
+          type: string
+          description: Имя источника (cefrj, octanove)
+        level:
+          $ref: "#/components/schemas/CefrLevel"
+        notes:
+          type: array
+          description: Заметки источника о значении слова (если есть)
+          items:
+            type: string
+    Word:
+      type: object
+      required: [lemma, pos, level, levels]
+      properties:
+        lemma:
+          type: string
+        pos:
+          type: string
+        level:
+          $ref: "#/components/schemas/CefrLevel"
+          description: Уровень слова — самый низкий из оценок источников
+        levels:
+          type: array
+          description: Оценки по источникам
+          items:
+            $ref: "#/components/schemas/WordLevel"
+    WordList:
+      type: object
+      required: [words]
+      properties:
+        words:
+          type: array
+          items:
+            $ref: "#/components/schemas/Word"
     Error:
       type: object
       required: [error]

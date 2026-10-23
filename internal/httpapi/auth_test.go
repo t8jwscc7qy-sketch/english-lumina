@@ -43,13 +43,17 @@ func passwordHash(t *testing.T) string {
 
 // fakeStore повторяет условия реальных запросов: активна только неотозванная и непросроченная сессия.
 type fakeStore struct {
-	user     db.User
-	sessions map[string]db.Session // ключ — string(token_hash)
-	nextID   int64
-	touched  int
-	settings *db.Setting // nil — онбординг не пройден
-	sources  []db.DataSource
-	upserts  int
+	user       db.User
+	sessions   map[string]db.Session // ключ — string(token_hash)
+	nextID     int64
+	touched    int
+	settings   *db.Setting // nil — онбординг не пройден
+	sources    []db.DataSource
+	lexemes    []db.SearchLexemesRow
+	levels     []db.ListLexemeLevelsRow
+	lastSearch *db.SearchLexemesParams
+	searches   int
+	upserts    int
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

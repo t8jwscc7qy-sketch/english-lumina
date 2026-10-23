@@ -47,6 +47,8 @@ type AuthStore interface {
 	GetSettings(ctx context.Context, userID int64) (db.Setting, error)
 	UpsertSettings(ctx context.Context, arg db.UpsertSettingsParams) (db.Setting, error)
 	ListDataSources(ctx context.Context) ([]db.DataSource, error)
+	SearchLexemes(ctx context.Context, arg db.SearchLexemesParams) ([]db.SearchLexemesRow, error)
+	ListLexemeLevels(ctx context.Context, ids []int64) ([]db.ListLexemeLevelsRow, error)
 }
 
 var errNoSession = errors.New("нет действующей сессии")
