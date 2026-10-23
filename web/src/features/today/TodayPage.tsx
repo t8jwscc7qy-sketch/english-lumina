@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { XpBar } from '@/components/pixel/XpBar'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/auth/auth'
+import { useCardQueue } from '@/features/cards/cards'
 import { useSettings } from '@/features/settings/settings'
 import { describeDuration, forecastForward } from '@/lib/forecast'
 import { DEMO_TODAY } from './demo'
@@ -20,7 +21,7 @@ function TaskCard({
 }: {
   to: string
   title: string
-  value: number
+  value: number | string
   hint: string
   icon: ReactNode
   tone?: 'default' | 'error'
@@ -45,6 +46,7 @@ function TaskCard({
 export function TodayPage() {
   const me = useMe()
   const settings = useSettings()
+  const cardQueue = useCardQueue()
   const [now] = useState(() => new Date())
   const d = DEMO_TODAY
 
@@ -155,7 +157,7 @@ export function TodayPage() {
         <TaskCard
           to="/cards"
           title="Карточки к повторению"
-          value={d.cardsDue}
+          value={cardQueue.data ? cardQueue.data.dueCount : '—'}
           hint="Слова, которые пора вспомнить"
           icon={<Layers className="size-5" strokeWidth={1.75} aria-hidden />}
         />

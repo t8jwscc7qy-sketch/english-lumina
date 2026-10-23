@@ -1,18 +1,19 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { jsonResponse, renderAt } from '@/test/render'
+import { errorResponse, jsonResponse, renderAt } from '@/test/render'
 import { TodayPage } from './TodayPage'
 
 afterEach(() => vi.unstubAllGlobals())
 
 const SETTINGS = { currentLevel: 'B1', targetLevel: 'B2', dailyMinutes: 90, timezone: 'Europe/Moscow' }
 
-function renderToday(settings: Record<string, unknown> = SETTINGS) {
+function renderToday(settings: Record<string, unknown> = SETTINGS, queue: () => Response = () => jsonResponse(200, { dueCount: 7, totalCount: 12 })) {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string) =>
-      jsonResponse(200, url.endsWith('/settings') ? settings : { login: 'firimon' }),
-    ),
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/cards/queue')) return queue()
+      return jsonResponse(200, url.endsWith('/settings') ? settings : { login: 'firimon' })
+    }),
   )
   return renderAt('/', [{ path: '/', element: <TodayPage /> }])
 }
@@ -105,5 +106,31 @@ describe('TodayPage', () => {
     const button = screen.getByRole('button', { name: 'Начать сессию' })
     expect(button).toBeDisabled()
     expect(screen.getByText(/словарь и упражнения ещё не подключены/i)).toBeInTheDocument()
+  })
+})
+
+describe('плитка «Карточки к повторению»', () => {
+  it('показывает настоящее число из очереди и ведёт в раздел карточек', async () => {
+    renderToday()
+    const tasks = within(await screen.findByRole('region', { name: 'Задачи на сегодня' }))
+    const link = tasks.getByRole('link', { name: /карточки к повторению/i })
+    expect(link).toHaveAttribute('href', '/cards')
+    await waitFor(() => expect(link).toHaveTextContent('7'))
+  })
+
+  it('если очередь не загрузилась, плитка показывает прочерк, а экран не падает', async () => {
+    renderToday(SETTINGS, () => errorResponse(500, 'internal', 'Внутренняя ошибка'))
+    const tasks = within(await screen.findByRole('region', { name: 'Задачи на сегодня' }))
+    const link = tasks.getByRole('link', { name: /карточки к повторению/i })
+    await waitFor(() => expect(link).toHaveTextContent('—'))
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
+  it('нулевое число показывается нулём, а не прочерком', async () => {
+    renderToday(SETTINGS, () => jsonResponse(200, { dueCount: 0, totalCount: 3 }))
+    const tasks = within(await screen.findByRole('region', { name: 'Задачи на сегодня' }))
+    const link = tasks.getByRole('link', { name: /карточки к повторению/i })
+    await waitFor(() => expect(link).toHaveTextContent('0'))
+    expect(link).not.toHaveTextContent('—')
   })
 })

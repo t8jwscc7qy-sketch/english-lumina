@@ -247,3 +247,84 @@ describe('примеры предложений', () => {
     expect(exampleCalls(fetchMock)).toEqual(['/api/v1/words/examples?lemma=cafe%2Fcaf%C3%A9&pos=noun'])
   })
 })
+
+describe('кнопка «В карточки»', () => {
+  const word = (inCards: boolean) => ({ ...RUN, inCards })
+
+  /** Поиск слов отвечает по очереди (после добавления слово приходит уже с inCards), POST /cards — как задано. */
+  function stubCards(opts: { add?: () => Response | Promise<Response>; searches?: boolean[] }) {
+    const searches = [...(opts.searches ?? [false])]
+    const fn = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/v1/cards' && init?.method === 'POST') return opts.add ? opts.add() : jsonResponse(201, { cardId: 1, created: true })
+      const inCards = searches.length > 1 ? searches.shift()! : searches[0]
+      return jsonResponse(200, { words: [word(inCards)] })
+    })
+    vi.stubGlobal('fetch', fn)
+    return fn
+  }
+  const posts = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls.filter((c) => c[0] === '/api/v1/cards' && c[1]?.method === 'POST')
+  const gets = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls.filter((c) => String(c[0]).startsWith('/api/v1/words?q='))
+
+  it('слово без карточки: кнопка отправляет слово и часть речи, потом показывает «В карточках»', async () => {
+    const fn = stubCards({ searches: [false, true] })
+    const user = userEvent.setup()
+    renderPage()
+    await search('run')
+    await user.click(await screen.findByRole('button', { name: 'В карточки' }))
+    const done = await screen.findByRole('button', { name: /в карточках/i })
+    expect(done).toBeDisabled()
+    expect(JSON.parse(posts(fn)[0][1].body as string)).toEqual({ lemma: 'run', pos: 'verb' })
+  })
+
+  it('после добавления поиск обновляется, и признак приходит с сервера', async () => {
+    const fn = stubCards({ searches: [false, true] })
+    renderPage()
+    await search('run')
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'В карточки' }))
+    await waitFor(() => expect(gets(fn).length).toBeGreaterThanOrEqual(2))
+    expect(await screen.findByRole('button', { name: /в карточках/i })).toBeDisabled()
+  })
+
+  it('слово, которое уже в карточках, сразу неактивно', async () => {
+    const fn = stubCards({ searches: [true] })
+    renderPage()
+    await search('run')
+    expect(await screen.findByRole('button', { name: /в карточках/i })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'В карточки' })).not.toBeInTheDocument()
+    expect(posts(fn)).toHaveLength(0)
+  })
+
+  it('409 no_examples показывает объяснение, кнопка остаётся доступной', async () => {
+    stubCards({ add: () => errorResponse(409, 'no_examples', 'Для этого слова нет подходящих примеров, карточку не собрать') })
+    renderPage()
+    await search('run')
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'В карточки' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('нет подходящих примеров')
+    expect(screen.getByRole('button', { name: 'В карточки' })).toBeEnabled()
+  })
+
+  it('другая ошибка: сообщение и повтор', async () => {
+    let calls = 0
+    const fn = stubCards({ add: () => (++calls === 1 ? errorResponse(500, 'internal', 'Внутренняя ошибка') : jsonResponse(201, { cardId: 1, created: true })), searches: [false, true] })
+    const user = userEvent.setup()
+    renderPage()
+    await search('run')
+    await user.click(await screen.findByRole('button', { name: 'В карточки' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Внутренняя ошибка')
+    await user.click(screen.getByRole('button', { name: 'В карточки' }))
+    expect(await screen.findByRole('button', { name: /в карточках/i })).toBeDisabled()
+    expect(posts(fn)).toHaveLength(2)
+  })
+
+  it('двойной клик отправляет один запрос', async () => {
+    const fn = stubCards({
+      add: () => new Promise<Response>((resolve) => setTimeout(() => resolve(jsonResponse(201, { cardId: 1, created: true })), 50)),
+      searches: [false, true],
+    })
+    renderPage()
+    await search('run')
+    await userEvent.setup().dblClick(await screen.findByRole('button', { name: 'В карточки' }))
+    await screen.findByRole('button', { name: /в карточках/i })
+    expect(posts(fn)).toHaveLength(1)
+  })
+})
