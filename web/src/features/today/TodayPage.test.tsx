@@ -5,10 +5,14 @@ import { TodayPage } from './TodayPage'
 
 afterEach(() => vi.unstubAllGlobals())
 
-function renderToday() {
+const SETTINGS = { currentLevel: 'B1', targetLevel: 'B2', dailyMinutes: 90, timezone: 'Europe/Moscow' }
+
+function renderToday(settings: Record<string, unknown> = SETTINGS) {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => jsonResponse(200, { login: 'firimon' })),
+    vi.fn(async (url: string) =>
+      jsonResponse(200, url.endsWith('/settings') ? settings : { login: 'firimon' }),
+    ),
   )
   return renderAt('/', [{ path: '/', element: <TodayPage /> }])
 }
@@ -52,6 +56,20 @@ describe('TodayPage', () => {
       await screen.findByRole('heading', { level: 1, name: 'Привет, firimon' }),
     ).toBeInTheDocument()
     expect(screen.getByText(/Цель: B1 → B2/)).toBeInTheDocument()
+  })
+
+  it('берёт цель и минуты из настроек и показывает прогноз: B1→B2 при 90 минутах — 6–8 месяцев', async () => {
+    renderToday()
+    const goal = await screen.findByText(/Цель: B1 → B2/)
+    expect(goal).toHaveTextContent(/90\s+мин в день/)
+    expect(screen.getByText(/6–8 месяцев/)).toBeInTheDocument()
+  })
+
+  it('если цель совпадает с уровнем, говорит, что она достигнута, и не выдумывает срок', async () => {
+    renderToday({ ...SETTINGS, currentLevel: 'B2' })
+    expect(await screen.findByText(/Цель: B2 → B2/)).toBeInTheDocument()
+    expect(screen.getByText(/цель достигнута/i)).toBeInTheDocument()
+    expect(screen.queryByText(/месяц/)).not.toBeInTheDocument()
   })
 
   it('честно предупреждает, что данные демонстрационные', async () => {

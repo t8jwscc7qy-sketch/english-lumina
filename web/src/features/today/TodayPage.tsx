@@ -1,9 +1,11 @@
 import { CircleAlert, Layers, Pencil } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { XpBar } from '@/components/pixel/XpBar'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/auth/auth'
+import { useSettings } from '@/features/settings/settings'
+import { describeDuration, forecastForward } from '@/lib/forecast'
 import { DEMO_TODAY } from './demo'
 import { StageMap } from './StageMap'
 
@@ -42,11 +44,18 @@ function TaskCard({
 
 export function TodayPage() {
   const me = useMe()
+  const settings = useSettings()
+  const [now] = useState(() => new Date())
   const d = DEMO_TODAY
 
   useEffect(() => {
     document.title = 'Сегодня — Verst'
   }, [])
+
+  // Под защитником маршрутов настройки уже в кэше; это окно только в отдельных тестах и при сбое.
+  if (!settings.data) return <p role="status" className="p-6">Загружаем…</p>
+  const { currentLevel: current, targetLevel: target, dailyMinutes } = settings.data
+  const forecast = forecastForward(current, target, dailyMinutes, now)
 
   const dayWord = d.streakDays === 1 ? 'день' : d.streakDays < 5 ? 'дня' : 'дней'
 
@@ -55,7 +64,19 @@ export function TodayPage() {
       <header className="flex flex-col gap-2 xl:col-start-1">
         <h1 className="text-title break-words">Привет, {me.data?.login}</h1>
         <p className="text-muted-foreground">
-          Цель: {d.current} → {d.target} · {d.minutesPerDay}&nbsp;мин в день
+          Цель: {current} → {target} · {dailyMinutes}&nbsp;мин в день
+        </p>
+        <p>
+          {forecast.kind === 'reached' ? (
+            <>
+              Цель достигнута. <Link to="/settings" className="underline underline-offset-4">Выбери цель повыше</Link>
+            </>
+          ) : (
+            <>
+              До {target} примерно{' '}
+              <span className="font-semibold">{describeDuration(forecast.days)}</span>
+            </>
+          )}
         </p>
         {/* Честная пометка. Жёлтый в этом мире значит «опыт и главное действие», поэтому рамка пунктирная нейтральная. */}
         <p
@@ -110,10 +131,10 @@ export function TodayPage() {
         <h2 id="path-title" className="text-title">
           Твой путь
         </h2>
-        <StageMap current={d.current} target={d.target} forecast="collecting" />
+        <StageMap current={current} target={target} forecast="collecting" />
         <div className="flex flex-col gap-2">
           <p className="flex justify-between text-sm tabular-nums">
-            <span className="font-semibold">Опыт уровня {d.current}</span>
+            <span className="font-semibold">Опыт уровня {current}</span>
             <span className="text-muted-foreground">
               {d.levelXp.value}&nbsp;из&nbsp;{d.levelXp.total}
             </span>
@@ -121,7 +142,7 @@ export function TodayPage() {
           <XpBar
             value={d.levelXp.value}
             total={d.levelXp.total}
-            label={`Опыт уровня ${d.current}`}
+            label={`Опыт уровня ${current}`}
             segments={20}
           />
         </div>
