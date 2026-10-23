@@ -63,6 +63,9 @@ type fakeStore struct {
 	events        []db.Event
 	eventKeys     map[string]bool
 	listCardCalls int
+	frequencies   []db.ListWordFrequenciesRow
+	freqCalls     int
+	lastFreq      *db.ListWordFrequenciesParams
 	failEvents    bool // AppendEvent возвращает ошибку (проверка отката)
 	upserts       int
 }

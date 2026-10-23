@@ -708,3 +708,63 @@ func TestWordsInCardsOnRealDatabase(t *testing.T) {
 		t.Fatalf("после добавления: %v, ожидали только run", got)
 	}
 }
+
+// Частота слова в поиске на настоящей базе: лучшее место среди форм, версия источника — последняя завершённая.
+func TestWordsFrequencyOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	cefrj, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "cefrj", Version: "1", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range []string{"run", "runway"} {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w, Pos: "verb", SourceID: cefrj.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: cefrj.ID, Level: "A1", Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	freq := func(version string, finished bool, words map[string]int32) {
+		ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "frequencywords", Version: version, License: "l", Url: "u", Attribution: "a"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for w, rank := range words {
+			if err := q.UpsertWordFrequency(ctx, db.UpsertWordFrequencyParams{SourceID: ds.ID, Word: w, Count: 100, Rank: rank}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if finished {
+			n := int32(len(words))
+			if err := q.FinishDataSource(ctx, db.FinishDataSourceParams{ID: ds.ID, RowCount: &n}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	freq("2018", true, map[string]int32{"run": 17, "running": 5, "ran": 66})
+	freq("2020", false, map[string]int32{"run": 1}) // недогруженная версия не учитывается
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	rec := e.do(http.MethodGet, wordsPath("run"), "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("поиск: %d %s", rec.Code, rec.Body)
+	}
+	got := wordsByLemma(t, rec.Body.String())
+	if got["run"].FrequencyRank == nil || *got["run"].FrequencyRank != 5 {
+		t.Fatalf("run: %+v, ожидали место 5 (лучшая из форм в завершённой версии)", got["run"].FrequencyRank)
+	}
+	if got["runway"].FrequencyRank != nil {
+		t.Fatalf("runway не в списке: %+v", got["runway"].FrequencyRank)
+	}
+}

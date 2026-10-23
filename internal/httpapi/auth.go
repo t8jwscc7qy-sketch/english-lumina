@@ -60,6 +60,7 @@ type AuthStore interface {
 	CountCards(ctx context.Context, arg db.CountCardsParams) (db.CountCardsRow, error)
 	ListCardLexemeIDs(ctx context.Context, arg db.ListCardLexemeIDsParams) ([]int64, error)
 	AppendEvent(ctx context.Context, arg db.AppendEventParams) (int64, error)
+	ListWordFrequencies(ctx context.Context, arg db.ListWordFrequenciesParams) ([]db.ListWordFrequenciesRow, error)
 
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
 	// Хранилище, переданное в fn, работает на этой транзакции; вложенный InTx использует ту же транзакцию.

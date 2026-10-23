@@ -277,6 +277,9 @@ type TextRange struct {
 
 // Word defines model for Word.
 type Word struct {
+	// FrequencyRank Место слова в списке частот (1 — самое частое): лучшее среди его форм. Нет, если слова нет в списке (реже 50 000-го) или это фраза.
+	FrequencyRank *int `json:"frequencyRank,omitempty"`
+
 	// InCards Есть ли у пользователя карточка этого слова
 	InCards bool   `json:"inCards"`
 	Lemma   string `json:"lemma"`
