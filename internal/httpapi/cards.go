@@ -22,15 +22,11 @@ import (
 const (
 	maxAddCardBody = 4 << 10
 	maxCardSources = 5 // сколько примеров рассматриваем для карточки
+	maxReviewBody  = 4 << 10
+	maxReviewKey   = 64
 )
 
-// Ручки очереди и оценки реализуются в следующей задаче; пока отвечают 501, чтобы пакет собирался.
-func notImplemented(w http.ResponseWriter) {
-	writeError(w, http.StatusNotImplemented, api.ErrorErrorCodeInternal, "Пока не реализовано")
-}
-
-func (s *authServer) GetCardQueue(w http.ResponseWriter, _ *http.Request) { notImplemented(w) }
-func (s *authServer) ReviewCard(w http.ResponseWriter, _ *http.Request)   { notImplemented(w) }
+var errCardNotFound = errors.New("карточки нет или она чужая")
 
 // AddCard добавляет слово в карточки. Слово ищется по точной паре (лемма, часть речи); карточку нельзя
 // собрать без примера, где форма слова найдена, поэтому без примеров ответ 409. Повтор не создаёт вторую карточку.
@@ -149,4 +145,152 @@ func insertParams(userID, lexemeID int64, c srs.Card) db.InsertCardParams {
 func (s *authServer) failCards(w http.ResponseWriter, err error) {
 	slog.Error("карточки", "err", err)
 	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
+}
+
+// GetCardQueue отдаёт, сколько карточек к повторению сейчас, и следующую из них.
+func (s *authServer) GetCardQueue(w http.ResponseWriter, r *http.Request) {
+	user, err := authenticate(r, s.store)
+	if err != nil {
+		writeAuthError(w, err)
+		return
+	}
+	q, err := queueResponse(r.Context(), s.store, user.ID, time.Now())
+	if err != nil {
+		s.failCards(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, q)
+}
+
+// ReviewCard применяет оценку: в одной транзакции блокирует карточку, пересчитывает FSRS, пишет событие
+// и обновляет состояние. Событие с таким же ключом уже есть — оценка была применена раньше, повтор ничего не меняет.
+// Ответ — очередь после оценки (следующая карточка).
+func (s *authServer) ReviewCard(w http.ResponseWriter, r *http.Request) {
+	user, err := authenticate(r, s.store)
+	if err != nil {
+		writeAuthError(w, err)
+		return
+	}
+	var req api.ReviewCardRequest
+	r.Body = http.MaxBytesReader(w, r.Body, maxReviewBody)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil || req.CardId <= 0 || req.Rating < int(srs.Again) || req.Rating > int(srs.Easy) ||
+		req.Key == "" || !validText(req.Key, maxReviewKey) {
+		writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidRequest, "Нужны cardId, rating от 1 до 4 и key (до 64 символов)")
+		return
+	}
+
+	ctx := r.Context()
+	now := time.Now()
+	err = s.store.InTx(ctx, func(tx AuthStore) error {
+		row, err := tx.GetCardForUpdate(ctx, db.GetCardForUpdateParams{ID: req.CardId, UserID: user.ID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errCardNotFound
+		}
+		if err != nil {
+			return err
+		}
+		before := toSRS(row.Due, row.Stability, row.Difficulty, row.ScheduledDays, row.Reps, row.Lapses, row.State, row.LastReview, row.RemainingSteps)
+		after, err := srs.Review(before, srs.Rating(req.Rating), now)
+		if err != nil {
+			return err
+		}
+		payload, err := json.Marshal(map[string]any{
+			"cardId": row.ID, "lexemeId": row.LexemeID, "rating": req.Rating,
+			"stateBefore": int(before.State), "stateAfter": int(after.State),
+			"dueAfter": after.Due.UTC().Format(time.RFC3339Nano), "scheduledDays": after.ScheduledDays,
+			"stability": after.Stability, "difficulty": after.Difficulty,
+		})
+		if err != nil {
+			return err
+		}
+		key := fmt.Sprintf("review:%d:%s", row.ID, req.Key)
+		_, err = tx.AppendEvent(ctx, db.AppendEventParams{
+			UserID: user.ID, Type: "card.reviewed", SchemaVersion: 1, OccurredAt: ts(now), Payload: payload, IdempotencyKey: &key,
+		})
+		if errors.Is(err, pgx.ErrNoRows) { // тот же ключ уже применён: повтор запроса, ничего не меняем
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		return tx.UpdateCardState(ctx, updateParams(row.ID, after))
+	})
+	if errors.Is(err, errCardNotFound) {
+		writeError(w, http.StatusNotFound, api.ErrorErrorCodeNotFound, "Такой карточки нет")
+		return
+	}
+	if err != nil {
+		s.failCards(w, err)
+		return
+	}
+	q, err := queueResponse(ctx, s.store, user.ID, now)
+	if err != nil {
+		s.failCards(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, q)
+}
+
+// queueResponse собирает очередь: счётчики, следующая просроченная карточка, её сроки после каждой оценки
+// и предложение с пропуском. Предложение меняется от повторения к повторению: номер reps mod число примеров.
+func queueResponse(ctx context.Context, store AuthStore, userID int64, now time.Time) (api.CardQueue, error) {
+	counts, err := store.CountCards(ctx, db.CountCardsParams{UserID: userID, Now: ts(now)})
+	if err != nil {
+		return api.CardQueue{}, err
+	}
+	out := api.CardQueue{DueCount: counts.Due, TotalCount: counts.Total}
+	next, err := store.NextDueCard(ctx, db.NextDueCardParams{UserID: userID, Now: ts(now)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return out, nil
+	}
+	if err != nil {
+		return api.CardQueue{}, err
+	}
+
+	card := toSRS(next.Due, next.Stability, next.Difficulty, next.ScheduledDays, next.Reps, next.Lapses, next.State, next.LastReview, next.RemainingSteps)
+	preview, err := srs.Preview(card, now)
+	if err != nil {
+		return api.CardQueue{}, err
+	}
+	sec := func(r srs.Rating) int64 { return int64(preview[r] / time.Second) }
+	qc := &api.QueueCard{
+		CardId: next.ID, Lemma: next.Lemma, Pos: next.Pos, Level: api.CefrLevel(next.Level), State: int(next.State),
+		Intervals: api.CardIntervals{Again: sec(srs.Again), Hard: sec(srs.Hard), Good: sec(srs.Good), Easy: sec(srs.Easy)},
+	}
+	sentences, err := exampleSentences(ctx, store, next.Lemma, next.Pos)
+	if err != nil {
+		return api.CardQueue{}, err
+	}
+	if len(sentences) > 0 {
+		ex := sentences[int(next.Reps)%len(sentences)]
+		qc.Sentence = &api.CardSentence{
+			En:  api.ExampleSentence{Text: ex.Row.EnText, Author: ex.Row.EnAuthor, TatoebaId: ex.Row.EnTatoebaID},
+			Ru:  api.ExampleSentence{Text: ex.Row.RuText, Author: ex.Row.RuAuthor, TatoebaId: ex.Row.RuTatoebaID},
+			Gap: api.TextRange{Start: ex.Start, End: ex.End},
+		}
+	}
+	out.Card = qc
+	return out, nil
+}
+
+// toSRS переводит поля строки таблицы в состояние карточки для алгоритма.
+func toSRS(due pgtype.Timestamptz, stability, difficulty float64, scheduledDays, reps, lapses int32, state int16, lastReview pgtype.Timestamptz, remainingSteps int32) srs.Card {
+	c := srs.Card{
+		Due: due.Time, Stability: stability, Difficulty: difficulty, ScheduledDays: int(scheduledDays),
+		Reps: int(reps), Lapses: int(lapses), State: srs.State(state), RemainingSteps: int(remainingSteps),
+	}
+	if lastReview.Valid {
+		c.LastReview = lastReview.Time
+	}
+	return c
+}
+
+func updateParams(id int64, c srs.Card) db.UpdateCardStateParams {
+	return db.UpdateCardStateParams{
+		ID: id, Due: ts(c.Due), Stability: c.Stability, Difficulty: c.Difficulty,
+		ScheduledDays: int32(c.ScheduledDays), Reps: int32(c.Reps), Lapses: int32(c.Lapses), //nolint:gosec // малые значения
+		State: int16(c.State), LastReview: ts(c.LastReview), RemainingSteps: int32(c.RemainingSteps), //nolint:gosec // малые значения
+	}
 }

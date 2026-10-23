@@ -49,6 +49,7 @@ const (
 	ErrorErrorCodeInvalidCredentials ErrorErrorCode = "invalid_credentials"
 	ErrorErrorCodeInvalidRequest     ErrorErrorCode = "invalid_request"
 	ErrorErrorCodeNoExamples         ErrorErrorCode = "no_examples"
+	ErrorErrorCodeNotFound           ErrorErrorCode = "not_found"
 	ErrorErrorCodeOnboardingRequired ErrorErrorCode = "onboarding_required"
 	ErrorErrorCodeTooManyAttempts    ErrorErrorCode = "too_many_attempts"
 	ErrorErrorCodeUnauthorized       ErrorErrorCode = "unauthorized"
@@ -69,6 +70,8 @@ func (e ErrorErrorCode) Valid() bool {
 	case ErrorErrorCodeInvalidRequest:
 		return true
 	case ErrorErrorCodeNoExamples:
+		return true
+	case ErrorErrorCodeNotFound:
 		return true
 	case ErrorErrorCodeOnboardingRequired:
 		return true

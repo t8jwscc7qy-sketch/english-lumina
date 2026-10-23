@@ -467,3 +467,172 @@ func TestAddCardOnRealDatabase(t *testing.T) {
 		t.Fatal("отказы создали карточки")
 	}
 }
+
+// Оценка карточек на настоящей базе: очередь, переходы состояний, события по порядку, повтор по ключу.
+func TestReviewCardsOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lexeme := func(lemma, pos, level string) int64 {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: lemma, Pos: pos, SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: ds.ID, Level: level, Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	runID, goID := lexeme("run", "verb", "A2"), lexeme("go", "verb", "A1")
+	en, _ := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "en", TatoebaID: 1, Text: "I like to run every morning before work.", Author: "CK", WordCount: 8, SourceID: ds.ID})
+	ru, _ := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "ru", TatoebaID: 2, Text: "Я люблю бегать по утрам перед работой.", Author: "a", WordCount: 6, SourceID: ds.ID})
+	if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en.ID, RuID: ru.ID, SourceID: ds.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	rows := func(query string, args ...any) int {
+		var n int
+		if err := pool.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	// run добавляется через API, go (без предложений) кладём напрямую со сроком раньше.
+	if rec := e.do(http.MethodPost, "/api/v1/cards", addBody("run", "verb"), withCookie(token)); rec.Code != http.StatusCreated {
+		t.Fatalf("добавление run: %d %s", rec.Code, rec.Body)
+	}
+	goCard, err := q.InsertCard(ctx, db.InsertCardParams{UserID: user.ID, LexemeID: goID, Due: ts(time.Now().Add(-48 * time.Hour))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var runCard int64
+	if err := pool.QueryRow(ctx, `SELECT id FROM cards WHERE lexeme_id = $1`, runID).Scan(&runCard); err != nil {
+		t.Fatal(err)
+	}
+
+	queue := func() api.CardQueue {
+		t.Helper()
+		rec := e.do(http.MethodGet, "/api/v1/cards/queue", "", withCookie(token))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("очередь: %d %s", rec.Code, rec.Body)
+		}
+		return decodeQueue(t, rec.Body.String())
+	}
+	first := queue()
+	if first.DueCount != 2 || first.TotalCount != 2 || first.Card == nil || first.Card.CardId != goCard || first.Card.Sentence != nil || first.Card.Level != api.CefrLevelA1 {
+		t.Fatalf("очередь: %+v (ожидали go первой, без предложения, уровень A1)", first)
+	}
+
+	// Оцениваем go; в ответе следующая карточка — run с предложением и пропуском.
+	rec := doReview(e, token, goCard, 3, "g1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("оценка go: %d %s", rec.Code, rec.Body)
+	}
+	next := decodeQueue(t, rec.Body.String())
+	if next.Card == nil || next.Card.CardId != runCard || next.Card.Sentence == nil || next.Card.Sentence.Gap.Start != 10 || next.Card.Sentence.Gap.End != 13 || next.Card.Level != api.CefrLevelA2 {
+		t.Fatalf("следующая после go: %+v", next.Card)
+	}
+	type cardRow struct {
+		State, Reps, Lapses, Days int
+		Due                       time.Time
+	}
+	read := func(id int64) cardRow {
+		var c cardRow
+		if err := pool.QueryRow(ctx, `SELECT state, reps, lapses, scheduled_days, due FROM cards WHERE id = $1`, id).Scan(&c.State, &c.Reps, &c.Lapses, &c.Days, &c.Due); err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	afterGo := read(goCard)
+	if afterGo.Reps != 1 || afterGo.State == 0 || !afterGo.Due.After(time.Now()) {
+		t.Fatalf("go после оценки: %+v", afterGo)
+	}
+
+	// Повтор с тем же ключом ничего не меняет.
+	eventsBefore := rows(`SELECT count(*) FROM events WHERE type = 'card.reviewed'`)
+	if rec := doReview(e, token, goCard, 1, "g1"); rec.Code != http.StatusOK || read(goCard) != afterGo ||
+		rows(`SELECT count(*) FROM events WHERE type = 'card.reviewed'`) != eventsBefore {
+		t.Fatalf("повтор по ключу изменил данные: %+v, событий %d", read(goCard), rows(`SELECT count(*) FROM events WHERE type = 'card.reviewed'`))
+	}
+
+	// Цикл «хорошо» по run: срок каждый раз сдвигаем в прошлое, как будто время прошло.
+	var prevDays int
+	for i := 0; i < 5; i++ {
+		if _, err := pool.Exec(ctx, `UPDATE cards SET due = now() - interval '1 minute' WHERE id = $1`, runCard); err != nil {
+			t.Fatal(err)
+		}
+		if rec := doReview(e, token, runCard, 3, fmt.Sprintf("r%d", i)); rec.Code != http.StatusOK {
+			t.Fatalf("оценка run №%d: %d %s", i, rec.Code, rec.Body)
+		}
+		c := read(runCard)
+		if c.Reps != i+1 || c.Days < prevDays || !c.Due.After(time.Now()) {
+			t.Fatalf("после оценки №%d: %+v (дни раньше %d)", i, c, prevDays)
+		}
+		prevDays = c.Days
+	}
+	if c := read(runCard); c.State != 2 {
+		t.Fatalf("после нескольких «хорошо» карточка должна быть зрелой (2): %+v", c)
+	}
+
+	// «Забыл» на зрелой карточке: ошибка и переобучение.
+	if _, err := pool.Exec(ctx, `UPDATE cards SET due = now() - interval '1 minute' WHERE id = $1`, runCard); err != nil {
+		t.Fatal(err)
+	}
+	if rec := doReview(e, token, runCard, 1, "lapse"); rec.Code != http.StatusOK {
+		t.Fatalf("оценка «забыл»: %d", rec.Code)
+	}
+	if c := read(runCard); c.Lapses != 1 || c.State != 3 {
+		t.Fatalf("после «забыл»: %+v", c)
+	}
+
+	// События: по одному на каждую применённую оценку, по порядку, состояния сцеплены.
+	evRows, err := pool.Query(ctx, `SELECT payload->>'rating', payload->>'stateBefore', payload->>'stateAfter', payload->>'cardId' FROM events WHERE type = 'card.reviewed' AND (payload->>'cardId')::bigint = $1 ORDER BY id`, runCard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer evRows.Close()
+	var ratings []string
+	prevAfter := "0"
+	for evRows.Next() {
+		var rating, before, after, id string
+		if err := evRows.Scan(&rating, &before, &after, &id); err != nil {
+			t.Fatal(err)
+		}
+		if before != prevAfter {
+			t.Fatalf("состояния событий не сцеплены: до %s, ожидали %s", before, prevAfter)
+		}
+		prevAfter = after
+		ratings = append(ratings, rating)
+	}
+	if fmt.Sprint(ratings) != "[3 3 3 3 3 1]" {
+		t.Fatalf("оценки в журнале: %v, ожидали [3 3 3 3 3 1]", ratings)
+	}
+	if n := rows(`SELECT count(*) FROM events WHERE type = 'card.reviewed'`); n != 7 {
+		t.Fatalf("всего событий оценки %d, ожидали 7 (go + 6 для run)", n)
+	}
+
+	// Чужая или несуществующая карточка.
+	if rec := doReview(e, token, 999999, 3, "x"); rec.Code != http.StatusNotFound {
+		t.Fatalf("несуществующая карточка: %d", rec.Code)
+	}
+	// Очередь пуста: обе карточки ушли в будущее.
+	if final := queue(); final.DueCount != 0 || final.TotalCount != 2 || final.Card != nil {
+		t.Fatalf("итоговая очередь: %+v", final)
+	}
+}

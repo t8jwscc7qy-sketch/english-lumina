@@ -514,7 +514,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, internal]
             message:
               type: string
               description: Текст для пользователя на русском
