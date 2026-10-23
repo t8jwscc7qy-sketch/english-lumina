@@ -119,3 +119,10 @@ export function describeDuration(days: Range): string {
   if (lo === hi) return approximate(hi, { one: 'месяца', many: 'месяцев' })
   return `${lo}–${hi} ${plural(hi, MONTH)}`
 }
+
+/** Разбирает YYYY-MM-DD как местный день (new Date('2027-01-01') дал бы UTC и сдвиг на сутки). */
+export function parseDay(s: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return null
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+}
