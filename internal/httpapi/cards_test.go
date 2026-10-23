@@ -275,7 +275,7 @@ func TestQueueReturnsNextCardWithSentenceAndIntervals(t *testing.T) {
 		t.Fatalf("карточка: %+v", c)
 	}
 	in := c.Intervals
-	if !(in.Again > 0 && in.Again < in.Hard && in.Hard <= in.Good && in.Good < in.Easy) {
+	if in.Again <= 0 || in.Again >= in.Hard || in.Hard > in.Good || in.Good >= in.Easy {
 		t.Fatalf("интервалы: %+v", in)
 	}
 	if c.Sentence == nil || c.Sentence.En.Text != "I like to run every morning." || c.Sentence.Ru.Text != "Я люблю бегать по утрам." ||
