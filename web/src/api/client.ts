@@ -127,3 +127,29 @@ export async function addCard(lemma: string, pos: string): Promise<{ cardId: num
   })
   return (await res.json()) as { cardId: number; created: boolean }
 }
+
+export type Exercise = components['schemas']['Exercise']
+export type AnswerResult = components['schemas']['AnswerResult']
+export type Rating = components['schemas']['Rating']
+export type TopicList = components['schemas']['TopicList']
+
+/** Следующее упражнение; 404 с кодом no_exercise значит, что подходящих пока нет. */
+export async function getNextExercise(): Promise<Exercise> {
+  const res = await request('/api/v1/exercises/next')
+  return (await res.json()) as Exercise
+}
+
+/** Ответ на упражнение; key — ключ идемпотентности, один на попытку. */
+export async function answerExercise(exerciseId: number, given: string, key: string): Promise<AnswerResult> {
+  const res = await request('/api/v1/exercises/answer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ exerciseId, given, key }),
+  })
+  return (await res.json()) as AnswerResult
+}
+
+export async function listExerciseTopics(): Promise<TopicList> {
+  const res = await request('/api/v1/exercises/topics')
+  return (await res.json()) as TopicList
+}
