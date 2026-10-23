@@ -92,7 +92,7 @@ export function ExercisesPage() {
       )}
 
       {!next.isError && next.data && (
-        <ExerciseCard key={next.data.id} exercise={next.data} onNext={() => void next.refetch()} loadingNext={next.isFetching} />
+        <ExerciseCard key={`${next.data.id}-${next.dataUpdatedAt}`} exercise={next.data} onNext={() => void next.refetch()} loadingNext={next.isFetching} />
       )}
 
       {topics.data && <WeakTopics topics={topics.data.topics} />}
@@ -109,35 +109,44 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
   const keyRef = useRef(newKey())
   const busyRef = useRef(false)
   const articleRef = useRef<HTMLElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const manual = exercise.choices.length === 0
 
   // Новое упражнение (и результат ответа) забирает фокус: клавиши работают сразу.
+  // Фокус остаётся на контейнере и после ответа: тогда 1–4, Пробел и Enter работают без лишних Tab. В ручном вводе до ответа фокус в поле.
   useEffect(() => {
-    articleRef.current?.focus()
-  }, [exercise.id, result])
+    if (manual && !result) inputRef.current?.focus()
+    else articleRef.current?.focus()
+  }, [exercise.id, result, manual])
 
   const unauthorized = answer.error instanceof ApiError && answer.error.code === 'unauthorized'
-  useEffect(() => {
-    if (unauthorized) qc.setQueryData(meKey, null)
-  }, [unauthorized, qc])
+  // После сбоя без ответа сервера (сеть, 5xx) неизвестно, засчитан ли ответ: менять вариант нельзя, повтор идёт с тем же ключом.
+  const locked = answer.isError && answer.error instanceof ApiError && (answer.error.status === 0 || answer.error.status >= 500) ? given : undefined
 
   const submit = useCallback(
     (value: string) => {
       const text = value.trim()
       if (!text || busyRef.current || result) return // защита от двойного нажатия: пока идёт запрос, новых ответов нет
+      if (locked !== undefined && text !== locked) return
+      // Сервер отклонил прошлый ответ (4xx) и ничего не засчитал: другой вариант идёт с новым ключом.
+      if (answer.isError && given !== text) keyRef.current = newKey()
       busyRef.current = true
       setGiven(text)
       answer.mutate(
         { exerciseId: exercise.id, given: text, key: keyRef.current },
         {
           onSuccess: (r) => setResult(r),
+          onError: (e) => {
+            // Сначала обнуляем «кто я» (синхронно), потом навигация: иначе защита экрана входа вернёт на главную.
+            if (e instanceof ApiError && e.code === 'unauthorized') qc.setQueryData(meKey, null)
+          },
           onSettled: () => {
             busyRef.current = false
           },
         },
       )
     },
-    [answer, exercise.id, result],
+    [answer, exercise.id, result, locked, qc, given],
   )
 
   useEffect(() => {
@@ -169,10 +178,10 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
       <p className="text-sm text-muted-foreground">{topicName(exercise.topic)}</p>
 
       <div className="flex flex-col gap-3">
-        <p className="break-words text-xl leading-relaxed">
+        <p lang="en" className="break-words text-xl leading-relaxed">
           <Prompt text={exercise.prompt} answer={result?.answer} />
         </p>
-        <p className="break-words text-muted-foreground">{exercise.translation}</p>
+        <p lang="ru" className="break-words text-muted-foreground">{exercise.translation}</p>
       </div>
 
       {manual && !result && (
@@ -186,6 +195,8 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
           <label className="flex min-w-48 flex-1 flex-col gap-1.5 text-sm font-semibold">
             Твой ответ
             <input
+              ref={inputRef}
+              readOnly={locked !== undefined}
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               maxLength={200}
@@ -210,32 +221,44 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
               <button
                 key={choice}
                 type="button"
-                disabled={!!result || answer.isPending}
+                disabled={!!result || answer.isPending || (locked !== undefined && choice !== locked)}
                 onClick={() => submit(choice)}
                 aria-keyshortcuts={String(i + 1)}
                 className={cn(
                   'flex min-h-12 items-center gap-3 rounded-xl border bg-card px-4 py-2 text-left font-semibold transition-colors',
                   'hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default',
                   !result && 'border-input',
-                  isRight && 'border-grass bg-muted',
+                  isRight && 'border-grass-text bg-muted',
                   isWrong && 'border-coral bg-muted text-coral-text',
                   result && !isRight && !isWrong && 'border-border opacity-60',
                 )}
               >
-                <kbd className="grid size-6 shrink-0 place-items-center rounded-md border border-border font-sans text-xs">{i + 1}</kbd>{' '}
+                <kbd aria-hidden className="grid size-6 shrink-0 place-items-center rounded-md border border-border font-sans text-xs">{i + 1}</kbd>{' '}
                 <span className="min-w-0 flex-1 break-words">{choice}</span>
-                {isRight && <Check aria-hidden className="size-5 shrink-0 text-grass" strokeWidth={2} />}
-                {isWrong && <X aria-hidden className="size-5 shrink-0" strokeWidth={2} />}
+                {isRight && (
+                  <>
+                    <Check aria-hidden className="size-5 shrink-0 text-grass-text" strokeWidth={2} />
+                    <span className="sr-only">верно</span>
+                  </>
+                )}
+                {isWrong && (
+                  <>
+                    <X aria-hidden className="size-5 shrink-0" strokeWidth={2} />
+                    <span className="sr-only">твой ответ</span>
+                  </>
+                )}
               </button>
             )
           })}
         </div>
       )}
 
-      {result && (
-        <div role="status" className="flex flex-col gap-3 border-t border-border pt-4">
+      {/* Область живого региона есть всегда и до ответа пуста: тогда скринридер объявит появившийся результат. */}
+      <div role="status" aria-live="polite" className={cn(result && 'flex flex-col gap-3 border-t border-border pt-4')}>
+        {result && (
+          <>
           <p className={cn('flex items-center gap-2 font-semibold', !result.correct && 'text-coral-text')}>
-            {result.correct ? <Check aria-hidden className="size-5 text-grass" /> : <X aria-hidden className="size-5" />}
+            {result.correct ? <Check aria-hidden className="size-5 text-grass-text" /> : <X aria-hidden className="size-5" />}
             {result.correct ? 'Верно' : 'Неверно'}
           </p>
           {!result.correct && (
@@ -260,8 +283,9 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
               ))}
             </div>
           )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
 
       {answer.isError && !unauthorized && (
         <div className="flex flex-wrap items-center gap-3">
@@ -275,7 +299,7 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
       {result && (
         <div>
           <Button size="lg" onClick={onNext} disabled={loadingNext} aria-keyshortcuts="Space Enter">
-            Дальше
+            {loadingNext ? 'Подбираем…' : 'Дальше'}
           </Button>
         </div>
       )}

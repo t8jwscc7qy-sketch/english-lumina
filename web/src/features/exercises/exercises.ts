@@ -6,9 +6,9 @@ export type { Exercise, AnswerResult, Rating } from '@/api/client'
 export const nextExerciseKey = ['exercises', 'next'] as const
 export const topicsKey = ['exercises', 'topics'] as const
 
-/** Текущее упражнение. Кэш не переиспользуется: следующее берётся только явным refetch после «Дальше». */
+/** Текущее упражнение. Кэш не переиспользуется; фокус окна и возврат сети его не меняют: следующее берётся только явным refetch после «Дальше». */
 export function useNextExercise() {
-  return useQuery({ queryKey: nextExerciseKey, queryFn: getNextExercise, retry: false, staleTime: 0, gcTime: 0 })
+  return useQuery({ queryKey: nextExerciseKey, queryFn: getNextExercise, retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false })
 }
 
 export function useTopics() {

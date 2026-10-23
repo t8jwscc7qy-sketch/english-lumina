@@ -13,6 +13,14 @@ const NAMES: Record<string, string> = {
   'pos:pronoun': 'Местоимения',
   'pos:preposition': 'Предлоги (слова)',
   'pos:conjunction': 'Союзы',
+  'pos:determiner': 'Определители',
+  'pos:number': 'Числительные',
+  'pos:interjection': 'Междометия',
+  'pos:modal auxiliary': 'Модальные слова',
+  'pos:be-verb': 'Глагол be',
+  'pos:have-verb': 'Глагол have',
+  'pos:do-verb': 'Глагол do',
+  'pos:infinitive-to': 'Частица to',
 }
 
 /** Название темы по-русски; незнакомый ключ возвращается как есть. */
