@@ -48,6 +48,7 @@ type fakeStore struct {
 	nextID   int64
 	touched  int
 	settings *db.Setting // nil — онбординг не пройден
+	sources  []db.DataSource
 	upserts  int
 }
 
