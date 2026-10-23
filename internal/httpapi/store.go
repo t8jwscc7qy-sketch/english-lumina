@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
@@ -29,7 +28,7 @@ func (s *PgStore) InTx(ctx context.Context, fn func(AuthStore) error) error {
 	}
 	// После Commit откат ничего не делает; контекст без отмены нужен, чтобы откат дошёл и при отмене запроса.
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
-	if err := fn(&txStore{Queries: db.New(tx), tx: tx}); err != nil {
+	if err := fn(&txStore{Queries: db.New(tx)}); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -41,7 +40,6 @@ func (s *PgStore) InTx(ctx context.Context, fn func(AuthStore) error) error {
 // txStore — хранилище внутри уже открытой транзакции. Фиксирует и откатывает её только внешний InTx.
 type txStore struct {
 	*db.Queries
-	tx pgx.Tx
 }
 
 // InTx внутри транзакции работает на той же транзакции: второй не открывается.
