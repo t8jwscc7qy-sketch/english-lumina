@@ -51,6 +51,18 @@ type Event struct {
 	IdempotencyKey *string
 }
 
+type Exercise struct {
+	ID         int64
+	UserID     int64
+	Kind       string
+	SentenceID int64
+	Topics     []string
+	Payload    json.RawMessage
+	Answer     json.RawMessage
+	CreatedAt  pgtype.Timestamptz
+	AnsweredAt pgtype.Timestamptz
+}
+
 type Lexeme struct {
 	ID        int64
 	Lemma     string
@@ -103,6 +115,16 @@ type Setting struct {
 	Timezone        string
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+}
+
+type TopicRating struct {
+	UserID     int64
+	Topic      string
+	Rating     float64
+	Deviation  float64
+	Volatility float64
+	Attempts   int32
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type User struct {

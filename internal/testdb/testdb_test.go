@@ -21,7 +21,7 @@ func tableExists(t *testing.T, pool *pgxpool.Pool, name string) bool {
 	return exists
 }
 
-var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs", "cards", "word_frequencies"}
+var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs", "cards", "word_frequencies", "exercises", "topic_ratings"}
 
 func TestMigrationsUpDownUp(t *testing.T) {
 	pool := Pool(t)
