@@ -50,6 +50,20 @@ type AuthStore interface {
 	SearchLexemes(ctx context.Context, arg db.SearchLexemesParams) ([]db.SearchLexemesRow, error)
 	ListLexemeLevels(ctx context.Context, ids []int64) ([]db.ListLexemeLevelsRow, error)
 	ListExamples(ctx context.Context, arg db.ListExamplesParams) ([]db.ListExamplesRow, error)
+
+	GetLexemeByPair(ctx context.Context, arg db.GetLexemeByPairParams) (db.Lexeme, error)
+	InsertCard(ctx context.Context, arg db.InsertCardParams) (int64, error)
+	GetCardByLexeme(ctx context.Context, arg db.GetCardByLexemeParams) (db.Card, error)
+	GetCardForUpdate(ctx context.Context, arg db.GetCardForUpdateParams) (db.GetCardForUpdateRow, error)
+	UpdateCardState(ctx context.Context, arg db.UpdateCardStateParams) error
+	NextDueCard(ctx context.Context, arg db.NextDueCardParams) (db.NextDueCardRow, error)
+	CountCards(ctx context.Context, arg db.CountCardsParams) (db.CountCardsRow, error)
+	ListCardLexemeIDs(ctx context.Context, arg db.ListCardLexemeIDsParams) ([]int64, error)
+	AppendEvent(ctx context.Context, arg db.AppendEventParams) (int64, error)
+
+	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
+	// Хранилище, переданное в fn, работает на этой транзакции; вложенный InTx использует ту же транзакцию.
+	InTx(ctx context.Context, fn func(AuthStore) error) error
 }
 
 var errNoSession = errors.New("нет действующей сессии")

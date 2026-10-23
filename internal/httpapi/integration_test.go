@@ -28,7 +28,7 @@ func TestAuthFlowOnRealDatabase(t *testing.T) {
 	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
-	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
 
 	// Вход.
 	rec := e.do(http.MethodPost, "/api/v1/auth/login", loginBody(testLogin, testPassword))
@@ -91,7 +91,7 @@ func TestSettingsFlowOnRealDatabase(t *testing.T) {
 	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
-	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
 	token := login(t, e)
 
 	if rec := e.do(http.MethodGet, settingsPath, "", withCookie(token)); rec.Code != http.StatusNotFound {
@@ -155,7 +155,7 @@ func TestSourcesOnRealDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
 	token := login(t, e)
 	rec := e.do(http.MethodGet, "/api/v1/sources", "", withCookie(token))
 	if rec.Code != http.StatusOK {
@@ -209,7 +209,7 @@ func TestWordsOnRealDatabase(t *testing.T) {
 		add(cefrj, "lim"+string(rune('a'+i/26))+string(rune('a'+i%26)), "noun", "A1", `{}`)
 	}
 
-	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
 	token := login(t, e)
 	search := func(query string) api.WordList {
 		t.Helper()
@@ -320,7 +320,7 @@ func TestExamplesOnRealDatabase(t *testing.T) {
 	link(e13, sentence("ru", 2013, "Ты бегаешь в парке по воскресеньям, когда погода хорошая?", "a"))
 	link(e13, sentence("ru", 2014, "Ты бегаешь в парке?", "b"))
 
-	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
 	token := login(t, e)
 	get := func(lemma, pos string) api.ExampleList {
 		t.Helper()

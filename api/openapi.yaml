@@ -154,6 +154,95 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/cards:
+    post:
+      operationId: addCard
+      summary: Добавить слово в карточки
+      description: >
+        Слово ищется по точной паре (лемма, часть речи). Без подходящих примеров предложений карточку не собрать
+        (409 no_examples). Повторное добавление не создаёт вторую карточку (created: false).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCardRequest"
+      responses:
+        "200":
+          description: Карточка уже была
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddCardResponse"
+        "201":
+          description: Карточка создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddCardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Такого слова нет в словаре (код word_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Для слова нет подходящих примеров (код no_examples)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/cards/queue:
+    get:
+      operationId: getCardQueue
+      summary: Очередь карточек на сейчас
+      responses:
+        "200":
+          description: Сколько карточек к повторению и следующая (если есть)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardQueue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/cards/review:
+    post:
+      operationId: reviewCard
+      summary: Оценить карточку
+      description: >
+        Номер карточки в теле, а не в пути: параметры пути заставляют генератор добавить новую зависимость.
+        Повтор запроса с тем же key не применяет оценку второй раз. Ответ — очередь после оценки.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewCardRequest"
+      responses:
+        "200":
+          description: Оценка применена (или уже была применена с этим ключом)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardQueue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Карточки нет или она чужая
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     LoginRequest:
@@ -247,12 +336,15 @@ components:
             type: string
     Word:
       type: object
-      required: [lemma, pos, level, levels]
+      required: [lemma, pos, level, levels, inCards]
       properties:
         lemma:
           type: string
         pos:
           type: string
+        inCards:
+          type: boolean
+          description: Есть ли у пользователя карточка этого слова
         level:
           $ref: "#/components/schemas/CefrLevel"
           description: Уровень слова — самый низкий из оценок источников
@@ -311,6 +403,106 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Example"
+    AddCardRequest:
+      type: object
+      required: [lemma, pos]
+      properties:
+        lemma:
+          type: string
+          maxLength: 64
+        pos:
+          type: string
+          maxLength: 32
+    AddCardResponse:
+      type: object
+      required: [cardId, created]
+      properties:
+        cardId:
+          type: integer
+          format: int64
+        created:
+          type: boolean
+    ReviewCardRequest:
+      type: object
+      required: [cardId, rating, key]
+      properties:
+        cardId:
+          type: integer
+          format: int64
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 4
+          description: 1 забыл, 2 трудно, 3 хорошо, 4 легко
+        key:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Ключ идемпотентности; клиент создаёт новый для каждой показанной карточки
+    CardSentence:
+      type: object
+      required: [en, ru, gap]
+      properties:
+        en:
+          $ref: "#/components/schemas/ExampleSentence"
+        ru:
+          $ref: "#/components/schemas/ExampleSentence"
+        gap:
+          $ref: "#/components/schemas/TextRange"
+          description: Где в английском предложении слово (его скрывает пропуск), в символах
+    CardIntervals:
+      type: object
+      description: Через сколько секунд карточка вернётся при каждой оценке
+      required: [again, hard, good, easy]
+      properties:
+        again:
+          type: integer
+          format: int64
+        hard:
+          type: integer
+          format: int64
+        good:
+          type: integer
+          format: int64
+        easy:
+          type: integer
+          format: int64
+    QueueCard:
+      type: object
+      required: [cardId, lemma, pos, level, state, intervals]
+      properties:
+        cardId:
+          type: integer
+          format: int64
+        lemma:
+          type: string
+        pos:
+          type: string
+        level:
+          $ref: "#/components/schemas/CefrLevel"
+        state:
+          type: integer
+          description: 0 новая, 1 обучение, 2 повторение, 3 переобучение
+        sentence:
+          $ref: "#/components/schemas/CardSentence"
+          description: Предложение с пропуском; нет, если подходящих примеров не нашлось
+        intervals:
+          $ref: "#/components/schemas/CardIntervals"
+    CardQueue:
+      type: object
+      required: [dueCount, totalCount]
+      properties:
+        dueCount:
+          type: integer
+          format: int64
+          description: Сколько карточек к повторению сейчас
+        totalCount:
+          type: integer
+          format: int64
+          description: Сколько карточек всего
+        card:
+          $ref: "#/components/schemas/QueueCard"
+          description: Следующая карточка; нет, если повторять нечего
     Error:
       type: object
       required: [error]
@@ -322,7 +514,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, internal]
             message:
               type: string
               description: Текст для пользователя на русском

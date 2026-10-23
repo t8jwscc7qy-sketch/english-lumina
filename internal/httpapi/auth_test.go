@@ -56,6 +56,12 @@ type fakeStore struct {
 	examples     []db.ListExamplesRow
 	lastExamples *db.ListExamplesParams
 	exampleCalls int
+	lexemesByID  map[int64]db.Lexeme
+	cardLevels   map[int64]string // уровень слова для очереди (lexeme_id → уровень)
+	cards        map[int64]db.Card
+	nextCardID   int64
+	events       []db.Event
+	eventKeys    map[string]bool
 	upserts      int
 }
 
