@@ -9,11 +9,11 @@ export function ComingSoonPage({ title, text }: { title: string; text: string })
 
   return (
     <div className="grid min-h-dvh place-items-center p-6">
-      <div className="pixel-box flex max-w-md flex-col items-start gap-4 p-6">
+      <div className="surface flex max-w-md flex-col items-start gap-4 p-6">
         <Mascot scale={4} />
-        <h1 className="font-pixel text-title">{title}</h1>
+        <h1 className="text-title">{title}</h1>
         <p className="text-muted-foreground">{text}</p>
-        <p className="border-4 border-sun px-3 py-1 text-sm font-semibold">Скоро</p>
+        <p className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold">Скоро</p>
       </div>
     </div>
   )
@@ -26,9 +26,9 @@ export function NotFoundPage() {
 
   return (
     <div className="grid min-h-dvh place-items-center p-6">
-      <div className="pixel-box flex max-w-md flex-col items-start gap-4 p-6">
+      <div className="surface flex max-w-md flex-col items-start gap-4 p-6">
         <Mascot scale={4} />
-        <h1 className="font-pixel text-title">Здесь ничего нет</h1>
+        <h1 className="text-title">Здесь ничего нет</h1>
         <p className="text-muted-foreground">Такой страницы нет. Вернись в раздел «Сегодня».</p>
       </div>
     </div>

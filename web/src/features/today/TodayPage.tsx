@@ -1,8 +1,7 @@
+import { CircleAlert, Layers, Pencil } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { PixelArtSvg } from '@/components/pixel/PixelArtSvg'
 import { XpBar } from '@/components/pixel/XpBar'
-import { icons } from '@/components/pixel/icons'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/auth/auth'
 import { DEMO_TODAY } from './demo'
@@ -27,14 +26,14 @@ function TaskCard({
   return (
     <Link
       to={to}
-      className="block transition-[translate,box-shadow] duration-100 ease-[steps(2)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:[--shadow-pixel:6px_6px_0_0_var(--shadow)] active:translate-x-0.5 active:translate-y-0.5"
+      className="block rounded-xl transition-[translate,box-shadow] duration-150 hover:-translate-y-0.5 hover:[--shadow-card:var(--shadow-card-hover)] active:translate-y-0"
     >
-      <article className="pixel-box flex h-full flex-col gap-2 p-4">
+      <article className="surface flex h-full flex-col gap-2 p-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <span className={tone === 'error' ? 'text-coral-text' : undefined}>{icon}</span>
           <h3 className="font-sans text-sm font-semibold">{title}</h3>
         </div>
-        <p className="font-pixel text-display">{value}</p>
+        <p className="text-display tabular-nums">{value}</p>
         <p className="text-sm text-muted-foreground">{hint}</p>
       </article>
     </Link>
@@ -54,14 +53,14 @@ export function TodayPage() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-8 p-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:p-8">
       <header className="flex flex-col gap-2 xl:col-start-1">
-        <h1 className="font-pixel text-title break-words">Привет, {me.data?.login}</h1>
+        <h1 className="text-title break-words">Привет, {me.data?.login}</h1>
         <p className="text-muted-foreground">
           Цель: {d.current} → {d.target} · {d.minutesPerDay}&nbsp;мин в день
         </p>
-        {/* Честная пометка. Жёлтый в этом мире значит «опыт и главное действие», поэтому рамка пунктирная чернильная. */}
+        {/* Честная пометка. Жёлтый в этом мире значит «опыт и главное действие», поэтому рамка пунктирная нейтральная. */}
         <p
           role="note"
-          className="mt-1 w-fit border-4 border-dashed border-line bg-card px-3 py-1 text-sm font-semibold"
+          className="mt-1 w-fit rounded-lg border border-dashed border-input bg-card px-3 py-1 text-sm font-semibold"
         >
           Демо-данные: настоящие появятся после подключения словаря и упражнений.
         </p>
@@ -72,14 +71,14 @@ export function TodayPage() {
         aria-label="Серия и сессия"
         className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3 xl:col-start-2 xl:row-span-3 xl:row-start-1 xl:flex xl:flex-col xl:gap-6"
       >
-        <section className="pixel-box flex flex-col gap-1 p-4">
+        <section className="surface flex flex-col gap-1 p-4">
           <h2 className="font-sans text-sm font-semibold text-muted-foreground">Серия</h2>
-          <p className="font-pixel text-title md:text-display">
+          <p className="text-title md:text-display">
             {d.streakDays} {dayWord}
           </p>
         </section>
 
-        <section className="pixel-box flex flex-col gap-3 p-4">
+        <section className="surface flex flex-col gap-3 p-4">
           <h2 className="font-sans text-sm font-semibold text-muted-foreground">
             Минимальный день
           </h2>
@@ -106,9 +105,9 @@ export function TodayPage() {
 
       <section
         aria-labelledby="path-title"
-        className="pixel-box flex flex-col gap-6 p-6 xl:col-start-1"
+        className="surface flex flex-col gap-6 p-6 xl:col-start-1"
       >
-        <h2 id="path-title" className="font-pixel text-title">
+        <h2 id="path-title" className="text-title">
           Твой путь
         </h2>
         <StageMap current={d.current} target={d.target} forecast="collecting" />
@@ -137,14 +136,14 @@ export function TodayPage() {
           title="Карточки к повторению"
           value={d.cardsDue}
           hint="Слова, которые пора вспомнить"
-          icon={<PixelArtSvg art={icons.cards} scale={3} />}
+          icon={<Layers className="size-5" strokeWidth={1.75} aria-hidden />}
         />
         <TaskCard
           to="/exercises"
           title="Упражнения на слабые темы"
           value={d.exercises.count}
           hint={`Тема: ${d.exercises.topic}`}
-          icon={<PixelArtSvg art={icons.exercises} scale={3} />}
+          icon={<Pencil className="size-5" strokeWidth={1.75} aria-hidden />}
         />
         <TaskCard
           to="/mistakes"
@@ -152,7 +151,7 @@ export function TodayPage() {
           value={d.mistakes}
           hint="Вернутся, пока не исчезнут"
           tone="error"
-          icon={<PixelArtSvg art={icons.mistakes} scale={3} />}
+          icon={<CircleAlert className="size-5" strokeWidth={1.75} aria-hidden />}
         />
       </section>
     </div>

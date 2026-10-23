@@ -1,15 +1,16 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-@import '@fontsource/press-start-2p/400.css';
 @import '@fontsource/onest/400.css';
 @import '@fontsource/onest/600.css';
+@import '@fontsource/onest/700.css';
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Дизайн-токены Verst («Пиксельный квест»).
- * Сетка 4px (1 шаг Tailwind = 4px), контуры 4px, жёсткие тени без размытия, прямые углы.
+ * Дизайн-токены Verst: «спокойный премиум + игровые вспышки».
+ * Интерфейс спокойный: Onest, тонкие рамки, мягкие тени, скругления. Пиксель-арт живёт только
+ * в логотипе, маскоте, карте этапов и (позже) во вспышках успеха.
  * Цвета с одной задачей: жёлтый (sun) — опыт и главное действие, коралл (coral) — только ошибки,
  * зелёный (grass) — пройдено, голубой (sky) — «ты здесь».
  */
@@ -33,39 +34,45 @@
   --popover-foreground: var(--ink);
   --primary: var(--sun);
   --primary-foreground: var(--ink);
-  --secondary: #e4e6f7;
+  --secondary: #eceefa;
   --secondary-foreground: var(--ink);
-  --muted: #e4e6f7;
+  --muted: #eceefa;
   --muted-foreground: #4b5388;
   --accent: var(--sky);
   --accent-foreground: var(--ink);
   --destructive: var(--coral);
-  --border: var(--ink);
-  --input: var(--ink);
+  --border: #dfe2f3; /* тонкие рамки карточек (оформление, не контрол) */
+  --input: #858dc2; /* рамка полей ввода: ≥ 3:1 к белому */
   --ring: var(--sky);
-  --line: var(--ink);
-  --shadow: var(--ink);
+  --line: #dfe2f3;
+  --pixel-ink: #1e2347; /* контур пиксель-арта (маскот, флаги): тёмные чернила */
+  --shadow-card: 0 1px 2px rgb(30 35 71 / 0.05), 0 10px 28px -14px rgb(30 35 71 / 0.22);
+  --shadow-card-hover: 0 2px 4px rgb(30 35 71 / 0.06), 0 16px 34px -14px rgb(30 35 71 / 0.32);
+  --shadow-button: 0 1px 2px rgb(30 35 71 / 0.18);
   --rail: #1e2347;
   --rail-foreground: #f7f7ff;
   --rail-muted: #a9b0e0;
-  --radius: 0px;
+  --radius: 0.75rem;
 }
 
 .dark {
   --background: #14172e;
   --foreground: #f7f7ff;
-  --card: #1e2347;
+  --card: #1c2144;
   --card-foreground: #f7f7ff;
-  --popover: #1e2347;
+  --popover: #1c2144;
   --popover-foreground: #f7f7ff;
-  --secondary: #2a3060;
+  --secondary: #272d5a;
   --secondary-foreground: #f7f7ff;
-  --muted: #2a3060;
+  --muted: #272d5a;
   --muted-foreground: #a9b0e0;
-  --border: #6e78b8;
-  --input: #6e78b8;
-  --line: #6e78b8;
-  --shadow: #0a0c1c;
+  --border: #2e3563;
+  --input: #7782c0;
+  --line: #2e3563;
+  --pixel-ink: #6e78b8; /* на тёмном фоне контур светлее, иначе маскот сливается с карточкой */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 30px -14px rgb(0 0 0 / 0.6);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 38px -14px rgb(0 0 0 / 0.75);
+  --shadow-button: 0 1px 2px rgb(0 0 0 / 0.4);
   --coral-text: #ff8fa8;
   --focus: var(--sky);
   --bridge: #8fd3b0; /* светлее зелёного: на тёмной платформе обычный зелёный тонет */
@@ -73,15 +80,18 @@
 }
 
 @theme inline {
-  --font-pixel: 'Press Start 2P', ui-monospace, monospace;
   --font-sans: 'Onest', system-ui, sans-serif;
-  --font-heading: var(--font-pixel);
+  --font-heading: var(--font-sans);
 
-  /* Шкала размеров: 12 / 14 / 16 / 20 / 24 / 40. Пиксельный шрифт чёток на размерах, кратных 8 (16, 24, 40). */
+  /* Шкала размеров: 12 / 14 / 16 / 20 / 24 / 36. Заголовки и крупные числа — Onest 700. */
   --text-title: 1.5rem;
   --text-title--line-height: 2rem;
-  --text-display: 2.5rem;
-  --text-display--line-height: 3rem;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.01em;
+  --text-display: 2.25rem;
+  --text-display--line-height: 2.75rem;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.02em;
 
   --color-paper: var(--paper);
   --color-ink: var(--ink);
@@ -115,20 +125,11 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Прямые углы: пиксельный стиль без скруглений. */
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
-
-  /* Жёсткие тени: смещение по сетке 4px, без размытия. */
-  --shadow-pixel: 4px 4px 0 0 var(--shadow);
-  --shadow-pixel-sm: 2px 2px 0 0 var(--shadow);
-  --shadow-pixel-inset:
-    inset -4px -4px 0 0 rgb(0 0 0 / 0.18), inset 4px 4px 0 0 rgb(255 255 255 / 0.4);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
 }
 
 @layer base {
@@ -139,16 +140,16 @@
   html {
     color-scheme: light;
     /* Поверхности браузера тоже в палитре: прокрутка, выделение, нативные контролы. */
-    scrollbar-color: var(--line) var(--background);
+    scrollbar-color: var(--input) var(--background);
     accent-color: var(--sun);
+  }
+  html.dark {
+    color-scheme: dark;
   }
 
   ::selection {
     background: var(--sun);
     color: var(--ink);
-  }
-  html.dark {
-    color-scheme: dark;
   }
 
   body {
@@ -171,24 +172,11 @@
     touch-action: manipulation;
   }
 
-  /* Пиксельный шрифт включается явно классом font-pixel (заголовки страниц, числа, кнопки). */
-  .font-pixel {
-    font-family: var(--font-pixel);
-    font-weight: 400; /* у Press Start 2P один вес: жирный был бы подделкой */
-    letter-spacing: 0;
-    word-spacing: -0.3em; /* пробел шрифта шириной в букву: сужаем, иначе слова разваливаются */
-  }
-
-  /* Пиксельный фокус: толстая рамка голубого цвета, видна в обеих темах. */
+  /* Кольцо фокуса: ink на светлом, голубое на тёмном; видно в обеих темах. */
   :focus-visible {
-    outline: 4px solid var(--focus);
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
-  }
-
-  /* Графика из клеток не должна размываться. */
-  svg,
-  img {
-    image-rendering: pixelated;
+    border-radius: var(--radius-sm);
   }
 
   /* «Уменьшить движение»: анимации и переходы выключены, остаётся статичный кадр. */
@@ -205,11 +193,12 @@
 }
 
 @layer components {
-  /* Базовая рамка пиксельного блока: 4px контур и жёсткая тень. */
-  .pixel-box {
-    border: 4px solid var(--line);
+  /* Поверхность: белая карточка с тонкой рамкой и мягкой тенью. */
+  .surface {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
     background: var(--card);
     color: var(--card-foreground);
-    box-shadow: var(--shadow-pixel);
+    box-shadow: var(--shadow-card);
   }
 }

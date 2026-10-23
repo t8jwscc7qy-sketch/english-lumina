@@ -1,32 +1,32 @@
 import { cva } from 'class-variance-authority'
 
 /*
- * Варианты кнопки Verst: 4px контур, жёсткая тень; при нажатии «вдавливается» на 4px.
- * Переходов нет — состояния меняются мгновенно, как кадры в пиксельной игре.
+ * Варианты кнопки Verst: спокойные, со скруглением и лёгкой тенью.
  * Главное действие (default) — жёлтое: этот цвет зарезервирован под опыт и главное действие.
+ * Недоступная кнопка — приглушённая заливка без тени: читается как «пока нельзя».
  */
 export const buttonVariants = cva(
-  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 border-4 border-line font-pixel whitespace-nowrap select-none disabled:pointer-events-none disabled:border-dashed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0',
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg font-sans font-semibold whitespace-nowrap select-none transition-[background-color,filter,translate] duration-150 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground shadow-pixel hover:brightness-105 active:translate-x-1 active:translate-y-1 active:shadow-pixel-sm',
+          'bg-primary text-primary-foreground shadow-button hover:brightness-95 active:translate-y-px',
         secondary:
-          'bg-card text-card-foreground shadow-pixel hover:bg-muted active:translate-x-1 active:translate-y-1 active:shadow-pixel-sm',
+          'border border-input bg-card text-card-foreground hover:bg-muted active:translate-y-px',
         accent:
-          'bg-accent text-accent-foreground shadow-pixel hover:brightness-105 active:translate-x-1 active:translate-y-1 active:shadow-pixel-sm',
+          'bg-accent text-accent-foreground shadow-button hover:brightness-95 active:translate-y-px',
         destructive:
-          'bg-coral-soft text-ink shadow-pixel hover:brightness-105 active:translate-x-1 active:translate-y-1 active:shadow-pixel-sm',
-        ghost: 'border-transparent bg-transparent text-foreground hover:border-line hover:bg-muted',
-        link: 'border-transparent bg-transparent px-0 text-foreground underline underline-offset-4 hover:no-underline',
+          'bg-coral-soft text-ink shadow-button hover:brightness-95 active:translate-y-px',
+        ghost: 'bg-transparent text-foreground hover:bg-muted disabled:bg-transparent',
+        link: 'bg-transparent px-0 text-foreground underline underline-offset-4 hover:no-underline disabled:bg-transparent',
       },
       size: {
-        default: 'h-12 px-6 text-base',
-        sm: 'h-10 px-4 text-sm',
-        lg: 'min-h-14 px-4 py-2 text-base whitespace-normal md:px-6',
-        icon: 'size-12',
-        'icon-sm': 'size-10',
+        default: 'h-11 px-5 text-base',
+        sm: 'h-9 px-3 text-sm',
+        lg: 'min-h-12 px-6 py-2.5 text-base whitespace-normal',
+        icon: 'size-11',
+        'icon-sm': 'size-9',
       },
     },
     defaultVariants: {

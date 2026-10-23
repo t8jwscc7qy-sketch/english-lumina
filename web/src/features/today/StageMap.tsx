@@ -65,12 +65,9 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               {/* Платформа. Склеены встык: путь выглядит непрерывной дорогой. */}
               <div
                 className={cn(
-                  'relative h-6 w-full border-y-4 border-line',
-                  // Торцы дороги: тонкие вертикальные заглушки на краях первой и последней платформы.
-                  i === 0 &&
-                    'before:absolute before:-top-1 before:-bottom-1 before:left-0 before:w-1 before:bg-line',
-                  i === LEVELS.length - 1 &&
-                    'after:absolute after:-top-1 after:-bottom-1 after:right-0 after:w-1 after:bg-line',
+                  'relative h-3 w-full overflow-hidden',
+                  i === 0 && 'rounded-l-full',
+                  i === LEVELS.length - 1 && 'rounded-r-full',
                   stage === 'done' && 'bg-grass',
                   stage === 'current' && 'bg-sky',
                   (stage === 'bridge' || stage === 'future') && 'bg-muted',
@@ -84,7 +81,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               <p
                 aria-hidden
                 className={cn(
-                  'mt-3 font-pixel text-base',
+                  'mt-3 text-base font-semibold',
                   stage === 'future' && !isTarget && 'text-muted-foreground',
                 )}
               >
@@ -114,7 +111,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
 
       {forecast === 'collecting' && cur < tgt && (
         <p className="flex items-center gap-3 text-sm">
-          <span className="relative block h-4 w-12 shrink-0 border-4 border-line bg-muted">
+          <span className="relative block h-3 w-12 shrink-0 overflow-hidden rounded-full bg-muted">
             <Dither level={2} color="var(--bridge)" className="absolute inset-0 block" />
           </span>
           <span>

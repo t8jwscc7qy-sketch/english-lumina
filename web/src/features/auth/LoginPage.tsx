@@ -64,10 +64,10 @@ export function LoginPage() {
           onSubmit={onSubmit}
           noValidate
           aria-describedby={message ? errorId : undefined}
-          className="pixel-box flex w-full flex-col gap-6 p-6"
+          className="surface flex w-full flex-col gap-6 p-6"
         >
           <div className="flex flex-col gap-1">
-            <h1 className="font-pixel text-title">Вход</h1>
+            <h1 className="text-title">Вход</h1>
             <p className="text-sm text-muted-foreground">Личный тренажёр английского.</p>
           </div>
 
@@ -75,7 +75,7 @@ export function LoginPage() {
             <div
               id={errorId}
               role="alert"
-              className="border-4 border-coral bg-card p-3 text-sm font-semibold text-coral-text"
+              className="rounded-lg border border-coral bg-card p-3 text-sm font-semibold text-coral-text"
             >
               {message}
             </div>

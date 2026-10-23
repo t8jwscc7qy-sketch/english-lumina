@@ -1,6 +1,5 @@
+import { Contrast } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PixelArtSvg } from '@/components/pixel/PixelArtSvg'
-import { icons } from '@/components/pixel/icons'
 import { useTheme } from '@/lib/theme'
 
 /** Переключатель светлой и тёмной темы. Название кнопки говорит, что включится после нажатия. */
@@ -16,7 +15,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       title={toDark ? 'Включить тёмную тему' : 'Включить светлую тему'}
       onClick={() => setTheme(toDark ? 'dark' : 'light')}
     >
-      <PixelArtSvg art={icons.contrast} scale={3} />
+      <Contrast className="size-5" strokeWidth={1.75} aria-hidden />
     </Button>
   )
 }

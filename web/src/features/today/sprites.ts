@@ -11,7 +11,7 @@ const FILL: Record<FlagKind, string> = {
 /** Флажок на этапе: зелёный — пройден, жёлтый — цель, серый — ещё впереди. */
 export function flagArt(kind: FlagKind): PixelArt {
   return {
-    palette: { K: 'var(--line)', F: FILL[kind] },
+    palette: { K: 'var(--pixel-ink)', F: FILL[kind] },
     rows: [
       '.KKKKKKKK',
       '.KFFFFFFK',
