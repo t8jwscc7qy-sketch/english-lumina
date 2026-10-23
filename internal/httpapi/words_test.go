@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -18,8 +19,15 @@ func (f *fakeStore) SearchLexemes(_ context.Context, arg db.SearchLexemesParams)
 	return f.lexemes, nil
 }
 
-func (f *fakeStore) ListLexemeLevels(context.Context, []int64) ([]db.ListLexemeLevelsRow, error) {
-	return f.levels, nil
+// Как настоящий запрос: только строки запрошенных слов.
+func (f *fakeStore) ListLexemeLevels(_ context.Context, ids []int64) ([]db.ListLexemeLevelsRow, error) {
+	var out []db.ListLexemeLevelsRow
+	for _, row := range f.levels {
+		if slices.Contains(ids, row.LexemeID) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
 }
 
 func wordsPath(q string) string { return "/api/v1/words?q=" + url.QueryEscape(q) }

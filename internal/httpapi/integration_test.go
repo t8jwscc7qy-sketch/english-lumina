@@ -401,9 +401,17 @@ func TestAddCardOnRealDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, w := range [][2]string{{"run", "verb"}, {"zebra", "noun"}} {
-		if _, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w[0], Pos: w[1], SourceID: ds.ID}); err != nil {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w[0], Pos: w[1], SourceID: ds.ID})
+		if err != nil {
 			t.Fatal(err)
 		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: ds.ID, Level: "A2", Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Слово без строк уровня: его нельзя добавить, иначе очередь падала бы на NULL.
+	if _, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: "walk", Pos: "verb", SourceID: ds.ID}); err != nil {
+		t.Fatal(err)
 	}
 	en, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "en", TatoebaID: 1, Text: "I like to run every morning before work.", Author: "CK", WordCount: 8, SourceID: ds.ID})
 	if err != nil {
@@ -463,8 +471,16 @@ func TestAddCardOnRealDatabase(t *testing.T) {
 	if rec := add("nonexistent", "noun"); rec.Code != http.StatusNotFound {
 		t.Fatalf("неизвестное слово: статус %d", rec.Code)
 	}
+	if rec := add("walk", "verb"); rec.Code != http.StatusNotFound || errorCode(t, rec.Body.String()) != api.ErrorErrorCodeWordNotFound {
+		t.Fatalf("слово без уровня: статус %d, тело %s", rec.Code, rec.Body)
+	}
 	if count(`SELECT count(*) FROM cards`) != 1 {
 		t.Fatal("отказы создали карточки")
+	}
+	// Очередь с добавленной карточкой отвечает (раньше этот путь не проверялся).
+	qrec := e.do(http.MethodGet, "/api/v1/cards/queue", "", withCookie(token))
+	if qrec.Code != http.StatusOK || decodeQueue(t, qrec.Body.String()).Card == nil || decodeQueue(t, qrec.Body.String()).Card.Level != api.CefrLevelA2 {
+		t.Fatalf("очередь после добавления: %d %s", qrec.Code, qrec.Body)
 	}
 }
 

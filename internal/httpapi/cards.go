@@ -60,6 +60,16 @@ func (s *authServer) AddCard(w http.ResponseWriter, r *http.Request) {
 		s.failCards(w, err)
 		return
 	}
+	// Карточка показывает уровень слова: без строк в lexeme_cefr очередь падала бы на NULL, поэтому такое слово не берём.
+	levels, err := s.store.ListLexemeLevels(ctx, []int64{lexeme.ID})
+	if err != nil {
+		s.failCards(w, err)
+		return
+	}
+	if len(levels) == 0 {
+		writeError(w, http.StatusNotFound, api.ErrorErrorCodeWordNotFound, "В списках нет уровня для этого слова")
+		return
+	}
 	sentences, err := exampleSentences(ctx, s.store, lexeme.Lemma, lexeme.Pos)
 	if err != nil {
 		s.failCards(w, err)
@@ -182,7 +192,6 @@ func (s *authServer) ReviewCard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	now := time.Now()
 	err = s.store.InTx(ctx, func(tx AuthStore) error {
 		row, err := tx.GetCardForUpdate(ctx, db.GetCardForUpdateParams{ID: req.CardId, UserID: user.ID})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -190,6 +199,12 @@ func (s *authServer) ReviewCard(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			return err
+		}
+		// Время берём уже после блокировки строки и не раньше последнего повторения: при гонке двух запросов или
+		// сбое часов last_review может оказаться «в будущем», а библиотека такую карточку отклоняет (500 вместо повтора).
+		now := time.Now()
+		if row.LastReview.Valid && now.Before(row.LastReview.Time) {
+			now = row.LastReview.Time
 		}
 		before := toSRS(row.Due, row.Stability, row.Difficulty, row.ScheduledDays, row.Reps, row.Lapses, row.State, row.LastReview, row.RemainingSteps)
 		after, err := srs.Review(before, srs.Rating(req.Rating), now)
@@ -225,7 +240,7 @@ func (s *authServer) ReviewCard(w http.ResponseWriter, r *http.Request) {
 		s.failCards(w, err)
 		return
 	}
-	q, err := queueResponse(ctx, s.store, user.ID, now)
+	q, err := queueResponse(ctx, s.store, user.ID, time.Now())
 	if err != nil {
 		s.failCards(w, err)
 		return

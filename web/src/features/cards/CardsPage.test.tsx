@@ -51,10 +51,44 @@ const findSentence = (text: string) => screen.findByText((_, el) => el?.tagName 
 
 function renderPage() {
   return renderAt('/cards', [
-    { path: '/cards', element: <CardsPage /> },
+    {
+      path: '/cards',
+      element: (
+        <>
+          {/* Элементы оболочки (меню, кнопки): клавиши Пробел и Enter на них не должны открывать ответ. */}
+          <a href="#menu">Меню</a>
+          <button type="button">Тема</button>
+          <CardsPage />
+        </>
+      ),
+    },
     { path: '/words', element: <p>Раздел слов</p> },
   ])
 }
+
+describe('CardsPage: клавиатура и фокус', () => {
+  it.each([['Меню', 'ссылке'], ['Тема', 'кнопке']])('Пробел и Enter на %s (%s оболочки) не открывают ответ', async (name) => {
+    stubApi({ queue: () => jsonResponse(200, queue(1, card(7))) })
+    const user = userEvent.setup()
+    renderPage()
+    await findSentence('I like to _____ every morning.')
+    const target = screen.getByRole(name === 'Меню' ? 'link' : 'button', { name })
+    target.focus()
+    await user.keyboard(' ')
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('button', { name: /показать ответ/i })).toBeInTheDocument()
+    expect(screen.queryByText('run')).not.toBeInTheDocument()
+  })
+
+  it('на самой кнопке «Показать ответ» Пробел и Enter по-прежнему открывают ответ', async () => {
+    stubApi({ queue: () => jsonResponse(200, queue(1, card(7))) })
+    const user = userEvent.setup()
+    renderPage()
+    ;(await screen.findByRole('button', { name: /показать ответ/i })).focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByText('run')).toHaveProperty('tagName', 'MARK')
+  })
+})
 
 describe('CardsPage', () => {
   it('пока грузится, говорит об этом; заголовок страницы «Карточки — Verst»', () => {

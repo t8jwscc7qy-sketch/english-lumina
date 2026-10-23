@@ -29,6 +29,7 @@ func cardsEnv(t *testing.T) (env, string) {
 	t.Helper()
 	e := newEnv(t)
 	e.store.addLexeme(1, "run", "verb", "B2")
+	e.store.levels = []db.ListLexemeLevelsRow{{LexemeID: 1, Source: "cefrj", Level: "B2", Extra: []byte(`{}`)}}
 	e.store.examples = runExamples()
 	return e, login(t, e)
 }
@@ -188,6 +189,7 @@ func TestAddCardUsesLemmaAsStoredNotAsTyped(t *testing.T) {
 	e, token := cardsEnv(t)
 	e.store.lexemesByID[2] = db.Lexeme{ID: 2, Lemma: "cafe/café", Pos: "noun"}
 	e.store.cardLevels[2] = "A1"
+	e.store.levels = append(e.store.levels, db.ListLexemeLevelsRow{LexemeID: 2, Source: "cefrj", Level: "A1", Extra: []byte(`{}`)})
 	e.store.examples = []db.ListExamplesRow{{EnTatoebaID: 5, EnText: "We had lunch at a café today.", EnAuthor: "CK", RuTatoebaID: 6, RuText: "Мы пообедали в кафе.", RuAuthor: "a"}}
 	rec := e.do(http.MethodPost, cardsPath, addBody("cafe/café", "noun"), withCookie(token))
 	if rec.Code != http.StatusCreated {
@@ -527,5 +529,41 @@ func TestReviewWorksWhenExamplesVanished(t *testing.T) {
 	e.store.examples = nil
 	if rec := doReview(e, token, id, 3, "k"); rec.Code != http.StatusOK {
 		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+}
+
+// Слово без уровня в списках нельзя добавить: у карточки без уровня очередь падала бы навсегда.
+func TestAddCardWordWithoutLevelIsRejected(t *testing.T) {
+	e, token := cardsEnv(t)
+	e.store.lexemesByID[3] = db.Lexeme{ID: 3, Lemma: "walk", Pos: "verb"} // строк уровня у слова нет
+	rec := e.do(http.MethodPost, cardsPath, addBody("walk", "verb"), withCookie(token))
+	if rec.Code != http.StatusNotFound || errorCode(t, rec.Body.String()) != api.ErrorErrorCodeWordNotFound {
+		t.Fatalf("статус %d, тело %s; ожидали 404 word_not_found", rec.Code, rec.Body)
+	}
+	if len(e.store.cards) != 0 || len(e.store.events) != 0 {
+		t.Fatal("слово без уровня создало карточку")
+	}
+}
+
+// Время оценки берётся уже после блокировки строки и не раньше последнего повторения:
+// при гонке или сбое часов оценка не должна давать 500 (библиотека отклоняет last_review в будущем).
+func TestReviewWhenLastReviewIsAheadOfClock(t *testing.T) {
+	e, token := cardsEnv(t)
+	id := seed(t, e, 1, time.Now().Add(-time.Hour))
+	card := e.store.cards[id]
+	card.LastReview = ts(time.Now().Add(time.Hour)) // «из будущего»: другой запрос успел оценить позже
+	e.store.cards[id] = card
+
+	rec := doReview(e, token, id, 3, "k1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s; ожидали 200", rec.Code, rec.Body)
+	}
+	after := e.store.cards[id]
+	if after.Reps != 1 || after.LastReview.Time.Before(card.LastReview.Time) {
+		t.Fatalf("после оценки: %+v (last_review не должен отодвигаться назад)", after)
+	}
+	// Повтор с тем же ключом при таком состоянии — тоже успех без изменений.
+	if rec := doReview(e, token, id, 3, "k1"); rec.Code != http.StatusOK || e.store.cards[id] != after || len(e.store.events) != 1 {
+		t.Fatalf("повтор: статус %d, событий %d", rec.Code, len(e.store.events))
 	}
 }

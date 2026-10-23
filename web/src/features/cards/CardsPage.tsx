@@ -23,6 +23,12 @@ function newKey(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+/** Кнопка, ссылка или другой управляющий элемент (кроме «Показать ответ»): Пробел и Enter на них принадлежат им, а не карточке. */
+function isOtherControl(t: EventTarget | null): boolean {
+  if (!(t instanceof HTMLElement) || t === document.body || t.closest('[data-reveal]')) return false
+  return t.closest('a[href], button, summary, [role="button"], [role="link"], [role="menuitem"], [role="tab"]') !== null
+}
+
 function isTypingTarget(t: EventTarget | null): boolean {
   return t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
 }
@@ -65,6 +71,7 @@ export function CardsPage() {
     function onKey(e: KeyboardEvent) {
       if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target) || !card) return
       if (!revealed && hasSentence && (e.key === ' ' || e.key === 'Enter')) {
+        if (isOtherControl(e.target)) return // навигация с клавиатуры по меню и кнопкам не должна ломаться
         e.preventDefault()
         setRevealed(true)
         return
@@ -130,7 +137,7 @@ export function CardsPage() {
           )}
 
           {card.sentence && !revealed ? (
-            <Button size="lg" onClick={() => setRevealed(true)} aria-keyshortcuts="Space Enter">
+            <Button size="lg" onClick={() => setRevealed(true)} aria-keyshortcuts="Space Enter" data-reveal>
               Показать ответ
             </Button>
           ) : (
