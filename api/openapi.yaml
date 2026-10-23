@@ -621,7 +621,8 @@ components:
           format: int64
         given:
           type: string
-          maxLength: 128
+          minLength: 1
+          maxLength: 200
           description: Ответ пользователя
         key:
           type: string
@@ -642,6 +643,7 @@ components:
           format: double
         attempts:
           type: integer
+          minimum: 0
     AnswerResult:
       type: object
       required: [correct, answer, translation, ratings]

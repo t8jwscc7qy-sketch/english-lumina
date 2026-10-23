@@ -93,7 +93,7 @@ func (f *fakeStore) UpsertTopicRating(_ context.Context, arg db.UpsertTopicRatin
 	return nil
 }
 
-// SampleSentences: строки пула с id >= FromID по возрастанию, не больше MaxRows.
+// SampleSentences: фейк не фильтрует по словам, длине и уровню, как SQL; строки пула с id >= FromID по возрастанию, не больше MaxRows.
 func (f *fakeStore) SampleSentences(_ context.Context, arg db.SampleSentencesParams) ([]db.SampleSentencesRow, error) {
 	var out []db.SampleSentencesRow
 	for _, s := range f.sentencePool {
