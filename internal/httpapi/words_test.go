@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -18,8 +19,15 @@ func (f *fakeStore) SearchLexemes(_ context.Context, arg db.SearchLexemesParams)
 	return f.lexemes, nil
 }
 
-func (f *fakeStore) ListLexemeLevels(context.Context, []int64) ([]db.ListLexemeLevelsRow, error) {
-	return f.levels, nil
+// Как настоящий запрос: только строки запрошенных слов.
+func (f *fakeStore) ListLexemeLevels(_ context.Context, ids []int64) ([]db.ListLexemeLevelsRow, error) {
+	var out []db.ListLexemeLevelsRow
+	for _, row := range f.levels {
+		if slices.Contains(ids, row.LexemeID) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
 }
 
 func wordsPath(q string) string { return "/api/v1/words?q=" + url.QueryEscape(q) }
@@ -133,5 +141,51 @@ func TestWordsAssemblesLevelsAndNotes(t *testing.T) {
 	// Без заметок это пустой массив, а не null.
 	if !strings.Contains(rec.Body.String(), `"notes":[]`) || strings.Contains(rec.Body.String(), `"notes":null`) {
 		t.Fatalf("notes должен быть [], тело %s", rec.Body)
+	}
+}
+
+func TestWordsMarkWordsThatAreInCards(t *testing.T) {
+	e := newEnv(t)
+	e.store.lexemes = []db.SearchLexemesRow{
+		{ID: 1, Lemma: "run", Pos: "verb", Level: "A1"},
+		{ID: 2, Lemma: "runner", Pos: "noun", Level: "B1"},
+		{ID: 3, Lemma: "runway", Pos: "noun", Level: "B2"},
+	}
+	e.store.levels = []db.ListLexemeLevelsRow{
+		{LexemeID: 1, Source: "cefrj", Level: "A1", Extra: []byte(`{}`)},
+		{LexemeID: 2, Source: "cefrj", Level: "B1", Extra: []byte(`{}`)},
+		{LexemeID: 3, Source: "cefrj", Level: "B2", Extra: []byte(`{}`)},
+	}
+	e.store.cards = map[int64]db.Card{
+		1: {ID: 1, UserID: 1, LexemeID: 1},
+		2: {ID: 2, UserID: 2, LexemeID: 2}, // карточка другого пользователя не считается
+	}
+	token := login(t, e)
+	rec := e.do(http.MethodGet, wordsPath("run"), "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	got := map[string]bool{}
+	for _, w := range decodeWords(t, rec.Body.String()).Words {
+		got[w.Lemma] = w.InCards
+	}
+	if !got["run"] || got["runner"] || got["runway"] {
+		t.Fatalf("inCards: %v, ожидали только run", got)
+	}
+	if !strings.Contains(rec.Body.String(), `"inCards":false`) {
+		t.Fatalf("inCards должен быть в ответе всегда, в том числе false: %s", rec.Body)
+	}
+}
+
+func TestWordsWithoutResultsDoNotAskForCards(t *testing.T) {
+	e := newEnv(t)
+	token := login(t, e)
+	for _, q := range []string{"zebra", ""} {
+		if rec := e.do(http.MethodGet, wordsPath(q), "", withCookie(token)); rec.Code != http.StatusOK {
+			t.Fatalf("q=%q: статус %d", q, rec.Code)
+		}
+	}
+	if e.store.listCardCalls != 0 {
+		t.Fatalf("запрос карточек выполнен %d раз без найденных слов", e.store.listCardCalls)
 	}
 }
