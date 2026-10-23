@@ -7,6 +7,7 @@ import type { components } from '@/api/schema.gen'
 import { cn } from '@/lib/utils'
 import { useAddCard } from '@/features/cards/cards'
 import { useDebounced } from '@/lib/useDebounced'
+import { describeFrequency } from './frequency'
 import { ExamplesPanel } from './ExamplesPanel'
 import { useWordSearch } from './words'
 
@@ -77,6 +78,7 @@ function WordRow({ word }: { word: Word }) {
         </span>
       </div>
       <p className="text-sm text-muted-foreground">{levels}</p>
+      <p className="text-sm text-muted-foreground">{`Частота: ${describeFrequency(word.frequencyRank)}`}</p>
       {notes && <p className="text-sm break-words">{notes}</p>}
       <div className="flex flex-col items-start gap-3">
         <div className="flex flex-wrap items-start gap-x-2 gap-y-1">

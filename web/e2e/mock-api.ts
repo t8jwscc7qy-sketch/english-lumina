@@ -37,11 +37,12 @@ type WordFixture = {
   pos: string
   level: string
   levels: { source: string; level: string; notes: string[] }[]
+  frequencyRank?: number
 }
 
 export const WORDS: WordFixture[] = [
-  { lemma: 'run', pos: 'verb', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }] },
-  { lemma: 'runner', pos: 'noun', level: 'B1', levels: [{ source: 'cefrj', level: 'B1', notes: [] }] },
+  { lemma: 'run', pos: 'verb', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }], frequencyRank: 244 },
+  { lemma: 'runner', pos: 'noun', level: 'B1', levels: [{ source: 'cefrj', level: 'B1', notes: [] }], frequencyRank: 5216 },
   { lemma: 'runway', pos: 'noun', level: 'B2', levels: [{ source: 'cefrj', level: 'B2', notes: [] }] },
   {
     lemma: 'complexity',

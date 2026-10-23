@@ -328,3 +328,23 @@ describe('кнопка «В карточки»', () => {
     expect(posts(fn)).toHaveLength(1)
   })
 })
+
+describe('частота слова', () => {
+  const withRank = (rank?: number) => ({ ...RUN, ...(rank === undefined ? {} : { frequencyRank: rank }) })
+
+  it('показывает место слова в списке частот и словесную оценку', async () => {
+    stub(() => list(withRank(870)))
+    renderPage()
+    await search('run')
+    const item = within(await screen.findByRole('listitem'))
+    expect(item.getByText(/Частота: очень частое слово, № 870 из 50\s000/)).toBeInTheDocument()
+  })
+
+  it('у слова не из списка пишет, что оно реже последнего места', async () => {
+    stub(() => list(withRank()))
+    renderPage()
+    await search('run')
+    const item = within(await screen.findByRole('listitem'))
+    expect(item.getByText(/Частота: редкое слово, реже № 50\s000/)).toBeInTheDocument()
+  })
+})

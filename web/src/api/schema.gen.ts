@@ -248,6 +248,8 @@ export interface components {
             pos: string;
             /** @description Есть ли у пользователя карточка этого слова */
             inCards: boolean;
+            /** @description Место слова в списке частот (1 — самое частое): лучшее среди его форм. Нет, если слова нет в списке (реже 50 000-го) или это фраза. */
+            frequencyRank?: number;
             /** @description Уровень слова — самый низкий из оценок источников */
             level: components["schemas"]["CefrLevel"];
             /** @description Оценки по источникам */
