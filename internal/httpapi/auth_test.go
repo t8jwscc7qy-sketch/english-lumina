@@ -43,27 +43,28 @@ func passwordHash(t *testing.T) string {
 
 // fakeStore повторяет условия реальных запросов: активна только неотозванная и непросроченная сессия.
 type fakeStore struct {
-	user         db.User
-	sessions     map[string]db.Session // ключ — string(token_hash)
-	nextID       int64
-	touched      int
-	settings     *db.Setting // nil — онбординг не пройден
-	sources      []db.DataSource
-	lexemes      []db.SearchLexemesRow
-	levels       []db.ListLexemeLevelsRow
-	lastSearch   *db.SearchLexemesParams
-	searches     int
-	examples     []db.ListExamplesRow
-	lastExamples *db.ListExamplesParams
-	exampleCalls int
-	lexemesByID  map[int64]db.Lexeme
-	cardLevels   map[int64]string // уровень слова для очереди (lexeme_id → уровень)
-	cards        map[int64]db.Card
-	nextCardID   int64
-	events       []db.Event
-	eventKeys    map[string]bool
-	failEvents   bool // AppendEvent возвращает ошибку (проверка отката)
-	upserts      int
+	user          db.User
+	sessions      map[string]db.Session // ключ — string(token_hash)
+	nextID        int64
+	touched       int
+	settings      *db.Setting // nil — онбординг не пройден
+	sources       []db.DataSource
+	lexemes       []db.SearchLexemesRow
+	levels        []db.ListLexemeLevelsRow
+	lastSearch    *db.SearchLexemesParams
+	searches      int
+	examples      []db.ListExamplesRow
+	lastExamples  *db.ListExamplesParams
+	exampleCalls  int
+	lexemesByID   map[int64]db.Lexeme
+	cardLevels    map[int64]string // уровень слова для очереди (lexeme_id → уровень)
+	cards         map[int64]db.Card
+	nextCardID    int64
+	events        []db.Event
+	eventKeys     map[string]bool
+	listCardCalls int
+	failEvents    bool // AppendEvent возвращает ошибку (проверка отката)
+	upserts       int
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

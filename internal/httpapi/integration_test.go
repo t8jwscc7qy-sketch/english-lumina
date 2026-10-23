@@ -636,3 +636,59 @@ func TestReviewCardsOnRealDatabase(t *testing.T) {
 		t.Fatalf("итоговая очередь: %+v", final)
 	}
 }
+
+// Признак inCards в поиске на настоящей базе: появляется после добавления карточки.
+func TestWordsInCardsOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range []string{"run", "runner"} {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w, Pos: "verb", SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: ds.ID, Level: "A1", Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	en, _ := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "en", TatoebaID: 1, Text: "I like to run every morning before work.", Author: "CK", WordCount: 8, SourceID: ds.ID})
+	ru, _ := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "ru", TatoebaID: 2, Text: "Я люблю бегать по утрам.", Author: "a", WordCount: 5, SourceID: ds.ID})
+	if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en.ID, RuID: ru.ID, SourceID: ds.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	inCards := func() map[string]bool {
+		t.Helper()
+		rec := e.do(http.MethodGet, wordsPath("run"), "", withCookie(token))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("поиск: %d %s", rec.Code, rec.Body)
+		}
+		got := map[string]bool{}
+		for _, w := range decodeWords(t, rec.Body.String()).Words {
+			got[w.Lemma] = w.InCards
+		}
+		return got
+	}
+	if got := inCards(); got["run"] || got["runner"] {
+		t.Fatalf("до добавления: %v", got)
+	}
+	if rec := e.do(http.MethodPost, "/api/v1/cards", addBody("run", "verb"), withCookie(token)); rec.Code != http.StatusCreated {
+		t.Fatalf("добавление: %d %s", rec.Code, rec.Body)
+	}
+	if got := inCards(); !got["run"] || got["runner"] {
+		t.Fatalf("после добавления: %v, ожидали только run", got)
+	}
+}

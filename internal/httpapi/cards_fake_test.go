@@ -122,6 +122,7 @@ func (f *fakeStore) CountCards(_ context.Context, arg db.CountCardsParams) (db.C
 }
 
 func (f *fakeStore) ListCardLexemeIDs(_ context.Context, arg db.ListCardLexemeIDsParams) ([]int64, error) {
+	f.listCardCalls++
 	var out []int64
 	for _, c := range f.cards {
 		if c.UserID == arg.UserID && slices.Contains(arg.Ids, c.LexemeID) {

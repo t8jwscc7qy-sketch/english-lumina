@@ -16,7 +16,8 @@ const maxWordResults = 50
 // SearchWords ищет слово по началу (и по началу варианта через слэш). Запрос q читаем сами:
 // объявленный в контракте параметр заставил бы генератор добавить новую зависимость.
 func (s *authServer) SearchWords(w http.ResponseWriter, r *http.Request) {
-	if _, err := authenticate(r, s.store); err != nil {
+	user, err := authenticate(r, s.store)
+	if err != nil {
 		writeAuthError(w, err)
 		return
 	}
@@ -56,6 +57,15 @@ func (s *authServer) SearchWords(w http.ResponseWriter, r *http.Request) {
 		s.failWords(w, err)
 		return
 	}
+	cardIDs, err := s.store.ListCardLexemeIDs(ctx, db.ListCardLexemeIDsParams{UserID: user.ID, Ids: ids})
+	if err != nil {
+		s.failWords(w, err)
+		return
+	}
+	inCards := make(map[int64]bool, len(cardIDs))
+	for _, id := range cardIDs {
+		inCards[id] = true
+	}
 	byWord := map[int64][]api.WordLevel{}
 	for _, l := range levels {
 		byWord[l.LexemeID] = append(byWord[l.LexemeID], api.WordLevel{
@@ -64,7 +74,7 @@ func (s *authServer) SearchWords(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, f := range found {
 		out.Words = append(out.Words, api.Word{
-			Lemma: f.Lemma, Pos: f.Pos, Level: api.CefrLevel(f.Level), Levels: append([]api.WordLevel{}, byWord[f.ID]...),
+			Lemma: f.Lemma, Pos: f.Pos, Level: api.CefrLevel(f.Level), Levels: append([]api.WordLevel{}, byWord[f.ID]...), InCards: inCards[f.ID],
 		})
 	}
 	writeJSON(w, http.StatusOK, out)
