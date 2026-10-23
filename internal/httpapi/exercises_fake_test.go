@@ -205,3 +205,33 @@ func (f *fakeStore) GetEventByKey(_ context.Context, arg db.GetEventByKeyParams)
 	}
 	return db.Event{}, pgx.ErrNoRows
 }
+
+// addPair добавляет английское предложение, связанное с русским переводом ruID.
+func (f *fakeStore) addPair(enID, ruID int64, text string, words int16) {
+	if f.enText == nil {
+		f.enText, f.enWords, f.enRu = map[int64]string{}, map[int64]int16{}, map[int64][]int64{}
+	}
+	f.enText[enID], f.enWords[enID] = text, words
+	f.enRu[enID] = append(f.enRu[enID], ruID)
+}
+
+// ListEnglishAlternatives повторяет SQL: другие английские предложения (4–10 слов) с общим русским переводом, по id, не больше MaxRows.
+func (f *fakeStore) ListEnglishAlternatives(_ context.Context, arg db.ListEnglishAlternativesParams) ([]db.ListEnglishAlternativesRow, error) {
+	var ids []int64
+	for id, rus := range f.enRu {
+		if id == arg.EnID || f.enWords[id] < 4 || f.enWords[id] > 10 {
+			continue
+		}
+		if slices.ContainsFunc(rus, func(r int64) bool { return slices.Contains(f.enRu[arg.EnID], r) }) {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	var out []db.ListEnglishAlternativesRow
+	for _, id := range ids {
+		if int32(len(out)) < arg.MaxRows {
+			out = append(out, db.ListEnglishAlternativesRow{ID: id, Text: f.enText[id]})
+		}
+	}
+	return out, nil
+}

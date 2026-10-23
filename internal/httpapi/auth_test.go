@@ -75,6 +75,9 @@ type fakeStore struct {
 	sentencePool   []db.SampleSentencesRow         // для SampleSentences, по возрастанию id
 	wordLevels     map[string]db.SentenceLevelsRow // для SentenceLevels
 	rangeCalls     int
+	enText         map[int64]string  // для ListEnglishAlternatives: id английского предложения -> текст
+	enWords        map[int64]int16   // и число слов
+	enRu           map[int64][]int64 // и русские переводы (id)
 	levelCalls     int
 	sampleErr      error
 	rangeOverride  *db.SentenceIDRangeRow

@@ -76,6 +76,7 @@ type AuthStore interface {
 	UsedSentences(ctx context.Context, arg db.UsedSentencesParams) ([]int64, error)
 	SentenceIDRange(ctx context.Context) (db.SentenceIDRangeRow, error)
 	RandomLexemesByLevel(ctx context.Context, arg db.RandomLexemesByLevelParams) ([]db.RandomLexemesByLevelRow, error)
+	ListEnglishAlternatives(ctx context.Context, arg db.ListEnglishAlternativesParams) ([]db.ListEnglishAlternativesRow, error)
 
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
 	// Хранилище, переданное в fn, работает на этой транзакции; вложенный InTx использует ту же транзакцию.
