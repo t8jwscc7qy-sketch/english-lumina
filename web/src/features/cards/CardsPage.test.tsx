@@ -67,6 +67,19 @@ function renderPage() {
 }
 
 describe('CardsPage: клавиатура и фокус', () => {
+  it('при появлении карточки фокус переходит на неё: клавиши работают сразу, даже если до этого фокус был на ссылке меню', async () => {
+    stubApi({ queue: () => jsonResponse(200, queue(2, card(7))), review: () => jsonResponse(200, queue(1, card(8, 'go', SENTENCE2))) })
+    const user = userEvent.setup()
+    renderPage()
+    const article = await screen.findByRole('article', { name: 'Карточка' })
+    await waitFor(() => expect(article).toHaveFocus())
+    await user.keyboard(' ')
+    await user.keyboard('3')
+    // Следующая карточка: фокус снова на ней (кнопка оценки, на которой он был, исчезла).
+    await findSentence('We _____ to school together.')
+    await waitFor(() => expect(screen.getByRole('article', { name: 'Карточка' })).toHaveFocus())
+  })
+
   it.each([['Меню', 'ссылке'], ['Тема', 'кнопке']])('Пробел и Enter на %s (%s оболочки) не открывают ответ', async (name) => {
     stubApi({ queue: () => jsonResponse(200, queue(1, card(7))) })
     const user = userEvent.setup()

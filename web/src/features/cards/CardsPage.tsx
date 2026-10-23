@@ -38,13 +38,21 @@ export function CardsPage() {
   const review = useReviewCard()
   const [revealed, setRevealed] = useState(false)
   const keyRef = useRef(newKey())
+  const articleRef = useRef<HTMLElement>(null)
   const busyRef = useRef(false)
   const card = queue.data?.card
   const hasSentence = !!card?.sentence
+  const cardId = card?.cardId
 
   useEffect(() => {
     document.title = 'Карточки — Verst'
   }, [])
+
+  // Новая карточка забирает фокус: клавиши Пробел/Enter/1–4 работают сразу (фокус мог остаться на ссылке меню),
+  // а после оценки он не теряется вместе с исчезнувшей кнопкой.
+  useEffect(() => {
+    if (cardId !== undefined) articleRef.current?.focus()
+  }, [cardId])
 
   const rate = useCallback(
     (rating: Rating) => {
@@ -118,7 +126,7 @@ export function CardsPage() {
       )}
 
       {card && (
-        <article aria-label="Карточка" className="surface flex flex-col gap-6 p-6">
+        <article ref={articleRef} tabIndex={-1} aria-label="Карточка" className="surface flex flex-col gap-6 p-6 outline-none">
           <p className="text-sm text-muted-foreground">{`${card.level} · ${card.pos}`}</p>
 
           {card.sentence ? (
