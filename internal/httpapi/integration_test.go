@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -379,5 +380,90 @@ func TestExamplesOnRealDatabase(t *testing.T) {
 	// Фраза ищется как слова подряд: «like to» есть в №6 и №7 (№9 длинный, №12 без перевода, «likes» — другая форма).
 	if phrase := ids(get("like to", "verb")); fmt.Sprint(phrase) != "[6 7]" {
 		t.Fatalf("фраза like to: %v, ожидали [6 7]", phrase)
+	}
+}
+
+// Добавление карточки на настоящей базе: состояние, событие, повтор без дублей, слово без примеров.
+func TestAddCardOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range [][2]string{{"run", "verb"}, {"zebra", "noun"}} {
+		if _, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w[0], Pos: w[1], SourceID: ds.ID}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	en, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "en", TatoebaID: 1, Text: "I like to run every morning before work.", Author: "CK", WordCount: 8, SourceID: ds.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ru, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "ru", TatoebaID: 2, Text: "Я люблю бегать по утрам перед работой.", Author: "a", WordCount: 6, SourceID: ds.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en.ID, RuID: ru.ID, SourceID: ds.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	add := func(lemma, pos string) *httptest.ResponseRecorder {
+		return e.do(http.MethodPost, "/api/v1/cards", addBody(lemma, pos), withCookie(token))
+	}
+	count := func(query string) int {
+		var n int
+		if err := pool.QueryRow(ctx, query).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	before := time.Now().Add(-time.Second)
+	rec := add("run", "verb")
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	created := decodeAdd(t, rec.Body.String())
+	var state, reps int
+	var due time.Time
+	var lastReviewNull bool
+	err = pool.QueryRow(ctx, `SELECT state, reps, due, last_review IS NULL FROM cards WHERE id = $1`, created.CardId).Scan(&state, &reps, &due, &lastReviewNull)
+	if err != nil || state != 0 || reps != 0 || !lastReviewNull || due.Before(before) || due.After(time.Now().Add(time.Second)) {
+		t.Fatalf("карточка: state=%d reps=%d due=%v lastReviewNull=%v (%v)", state, reps, due, lastReviewNull, err)
+	}
+	var payload string
+	if err := pool.QueryRow(ctx, `SELECT payload::text FROM events WHERE type = 'card.added'`).Scan(&payload); err != nil ||
+		!strings.Contains(payload, `"lemma": "run"`) || !strings.Contains(payload, `"pos": "verb"`) {
+		t.Fatalf("событие card.added: %s (%v)", payload, err)
+	}
+
+	again := add("run", "verb")
+	if again.Code != http.StatusOK || decodeAdd(t, again.Body.String()).Created {
+		t.Fatalf("повтор: статус %d, тело %s", again.Code, again.Body)
+	}
+	if count(`SELECT count(*) FROM cards`) != 1 || count(`SELECT count(*) FROM events WHERE type = 'card.added'`) != 1 {
+		t.Fatalf("после повтора карточек %d, событий %d; ожидали по одному", count(`SELECT count(*) FROM cards`), count(`SELECT count(*) FROM events`))
+	}
+
+	if rec := add("zebra", "noun"); rec.Code != http.StatusConflict || errorCode(t, rec.Body.String()) != api.ErrorErrorCodeNoExamples {
+		t.Fatalf("слово без примеров: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	if rec := add("nonexistent", "noun"); rec.Code != http.StatusNotFound {
+		t.Fatalf("неизвестное слово: статус %d", rec.Code)
+	}
+	if count(`SELECT count(*) FROM cards`) != 1 {
+		t.Fatal("отказы создали карточки")
 	}
 }

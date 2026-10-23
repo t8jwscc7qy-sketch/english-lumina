@@ -62,6 +62,7 @@ type fakeStore struct {
 	nextCardID   int64
 	events       []db.Event
 	eventKeys    map[string]bool
+	failEvents   bool // AppendEvent возвращает ошибку (проверка отката)
 	upserts      int
 }
 

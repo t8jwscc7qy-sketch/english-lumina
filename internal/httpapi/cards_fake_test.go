@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -131,6 +132,9 @@ func (f *fakeStore) ListCardLexemeIDs(_ context.Context, arg db.ListCardLexemeID
 }
 
 func (f *fakeStore) AppendEvent(_ context.Context, arg db.AppendEventParams) (int64, error) {
+	if f.failEvents {
+		return 0, errors.New("журнал недоступен")
+	}
 	if f.eventKeys == nil {
 		f.eventKeys = map[string]bool{}
 	}
