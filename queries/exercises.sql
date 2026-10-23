@@ -11,8 +11,9 @@ SELECT * FROM exercises WHERE id = $1 AND user_id = $2 FOR UPDATE;
 UPDATE exercises SET answered_at = now() WHERE id = $1 AND answered_at IS NULL;
 
 -- name: UsedSentences :many
--- Предложения, уже использованные пользователем в теме (чтобы не повторять).
-SELECT DISTINCT sentence_id FROM exercises WHERE user_id = $1 AND sqlc.arg(topic)::text = ANY(topics);
+-- Предложения, на которые пользователь уже ответил в теме (чтобы не повторять). Выданные, но не отвеченные
+-- не считаются: обновление страницы не должно сжигать предложения.
+SELECT DISTINCT sentence_id FROM exercises WHERE user_id = $1 AND answered_at IS NOT NULL AND sqlc.arg(topic)::text = ANY(topics);
 
 -- name: ListTopicRatings :many
 SELECT * FROM topic_ratings WHERE user_id = $1 ORDER BY topic;

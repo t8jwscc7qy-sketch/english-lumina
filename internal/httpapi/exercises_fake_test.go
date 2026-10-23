@@ -95,6 +95,9 @@ func (f *fakeStore) UpsertTopicRating(_ context.Context, arg db.UpsertTopicRatin
 
 // SampleSentences: фейк не фильтрует по словам, длине и уровню, как SQL; строки пула с id >= FromID по возрастанию, не больше MaxRows.
 func (f *fakeStore) SampleSentences(_ context.Context, arg db.SampleSentencesParams) ([]db.SampleSentencesRow, error) {
+	if f.sampleErr != nil {
+		return nil, f.sampleErr
+	}
 	var out []db.SampleSentencesRow
 	for _, s := range f.sentencePool {
 		if s.ID >= arg.FromID && int32(len(out)) < arg.MaxRows {
@@ -106,6 +109,7 @@ func (f *fakeStore) SampleSentences(_ context.Context, arg db.SampleSentencesPar
 
 // SentenceLevels: строки только для слов, которые есть в wordLevels; по алфавиту.
 func (f *fakeStore) SentenceLevels(_ context.Context, words []string) ([]db.SentenceLevelsRow, error) {
+	f.levelCalls++
 	var out []db.SentenceLevelsRow
 	for _, w := range words {
 		if r, ok := f.wordLevels[w]; ok {
@@ -125,11 +129,11 @@ func (f *fakeStore) SentenceLevels(_ context.Context, words []string) ([]db.Sent
 	return out, nil
 }
 
-// UsedSentences: предложения, уже выданные пользователю по теме.
+// UsedSentences: предложения, на которые пользователь уже ответил в теме (как в запросе: answered_at IS NOT NULL).
 func (f *fakeStore) UsedSentences(_ context.Context, arg db.UsedSentencesParams) ([]int64, error) {
 	var out []int64
 	for _, e := range f.exercises {
-		if e.UserID == arg.UserID && slices.Contains(e.Topics, arg.Topic) {
+		if e.UserID == arg.UserID && e.AnsweredAt.Valid && slices.Contains(e.Topics, arg.Topic) {
 			out = append(out, e.SentenceID)
 		}
 	}
@@ -139,6 +143,10 @@ func (f *fakeStore) UsedSentences(_ context.Context, arg db.UsedSentencesParams)
 
 // SentenceIDRange: границы номеров пула (0, 0, если пул пуст).
 func (f *fakeStore) SentenceIDRange(context.Context) (db.SentenceIDRangeRow, error) {
+	f.rangeCalls++
+	if f.rangeOverride != nil {
+		return *f.rangeOverride, nil
+	}
 	var out db.SentenceIDRangeRow
 	for i, s := range f.sentencePool {
 		if i == 0 || s.ID < out.MinID {

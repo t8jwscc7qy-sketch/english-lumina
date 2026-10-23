@@ -345,7 +345,7 @@ func (q *Queries) UpsertTopicRating(ctx context.Context, arg UpsertTopicRatingPa
 }
 
 const usedSentences = `-- name: UsedSentences :many
-SELECT DISTINCT sentence_id FROM exercises WHERE user_id = $1 AND $2::text = ANY(topics)
+SELECT DISTINCT sentence_id FROM exercises WHERE user_id = $1 AND answered_at IS NOT NULL AND $2::text = ANY(topics)
 `
 
 type UsedSentencesParams struct {
@@ -353,7 +353,8 @@ type UsedSentencesParams struct {
 	Topic  string
 }
 
-// Предложения, уже использованные пользователем в теме (чтобы не повторять).
+// Предложения, на которые пользователь уже ответил в теме (чтобы не повторять). Выданные, но не отвеченные
+// не считаются: обновление страницы не должно сжигать предложения.
 func (q *Queries) UsedSentences(ctx context.Context, arg UsedSentencesParams) ([]int64, error) {
 	rows, err := q.db.Query(ctx, usedSentences, arg.UserID, arg.Topic)
 	if err != nil {

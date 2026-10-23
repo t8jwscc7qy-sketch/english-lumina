@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -198,17 +199,26 @@ func TestNextExerciseRequiresLogin(t *testing.T) {
 	}
 }
 
-func TestNextExerciseNoRepeat(t *testing.T) {
+func TestNextExerciseNoRepeatAfterAnswer(t *testing.T) {
 	e := newExerciseEnv(t)
 	token := login(t, e)
 	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I have a dog.")}
 	knownWords(e, "i", "have", "a", "dog")
-	if rec := getNext(t, e, token); rec.Code != http.StatusOK {
-		t.Fatalf("первый: статус %d", rec.Code)
+	first := getNext(t, e, token)
+	if first.Code != http.StatusOK {
+		t.Fatalf("первый: статус %d", first.Code)
 	}
-	// Единственное предложение уже использовано в теме articles; в остальных темах его нет.
+	// Обновление страницы: упражнение не отвечено, предложение не сгорело.
+	if rec := getNext(t, e, token); rec.Code != http.StatusOK {
+		t.Fatalf("после обновления: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	// Ответ на все выданные: единственное предложение использовано, в других темах его нет.
+	for id, ex := range e.store.exercises {
+		ex.AnsweredAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
+		e.store.exercises[id] = ex
+	}
 	if rec := getNext(t, e, token); rec.Code != http.StatusNotFound {
-		t.Fatalf("второй: статус %d, тело %s", rec.Code, rec.Body)
+		t.Fatalf("после ответа: статус %d, тело %s", rec.Code, rec.Body)
 	}
 }
 
@@ -354,5 +364,95 @@ func TestTopicsList(t *testing.T) {
 	want := api.Rating{Topic: "grammar:modals", Rating: 1420.5, Deviation: 210, Attempts: 4}
 	if len(got.Topics) != 1 || got.Topics[0] != want {
 		t.Fatalf("темы: %+v", got.Topics)
+	}
+}
+
+func TestNextExerciseApostropheIsNeutral(t *testing.T) {
+	t.Run("не отбрасывается из-за tom's", func(t *testing.T) {
+		e := newExerciseEnv(t)
+		token := login(t, e)
+		e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "Tom's dog is in a house.")}
+		knownWords(e, "dog", "is", "in", "a", "house")
+		if rec := getNext(t, e, token); rec.Code != http.StatusOK {
+			t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+		}
+	})
+	t.Run("отбрасывается из-за редкого слова", func(t *testing.T) {
+		e := newExerciseEnv(t)
+		token := login(t, e)
+		e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "Tom's zorb is in a house.")}
+		knownWords(e, "is", "in", "a", "house")
+		if rec := getNext(t, e, token); rec.Code != http.StatusNotFound {
+			t.Fatalf("статус %d, ждали 404", rec.Code)
+		}
+	})
+}
+
+func TestNextExerciseQueryBudget(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	// 30 подходящих по теме предложений, но с редким словом: все отбрасываются одной проверкой уровней на тему.
+	for i := int64(1); i <= 30; i++ {
+		e.store.sentencePool = append(e.store.sentencePool, poolSentence(i, "I have a zorb in the house."))
+	}
+	knownWords(e, "i", "have", "a", "in", "the", "house")
+	if rec := getNext(t, e, token); rec.Code != http.StatusNotFound {
+		t.Fatalf("статус %d, ждали 404", rec.Code)
+	}
+	if e.store.rangeCalls != 1 {
+		t.Errorf("SentenceIDRange вызван %d раз, ждали 1", e.store.rangeCalls)
+	}
+	// Пять тем, в каждой не больше одной проверки уровней на окно кандидатов.
+	if e.store.levelCalls > 5 {
+		t.Errorf("SentenceLevels вызван %d раз, ждали не больше 5", e.store.levelCalls)
+	}
+	if e.store.levelCalls == 0 {
+		t.Error("проверка уровней не вызывалась")
+	}
+}
+
+func TestNextExerciseRetriesFromZeroOnEmptyWindow(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I have a dog.")}
+	e.store.rangeOverride = &db.SentenceIDRangeRow{MinID: 50, MaxID: 60} // окно с 50 пусто
+	knownWords(e, "i", "have", "a", "dog")
+	if rec := getNext(t, e, token); rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+}
+
+func TestNextExerciseStoreError(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I have a dog.")}
+	e.store.sampleErr = errors.New("база недоступна")
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusInternalServerError || errorCode(t, rec.Body.String()) != api.ErrorErrorCodeInternal {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "недоступна") {
+		t.Fatal("текст ошибки базы утёк клиенту")
+	}
+}
+
+func TestNextExerciseLevelTopicRejectsHarderSentence(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	e.store.settings = &db.Setting{UserID: 1, CurrentLevel: "A2", TargetLevel: "B2", DailyMinMinutes: 15, Timezone: "UTC"}
+	e.store.levelLexemes = map[string][]db.RandomLexemesByLevelRow{"A2": {
+		{ID: 1, Lemma: "dog", Pos: "noun"}, {ID: 2, Lemma: "cat", Pos: "noun"}, {ID: 3, Lemma: "house", Pos: "noun"},
+		{ID: 4, Lemma: "table", Pos: "noun"}, {ID: 5, Lemma: "book", Pos: "noun"},
+	}}
+	e.store.examples = []db.ListExamplesRow{{EnID: 7, EnText: "The dog is very big.", RuText: "x"}}
+	knownWords(e, "the", "is", "very", "big")
+	e.store.wordLevels["dog"] = lvl("B1") // уровень предложения B1 выше темы A2
+	e.store.topicRatings = map[topicKey]db.TopicRating{}
+	for _, tp := range []string{"grammar:articles", "grammar:prepositions", "grammar:future", "grammar:modals", "grammar:past_simple", "level:B1"} {
+		e.store.topicRatings[topicKey{1, tp}] = rated(tp, 1700, 3)
+	}
+	e.store.topicRatings[topicKey{1, "level:A2"}] = rated("level:A2", 1300, 3)
+	if rec := getNext(t, e, token); rec.Code != http.StatusNotFound {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
 	}
 }

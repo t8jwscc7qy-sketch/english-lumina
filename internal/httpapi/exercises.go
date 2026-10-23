@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"unicode"
 
 	"github.com/jackc/pgx/v5"
 
@@ -16,17 +15,14 @@ import (
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/exercises"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/grammar"
-	"github.com/t8jwscc7qy-sketch/english-lumina/internal/words"
 )
 
 const (
-	maxTopicTries    = 5     // сколько тем пробуем, прежде чем сказать «упражнений нет»
-	sampleRows       = 200   // сколько подряд идущих предложений просматриваем на тему
-	maxLevelLookups  = 10    // сколько предложений за одну попытку проверяем по уровню
-	levelLexemeBatch = 40    // сколько случайных слов уровня берём для темы level:*
-	maxLexemeTries   = 6     // у скольких из них ищем предложение
-	levelExamples    = 20    // примеров на слово
-	maxFreeRank      = 20000 // слово без уровня допустимо, если оно в первых 20 000 частотного списка
+	maxTopicTries    = 5   // сколько тем пробуем, прежде чем сказать «упражнений нет»
+	sampleRows       = 200 // сколько подряд идущих предложений просматриваем на тему
+	levelLexemeBatch = 40  // сколько случайных слов уровня берём для темы level:*
+	maxLexemeTries   = 6   // у скольких из них ищем предложение
+	levelExamples    = 20  // примеров на слово
 )
 
 // allLevels упорядочены от низшего к высшему (в данных бывает и C2).
@@ -80,6 +76,7 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		ratings[i] = exercises.TopicRating{Topic: tr.Topic, Mu: tr.Rating, Phi: tr.Deviation, Attempts: int(tr.Attempts)}
 	}
 
+	var rng idRange
 	for try := 0; try < maxTopicTries; try++ {
 		topic, ok := exercises.PickTopic(ratings, available)
 		if !ok {
@@ -96,7 +93,7 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(topic, "level:") {
 			cand, found, err = s.levelCandidate(ctx, topic, used)
 		} else {
-			cand, found, err = s.grammarCandidate(ctx, topic, used)
+			cand, found, err = s.grammarCandidate(ctx, &rng, topic, used)
 		}
 		if err != nil {
 			s.failExercises(w, err)
@@ -202,233 +199,6 @@ func posTopic(pos string) string {
 		return ""
 	}
 	return "pos:" + pos
-}
-
-// grammarCandidate просматривает подряд идущие предложения с случайного места и берёт первое, где есть тема и
-// собирается пропуск.
-func (s *authServer) grammarCandidate(ctx context.Context, topic string, used map[int64]bool) (gapCandidate, bool, error) {
-	rng, err := s.store.SentenceIDRange(ctx)
-	if err != nil || rng.MaxID == 0 {
-		return gapCandidate{}, false, err
-	}
-	from := rng.MinID + s.rnd(rng.MaxID-rng.MinID+1)
-	rows, err := s.store.SampleSentences(ctx, db.SampleSentencesParams{FromID: from, MaxRows: sampleRows})
-	if err == nil && len(rows) == 0 && from > 0 {
-		rows, err = s.store.SampleSentences(ctx, db.SampleSentencesParams{FromID: 0, MaxRows: sampleRows})
-	}
-	if err != nil {
-		return gapCandidate{}, false, err
-	}
-	lookups := 0
-	for _, row := range rows {
-		if used[row.ID] {
-			continue
-		}
-		tokens := sentenceTokens(row.Text)
-		if !slices.Contains(grammar.Topics(tokens), topic) {
-			continue
-		}
-		seed := s.rnd(1 << 62)
-		var gap exercises.Gap
-		var extra []string // слова, которые нужно проверить в словаре вместе с предложением
-		var target string
-		if topic == grammar.PastSimple {
-			target = pastSimpleTarget(tokens)
-			extra = baseCandidates(target)
-		} else {
-			var ok bool
-			if gap, ok = exercises.BuildGap(row.Text, topic, tokens, seed); !ok {
-				continue
-			}
-		}
-		if lookups++; lookups > maxLevelLookups {
-			break
-		}
-		known, err := s.store.SentenceLevels(ctx, uniqueWords(append(slices.Clone(tokens), extra...)))
-		if err != nil {
-			return gapCandidate{}, false, err
-		}
-		level, ok := sentenceLevel(tokens, known)
-		if !ok {
-			continue
-		}
-		if topic == grammar.PastSimple {
-			distractors := pastDistractors(target, known)
-			if gap, ok = exercises.BuildGapForWord(row.Text, target, distractors, seed); !ok {
-				continue
-			}
-		}
-		return gapCandidate{sentenceID: row.ID, translation: row.RuText, gap: gap, level: level}, true, nil
-	}
-	return gapCandidate{}, false, nil
-}
-
-// levelCandidate берёт случайные слова уровня и ищет для них предложение; отвлекающие варианты — другие слова
-// того же уровня и той же части речи.
-func (s *authServer) levelCandidate(ctx context.Context, topic string, used map[int64]bool) (gapCandidate, bool, error) {
-	level := strings.TrimPrefix(topic, "level:")
-	lexemes, err := s.store.RandomLexemesByLevel(ctx, db.RandomLexemesByLevelParams{Level: level, MaxRows: levelLexemeBatch})
-	if err != nil {
-		return gapCandidate{}, false, err
-	}
-	tries, lookups := 0, 0
-	for _, lx := range lexemes {
-		var distractors []string
-		for _, o := range lexemes {
-			if o.Pos == lx.Pos && o.Lemma != lx.Lemma {
-				distractors = append(distractors, o.Lemma)
-			}
-		}
-		if len(distractors) < 3 {
-			continue
-		}
-		if tries++; tries > maxLexemeTries {
-			break
-		}
-		forms := words.Forms(lx.Lemma, lx.Pos)
-		if len(forms) == 0 {
-			continue
-		}
-		rows, err := s.store.ListExamples(ctx, db.ListExamplesParams{Query: words.TSQuery(forms), MaxRows: levelExamples})
-		if err != nil {
-			return gapCandidate{}, false, err
-		}
-		for _, row := range rows {
-			if used[row.EnID] {
-				continue
-			}
-			start, end, ok := words.FindMatch(row.EnText, forms)
-			if !ok {
-				continue
-			}
-			// Только само слово без изменений: «dogs» рядом с «cat» выдало бы ответ по форме.
-			if strings.ToLower(string([]rune(row.EnText)[start:end])) != lx.Lemma {
-				continue
-			}
-			gap, ok := exercises.BuildGapForWord(row.EnText, lx.Lemma, distractors, s.rnd(1<<62))
-			if !ok {
-				continue
-			}
-			if lookups++; lookups > maxLevelLookups {
-				return gapCandidate{}, false, nil
-			}
-			tokens := sentenceTokens(row.EnText)
-			known, err := s.store.SentenceLevels(ctx, uniqueWords(tokens))
-			if err != nil {
-				return gapCandidate{}, false, err
-			}
-			lvl, ok := sentenceLevel(tokens, known)
-			if !ok {
-				continue
-			}
-			return gapCandidate{sentenceID: row.EnID, translation: row.RuText, gap: gap, level: lvl, pos: lx.Pos}, true, nil
-		}
-	}
-	return gapCandidate{}, false, nil
-}
-
-// sentenceLevel: высший уровень среди слов предложения. Слово без уровня допустимо, только если оно среди первых
-// 20 000 по частоте; если уровня нет ни у одного слова, предложение не берётся.
-func sentenceLevel(tokens []string, known []db.SentenceLevelsRow) (string, bool) {
-	byWord := make(map[string]db.SentenceLevelsRow, len(known))
-	for _, k := range known {
-		byWord[k.Word] = k
-	}
-	best := ""
-	for _, t := range tokens {
-		k := byWord[t]
-		switch {
-		case k.Level != nil:
-			if *k.Level > best { // «A1» < … < «C2» и по алфавиту
-				best = *k.Level
-			}
-		case k.Rank != nil && *k.Rank <= maxFreeRank:
-		default:
-			return "", false
-		}
-	}
-	return best, best != ""
-}
-
-// sentenceTokens режет предложение на слова в нижнем регистре; апострофы и дефисы внутри слова остаются (don't).
-func sentenceTokens(text string) []string {
-	text = strings.ReplaceAll(text, "’", "'")
-	fields := strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '\'' && r != '-'
-	})
-	out := fields[:0]
-	for _, f := range fields {
-		if f = strings.Trim(f, "'-"); f != "" {
-			out = append(out, f)
-		}
-	}
-	return out
-}
-
-func uniqueWords(ws []string) []string {
-	out := slices.Clone(ws)
-	slices.Sort(out)
-	return slices.Compact(out)
-}
-
-// pastSimpleTarget — первое слово, давшее тему past_simple (с тем же контекстом, что в grammar.Topics).
-func pastSimpleTarget(tokens []string) string {
-	for i := range tokens {
-		if slices.Contains(grammar.Topics(tokens[:i+1]), grammar.PastSimple) {
-			return tokens[i]
-		}
-	}
-	return ""
-}
-
-// baseCandidates — возможные начальные формы правильного глагола на -ed: walked → walk, walke; liked → lik, like.
-// Какая из них настоящая, показывает словарь (SentenceLevels). Для неправильных глаголов — пусто.
-func baseCandidates(past string) []string {
-	if past == "" {
-		return nil
-	}
-	if _, ok := words.IrregularLemma(past); ok {
-		return nil
-	}
-	switch {
-	case strings.HasSuffix(past, "ied") && len(past) > 4:
-		return []string{past[:len(past)-3] + "y"}
-	case strings.HasSuffix(past, "ed") && len(past) > 4:
-		b := past[:len(past)-2]
-		out := []string{b, b + "e"}
-		if n := len(b); n > 2 && b[n-1] == b[n-2] { // stopped → stop
-			out = append(out, b[:n-1])
-		}
-		return out
-	}
-	return nil
-}
-
-// pastDistractors — другие формы того же глагола. Начальная форма: из таблицы неправильных глаголов или единственная
-// из baseCandidates, найденная в словаре; при неоднозначности (hoped: hop/hope) возвращает nil.
-func pastDistractors(target string, known []db.SentenceLevelsRow) []string {
-	base, ok := words.IrregularLemma(target)
-	if !ok {
-		var found []string
-		for _, c := range baseCandidates(target) {
-			for _, k := range known {
-				if k.Word == c && (k.Level != nil || k.Rank != nil) {
-					found = append(found, c)
-				}
-			}
-		}
-		if len(found) != 1 {
-			return nil
-		}
-		base = found[0]
-	}
-	var out []string
-	for _, f := range words.Forms(base, "verb") {
-		if len(f) == 1 && f[0] != target {
-			out = append(out, f[0])
-		}
-	}
-	return out
 }
 
 // AnswerExercise пока заглушка (следующая задача); вход проверяется уже сейчас.
