@@ -36,6 +36,11 @@ var order = []string{Articles, Prepositions, Future, Modals, PastSimple}
 // beforeWill — слова, после которых will — существительное («free will», «my will»).
 var beforeWill = []string{"a", "the", "my", "his", "her", "your", "our", "their", "free"}
 
+// WillNounPrecursors возвращает слова, после которых will — существительное, а не будущее время.
+func WillNounPrecursors() []string {
+	return slices.Clone(beforeWill)
+}
+
 // beforeParticiple — слова, после которых форма на -ed или неправильная форма —
 // причастие или прилагательное («have gone», «am tired»), а не прошедшее время.
 var beforeParticiple = []string{"have", "has", "had", "is", "am", "are", "was", "were", "be", "been", "get", "got", "very"}

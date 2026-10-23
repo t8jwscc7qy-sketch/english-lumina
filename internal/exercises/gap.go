@@ -31,9 +31,6 @@ var extras = map[string][]string{
 	grammar.Future:   {"would", "shall", "can"},
 }
 
-// afterDeterminer — слова, после которых will — существительное, а не будущее время.
-var afterDeterminer = []string{"a", "the", "my", "his", "her", "your", "our", "their", "free"}
-
 // BuildGap собирает пропуск для грамматической темы с закрытым списком слов
 // (grammar.Words). Слово-цель — первое слово предложения из этого списка.
 // Для past_simple и тем level:/pos: нужен BuildGapForWord. false, если собрать нельзя.
@@ -42,13 +39,14 @@ func BuildGap(sentence, topic string, tokens []string, seed int64) (Gap, bool) {
 	if len(pool) == 0 {
 		return Gap{}, false
 	}
+	willNoun := grammar.WillNounPrecursors()
 	target := ""
 	for i, tok := range tokens {
 		w := strings.ToLower(tok)
 		if !slices.Contains(pool, w) {
 			continue
 		}
-		if topic == grammar.Future && i > 0 && slices.Contains(afterDeterminer, strings.ToLower(tokens[i-1])) {
+		if topic == grammar.Future && i > 0 && slices.Contains(willNoun, strings.ToLower(tokens[i-1])) {
 			continue
 		}
 		target = w
@@ -70,10 +68,13 @@ func BuildGapForWord(sentence, target string, distractors []string, seed int64) 
 }
 
 func build(sentence, target string, distractors []string, seed int64) (Gap, bool) {
-	start, end := findWord(sentence, target)
-	if start < 0 {
+	// Слово должно встречаться ровно один раз: иначе выбор вхождения спорный
+	// или второе вхождение подсказывает ответ.
+	spans := findWords(sentence, target)
+	if len(spans) != 1 {
 		return Gap{}, false
 	}
+	start, end := spans[0][0], spans[0][1]
 	var uniq []string
 	for _, d := range distractors {
 		d = strings.ToLower(strings.TrimSpace(d))
@@ -101,32 +102,32 @@ func build(sentence, target string, distractors []string, seed int64) (Gap, bool
 	}, true
 }
 
-// findWord ищет первое вхождение слова целиком без учёта регистра и возвращает границы в байтах.
+// findWords ищет все вхождения слова целиком без учёта регистра и возвращает границы в байтах.
 // Апострофы и дефисы внутри слова границей не считаются (I'm, well-known).
-func findWord(s, word string) (int, int) {
-	if word == "" {
-		return -1, -1
-	}
+func findWords(s, word string) [][2]int {
 	lower := strings.ToLower(s)
-	// ToLower может менять длину в байтах (редкие символы): тогда границы не совпадут.
-	if len(lower) != len(s) {
-		return -1, -1
+	// ToLower может менять длину в байтах (например «İ»): тогда границы не совпадут.
+	if word == "" || len(lower) != len(s) {
+		return nil
 	}
-	from := 0
-	for {
+	var out [][2]int
+	for from := 0; from < len(lower); {
 		i := strings.Index(lower[from:], word)
 		if i < 0 {
-			return -1, -1
+			break
 		}
 		i += from
 		j := i + len(word)
 		before, _ := utf8.DecodeLastRuneInString(lower[:i])
 		after, _ := utf8.DecodeRuneInString(lower[j:])
 		if (i == 0 || !wordRune(before)) && (j == len(lower) || !wordRune(after)) {
-			return i, j
+			out = append(out, [2]int{i, j})
+			from = j
+		} else {
+			from = i + 1
 		}
-		from = i + 1
 	}
+	return out
 }
 
 func wordRune(r rune) bool {

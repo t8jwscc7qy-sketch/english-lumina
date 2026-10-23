@@ -150,3 +150,44 @@ func TestPickTopic(t *testing.T) {
 		t.Errorf("больше Phi: %q", got)
 	}
 }
+
+func TestBuildGapAmbiguousOccurrence(t *testing.T) {
+	if _, ok := BuildGap("The will is long, and it will help.", grammar.Future,
+		[]string{"the", "will", "is", "long", "and", "it", "will", "help"}, 1); ok {
+		t.Error("два will — ожидали false")
+	}
+	if _, ok := BuildGapForWord("He walked and walked.", "walked", []string{"walk", "walks", "walking"}, 1); ok {
+		t.Error("повтор слова — ожидали false")
+	}
+}
+
+func TestBuildGapLetterInsideWord(t *testing.T) {
+	g, ok := BuildGap("Have a nice day.", grammar.Articles, []string{"have", "a", "nice", "day"}, 1)
+	if !ok || g.Prompt != "Have _____ nice day." {
+		t.Errorf("%+v %v", g, ok)
+	}
+}
+
+func TestBuildGapForWordApostropheAndHyphen(t *testing.T) {
+	g, ok := BuildGapForWord("I'm here.", "i'm", []string{"you're", "he's", "we're"}, 1)
+	if !ok || g.Prompt != "_____ here." || !slices.Contains(g.Choices, "I'm") {
+		t.Errorf("%+v %v", g, ok)
+	}
+	g, ok = BuildGapForWord("He is well-known.", "well-known", []string{"famous", "wellknown", "known"}, 1)
+	if !ok || g.Prompt != "He is _____." || !slices.Contains(g.Choices, "well-known") {
+		t.Errorf("%+v %v", g, ok)
+	}
+}
+
+func TestBuildGapLowerChangesLength(t *testing.T) {
+	if _, ok := BuildGapForWord("İ will go.", "will", []string{"would", "can", "must"}, 1); ok {
+		t.Error("ожидали false")
+	}
+}
+
+func TestCheckMultipleAnswers(t *testing.T) {
+	a := []string{"color", "colour"}
+	if !Check(a, "Colour") || !Check(a, " color") || Check(a, "colr") {
+		t.Error("несколько ответов")
+	}
+}
