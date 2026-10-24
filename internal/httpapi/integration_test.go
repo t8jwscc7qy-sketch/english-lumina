@@ -917,3 +917,99 @@ func seedRealExercise(t *testing.T, q *db.Queries, sentenceID int64, topics ...s
 	}
 	return id
 }
+
+// «Порядок слов» на настоящей Postgres: выдача, альтернативный порядок засчитывается, повтор по ключу, 409.
+func TestExerciseOrderOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range []string{"we", "eat", "red", "apples", "every", "morning"} {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w, Pos: "noun", SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: ds.ID, Level: "A1", Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sent := func(lang string, tid int64, text string, wc int16) int64 {
+		s, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: lang, TatoebaID: tid, Text: text, Author: "a", WordCount: wc, SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s.ID
+	}
+	ru := sent("ru", 1, "Мы едим красные яблоки каждое утро.", 6)
+	for i, text := range []string{"We eat red apples every morning.", "Every morning we eat red apples."} {
+		en := sent("en", int64(10+i), text, 6)
+		if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en, RuID: ru, SourceID: ds.ID}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Грамматические темы уже освоены, так что новая тема skill:order выбирается первой.
+	for _, tp := range grammarTopics {
+		if err := q.EnsureTopicRating(ctx, db.EnsureTopicRatingParams{UserID: user.ID, Topic: tp}); err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertTopicRating(ctx, db.UpsertTopicRatingParams{UserID: user.ID, Topic: tp, Rating: 1900, Deviation: 80, Volatility: 0.06, AttemptsDelta: 3}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("next: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	if ex.Kind != api.Order || ex.Tiles == nil || len(*ex.Tiles) != 6 || len(ex.Choices) != 0 || ex.Prompt != "Мы едим красные яблоки каждое утро." {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+	var answerJSON []byte
+	if err := pool.QueryRow(ctx, "SELECT answer FROM exercises WHERE id = $1", ex.Id).Scan(&answerJSON); err != nil {
+		t.Fatal(err)
+	}
+	var ans exerciseAnswer
+	if err := json.Unmarshal(answerJSON, &ans); err != nil || len(ans.Answers) != 2 {
+		t.Fatalf("допустимые ответы: %s (%v)", answerJSON, err)
+	}
+
+	// Засчитывается и исходный порядок, и альтернативный; здесь отвечаем тем, что не был выбран первым.
+	given := ans.Answers[1]
+	first := e.do(http.MethodPost, answerPath, answerBody(ex.Id, given, "k1"), withCookie(token))
+	if first.Code != http.StatusOK {
+		t.Fatalf("ответ: статус %d, тело %s", first.Code, first.Body)
+	}
+	if res := decodeResult(t, first); !res.Correct || res.Answer != ans.Answers[0] {
+		t.Fatalf("результат: %+v", res)
+	}
+	again := e.do(http.MethodPost, answerPath, answerBody(ex.Id, given, "k1"), withCookie(token))
+	if again.Code != http.StatusOK || again.Body.String() != first.Body.String() {
+		t.Fatalf("повтор: статус %d, тело %s", again.Code, again.Body)
+	}
+	if other := e.do(http.MethodPost, answerPath, answerBody(ex.Id, given, "k2"), withCookie(token)); other.Code != http.StatusConflict {
+		t.Fatalf("другой ключ: статус %d, ждали 409", other.Code)
+	}
+	var attempts int
+	if err := pool.QueryRow(ctx, "SELECT attempts FROM topic_ratings WHERE topic = 'skill:order'").Scan(&attempts); err != nil || attempts != 1 {
+		t.Fatalf("попыток skill:order: %d (%v)", attempts, err)
+	}
+	var events int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM events WHERE type = 'exercise.answered'").Scan(&events); err != nil || events != 1 {
+		t.Fatalf("событий: %d (%v)", events, err)
+	}
+}

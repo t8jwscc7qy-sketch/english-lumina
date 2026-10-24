@@ -104,7 +104,11 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 
 		// Время берём уже после блокировки строки.
 		now := time.Now()
-		correct := exercises.Check(answer.Answers, req.Given)
+		check := exercises.Check
+		if ex.Kind == string(api.Order) {
+			check = exercises.CheckOrder
+		}
+		correct := check(answer.Answers, req.Given)
 		score := 0.0
 		if correct {
 			score = 1

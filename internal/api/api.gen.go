@@ -97,13 +97,16 @@ func (e ErrorErrorCode) Valid() bool {
 
 // Defines values for ExerciseKind.
 const (
-	Gap ExerciseKind = "gap"
+	Gap   ExerciseKind = "gap"
+	Order ExerciseKind = "order"
 )
 
 // Valid indicates whether the value is a known member of the ExerciseKind enum.
 func (e ExerciseKind) Valid() bool {
 	switch e {
 	case Gap:
+		return true
+	case Order:
 		return true
 	default:
 		return false
@@ -153,7 +156,7 @@ type AddCardResponse struct {
 type AnswerRequest struct {
 	ExerciseId int64 `json:"exerciseId"`
 
-	// Given Ответ пользователя
+	// Given Ответ пользователя; для order — собранное предложение строкой (слова через пробел)
 	Given string `json:"given"`
 
 	// Key Ключ идемпотентности, один на попытку
@@ -238,15 +241,18 @@ type ExampleSentence struct {
 
 // Exercise defines model for Exercise.
 type Exercise struct {
-	// Choices Варианты ответа; пустой список — ответ вводится вручную
+	// Choices Варианты ответа; пустой список — ответ вводится вручную (для order всегда пустой)
 	Choices []string `json:"choices"`
 	Id      int64    `json:"id"`
 
-	// Kind Вид упражнения (пока только пропуск)
+	// Kind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
 	Kind ExerciseKind `json:"kind"`
 
-	// Prompt Предложение с пропуском, английский
+	// Prompt gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles)
 	Prompt string `json:"prompt"`
+
+	// Tiles Только для order: слова английского предложения в перемешанном порядке (первое слово строчное, завершающей точки нет). Верный порядок до ответа клиенту не отдаётся
+	Tiles *[]string `json:"tiles,omitempty"`
 
 	// Topic Основная тема упражнения
 	Topic string `json:"topic"`
@@ -255,7 +261,7 @@ type Exercise struct {
 	Translation string `json:"translation"`
 }
 
-// ExerciseKind Вид упражнения (пока только пропуск)
+// ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
 type ExerciseKind string
 
 // Level defines model for Level.

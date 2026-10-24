@@ -404,23 +404,25 @@ export interface components {
             /** Format: int64 */
             id: number;
             /**
-             * @description Вид упражнения (пока только пропуск)
+             * @description Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
              * @enum {string}
              */
-            kind: "gap";
-            /** @description Предложение с пропуском, английский */
+            kind: "gap" | "order";
+            /** @description gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles) */
             prompt: string;
             /** @description Перевод-подсказка на русском */
             translation: string;
-            /** @description Варианты ответа; пустой список — ответ вводится вручную */
+            /** @description Варианты ответа; пустой список — ответ вводится вручную (для order всегда пустой) */
             choices: string[];
+            /** @description Только для order: слова английского предложения в перемешанном порядке (первое слово строчное, завершающей точки нет). Верный порядок до ответа клиенту не отдаётся */
+            tiles?: string[];
             /** @description Основная тема упражнения */
             topic: string;
         };
         AnswerRequest: {
             /** Format: int64 */
             exerciseId: number;
-            /** @description Ответ пользователя */
+            /** @description Ответ пользователя; для order — собранное предложение строкой (слова через пробел) */
             given: string;
             /** @description Ключ идемпотентности, один на попытку */
             key: string;

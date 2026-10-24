@@ -597,11 +597,13 @@ components:
           format: int64
         kind:
           type: string
-          enum: [gap]
-          description: Вид упражнения (пока только пропуск)
+          enum: [gap, order]
+          description: Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
         prompt:
           type: string
-          description: Предложение с пропуском, английский
+          description: >
+            gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести
+            (собрать по-английски из tiles)
         translation:
           type: string
           description: Перевод-подсказка на русском
@@ -609,7 +611,14 @@ components:
           type: array
           items:
             type: string
-          description: Варианты ответа; пустой список — ответ вводится вручную
+          description: Варианты ответа; пустой список — ответ вводится вручную (для order всегда пустой)
+        tiles:
+          type: array
+          items:
+            type: string
+          description: >
+            Только для order: слова английского предложения в перемешанном порядке (первое слово строчное,
+            завершающей точки нет). Верный порядок до ответа клиенту не отдаётся
         topic:
           type: string
           description: Основная тема упражнения
@@ -624,7 +633,7 @@ components:
           type: string
           minLength: 1
           maxLength: 200
-          description: Ответ пользователя
+          description: Ответ пользователя; для order — собранное предложение строкой (слова через пробел)
         key:
           type: string
           minLength: 1

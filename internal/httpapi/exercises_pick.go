@@ -17,6 +17,7 @@ import (
 const (
 	maxWindowCandidates = 30 // сколько кандидатов окна проверяем по уровням одним запросом
 	maxLevelBatches     = 2  // сколько раз проверяем уровни в level-пути
+	maxAlternatives     = 5  // сколько альтернативных английских предложений берём для «порядка слов»
 )
 
 // idRange — границы номеров предложений; читаются из базы лениво и один раз на вызов next.
@@ -71,17 +72,23 @@ type grammarPending struct {
 	seed   int64
 }
 
-// grammarCandidate просматривает подряд идущие предложения с случайного места, отбирает подходящие по теме
-// и берёт первое, у которого проходит уровень и собирается пропуск.
-func (s *authServer) grammarCandidate(ctx context.Context, rng *idRange, topic string, used map[int64]bool) (gapCandidate, bool, error) {
+// sampleWindow берёт подряд идущие предложения с случайного места; при пустом окне повторяет с нуля.
+func (s *authServer) sampleWindow(ctx context.Context, rng *idRange) ([]db.SampleSentencesRow, error) {
 	if err := s.loadRange(ctx, rng); err != nil || rng.max == 0 {
-		return gapCandidate{}, false, err
+		return nil, err
 	}
 	from := rng.min + s.rnd(rng.max-rng.min+1)
 	rows, err := s.store.SampleSentences(ctx, db.SampleSentencesParams{FromID: from, MaxRows: sampleRows})
 	if err == nil && len(rows) == 0 && from > 0 {
 		rows, err = s.store.SampleSentences(ctx, db.SampleSentencesParams{FromID: 0, MaxRows: sampleRows})
 	}
+	return rows, err
+}
+
+// grammarCandidate просматривает подряд идущие предложения с случайного места, отбирает подходящие по теме
+// и берёт первое, у которого проходит уровень и собирается пропуск.
+func (s *authServer) grammarCandidate(ctx context.Context, rng *idRange, topic string, used map[int64]bool) (gapCandidate, bool, error) {
+	rows, err := s.sampleWindow(ctx, rng)
 	if err != nil {
 		return gapCandidate{}, false, err
 	}
@@ -220,6 +227,65 @@ func (s *authServer) levelCandidate(ctx context.Context, topic string, used map[
 				return gapCandidate{sentenceID: p.id, translation: p.translation, gap: p.gap, level: lvl, pos: p.pos}, true, nil
 			}
 		}
+	}
+	return gapCandidate{}, false, nil
+}
+
+type orderPending struct {
+	row    db.SampleSentencesRow
+	tokens []string
+	seed   int64
+}
+
+// orderCandidate берёт окно предложений, оставляет те, из которых собирается «порядок слов», проверяет уровни
+// одним запросом (уровень не выше maxLevel) и для первого подходящего ищет альтернативные английские предложения
+// с тем же переводом. maxLevel пуст — предела нет.
+func (s *authServer) orderCandidate(ctx context.Context, rng *idRange, maxLevel string, used map[int64]bool) (gapCandidate, bool, error) {
+	rows, err := s.sampleWindow(ctx, rng)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	var pending []orderPending
+	var lookup []string
+	for _, row := range rows {
+		if len(pending) >= maxWindowCandidates {
+			break
+		}
+		if used[row.ID] {
+			continue
+		}
+		p := orderPending{row: row, tokens: exercises.Tokens(row.Text), seed: s.rnd(1 << 62)}
+		if _, ok := exercises.BuildOrder(row.Text, nil, p.seed); !ok {
+			continue
+		}
+		lookup = append(lookup, p.tokens...)
+		pending = append(pending, p)
+	}
+	if len(pending) == 0 {
+		return gapCandidate{}, false, nil
+	}
+	known, err := s.levelInfo(ctx, lookup)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	for _, p := range pending {
+		level, ok := exercises.SentenceLevel(p.tokens, known)
+		if !ok || (maxLevel != "" && level > maxLevel) {
+			continue
+		}
+		alts, err := s.store.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: p.row.ID, RuID: p.row.RuID, MaxRows: maxAlternatives})
+		if err != nil {
+			return gapCandidate{}, false, err
+		}
+		texts := make([]string, len(alts))
+		for i, a := range alts {
+			texts[i] = a.Text
+		}
+		order, ok := exercises.BuildOrder(p.row.Text, texts, p.seed)
+		if !ok {
+			continue
+		}
+		return gapCandidate{sentenceID: p.row.ID, translation: p.row.RuText, order: &order, level: level}, true, nil
 	}
 	return gapCandidate{}, false, nil
 }
