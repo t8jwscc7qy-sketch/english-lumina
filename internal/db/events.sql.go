@@ -68,6 +68,51 @@ func (q *Queries) GetEventByKey(ctx context.Context, arg GetEventByKeyParams) (E
 	return i, err
 }
 
+const listActivityEvents = `-- name: ListActivityEvents :many
+SELECT type,
+       occurred_at,
+       COALESCE(CASE WHEN jsonb_typeof(payload -> 'correct') = 'boolean' THEN (payload ->> 'correct')::boolean END, false)::boolean AS correct
+FROM events
+WHERE user_id = $1
+  AND type IN ('exercise.answered', 'card.reviewed', 'mistake.opened', 'mistake.closed')
+  AND occurred_at >= $2::timestamptz
+ORDER BY occurred_at, id
+`
+
+type ListActivityEventsParams struct {
+	UserID int64
+	Since  pgtype.Timestamptz
+}
+
+type ListActivityEventsRow struct {
+	Type       string
+	OccurredAt pgtype.Timestamptz
+	Correct    bool
+}
+
+// События занятий пользователя с момента since (для минут, серии и итога дня): ответы на упражнения,
+// оценки карточек и открытие/закрытие ошибок. correct берётся из булева поля payload.correct, без него false
+// (осмысленно только у exercise.answered).
+func (q *Queries) ListActivityEvents(ctx context.Context, arg ListActivityEventsParams) ([]ListActivityEventsRow, error) {
+	rows, err := q.db.Query(ctx, listActivityEvents, arg.UserID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListActivityEventsRow{}
+	for rows.Next() {
+		var i ListActivityEventsRow
+		if err := rows.Scan(&i.Type, &i.OccurredAt, &i.Correct); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEventsAfter = `-- name: ListEventsAfter :many
 SELECT id, user_id, type, schema_version, occurred_at, recorded_at, payload, idempotency_key FROM events
 WHERE user_id = $1 AND id > $2

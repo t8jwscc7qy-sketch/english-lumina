@@ -89,6 +89,7 @@ type AuthStore interface {
 	LastTwoExerciseRepeatFlags(ctx context.Context, userID int64) ([]bool, error)
 	GetUnansweredRepeat(ctx context.Context, arg db.GetUnansweredRepeatParams) (db.Exercise, error)
 	ListOpenMistakes(ctx context.Context, arg db.ListOpenMistakesParams) ([]db.Mistake, error)
+	ListActivityEvents(ctx context.Context, arg db.ListActivityEventsParams) ([]db.ListActivityEventsRow, error)
 	CountMistakes(ctx context.Context, arg db.CountMistakesParams) (db.CountMistakesRow, error)
 
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
@@ -162,6 +163,8 @@ type authServer struct {
 	verifySem chan struct{}
 	// Источник случайности упражнений: число от 0 до n-1 (n > 0). В тестах подменяется.
 	rnd func(n int64) int64
+	// Часы сервера; в тестах подменяются.
+	now func() time.Time
 }
 
 func newAuthServer(store AuthStore, throttle *auth.Throttle) *authServer {
@@ -171,6 +174,7 @@ func newAuthServer(store AuthStore, throttle *auth.Throttle) *authServer {
 		verifySem: make(chan struct{}, maxConcurrentVerify),
 		dummyHash: sync.OnceValues(func() (string, error) { return auth.HashPassword("dummy-password") }),
 		rnd:       rand.Int64N,
+		now:       time.Now,
 	}
 }
 

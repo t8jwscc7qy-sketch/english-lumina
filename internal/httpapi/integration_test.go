@@ -1219,3 +1219,48 @@ func TestMistakesOnRealDatabase(t *testing.T) {
 		t.Fatalf("список: %d %s (%v)", rec.Code, rec.Body, err)
 	}
 }
+
+// Прогресс за сегодня на настоящей Postgres: серия и заморозка по событиям за прошлые сутки.
+func TestProgressOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+
+	midday := func(back int) time.Time {
+		n := time.Now().UTC().AddDate(0, 0, -back)
+		return time.Date(n.Year(), n.Month(), n.Day(), 10, 0, 0, 0, time.UTC)
+	}
+	for _, back := range []int{1, 2, 4} { // сутки 3 назад пропущены: заморозка
+		for _, r := range minimumDay(midday(back)) {
+			if _, err := q.AppendEvent(ctx, db.AppendEventParams{UserID: 1, Type: r.Type, SchemaVersion: 1, OccurredAt: r.OccurredAt, Payload: []byte(`{"correct":true}`)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	// событие другого типа не должно влиять
+	if _, err := q.AppendEvent(ctx, db.AppendEventParams{UserID: 1, Type: "card.added", SchemaVersion: 1, OccurredAt: ts(midday(1)), Payload: []byte(`{}`)}); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := e.do(http.MethodGet, progressPath, "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	var p api.ProgressToday
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+		t.Fatal(err)
+	}
+	wantFreeze := midday(3).Format("2006-01-02")
+	if p.StreakDays != 3 || p.FreezeUsedOn == nil || *p.FreezeUsedOn != wantFreeze || p.GoalMinutes != defaultGoalMinutes || p.DoneToday {
+		t.Fatalf("прогресс: %+v (ожидали серию 3, заморозку %s)", p, wantFreeze)
+	}
+}

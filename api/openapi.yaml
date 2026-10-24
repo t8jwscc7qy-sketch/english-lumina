@@ -336,6 +336,22 @@ paths:
                 $ref: "#/components/schemas/MistakeList"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/progress/today:
+    get:
+      operationId: getProgressToday
+      summary: Прогресс за сегодня
+      description: >
+        Минуты занятий за сутки (по времени между ответами), «минимальный день», серия и счётчики дня.
+        Считается из журнала событий, сутки — в часовом поясе настроек (без настроек UTC). Ничего не записывает.
+      responses:
+        "200":
+          description: Прогресс за сегодня
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressToday"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   schemas:
     LoginRequest:
@@ -781,6 +797,46 @@ components:
           description: Открытые ошибки по сроку повтора, не больше 200
         counts:
           $ref: "#/components/schemas/MistakeCounts"
+    TodayCounts:
+      type: object
+      required: [answers, correct, cardsReviewed, mistakesOpened, mistakesClosed]
+      properties:
+        answers:
+          type: integer
+          description: Ответов на упражнения за сегодня
+        correct:
+          type: integer
+          description: Из них верных
+        cardsReviewed:
+          type: integer
+        mistakesOpened:
+          type: integer
+        mistakesClosed:
+          type: integer
+    ProgressToday:
+      type: object
+      required: [minutes, minimumDay, goalMinutes, doneToday, streakDays, today]
+      properties:
+        minutes:
+          type: number
+          description: Минут занятий за сегодня (одна десятая)
+        minimumDay:
+          type: integer
+          description: Сколько минут нужно для «минимального дня»
+        goalMinutes:
+          type: integer
+          description: Цель дня из настроек (без настроек 15)
+        doneToday:
+          type: boolean
+        streakDays:
+          type: integer
+          description: Серия, сутки подряд с выполненным минимумом (не больше 60)
+        freezeUsedOn:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Последний пропуск, прощённый «заморозкой» (YYYY-MM-DD); нет поля, если заморозка не использовалась
+        today:
+          $ref: "#/components/schemas/TodayCounts"
     TopicList:
       type: object
       required: [topics]

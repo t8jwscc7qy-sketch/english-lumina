@@ -86,7 +86,8 @@ type fakeStore struct {
 	weakWords      []db.ListWeakCardWordsRow               // для ListWeakCardWords
 	mistakes       map[int64]db.Mistake                    // банк ошибок (mistakes_fake_test.go)
 	nextMistakeID  int64
-	missOpenOnce   bool // GetOpenMistakeForUpdate один раз не находит строку (гонка)
+	missOpenOnce   bool           // GetOpenMistakeForUpdate один раз не находит строку (гонка)
+	activity       []fakeActivity // события занятий для ListActivityEvents (progress_fake_test.go)
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

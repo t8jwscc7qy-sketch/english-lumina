@@ -162,3 +162,11 @@ export async function getMistakes(): Promise<MistakeList> {
   const res = await request('/api/v1/mistakes')
   return (await res.json()) as MistakeList
 }
+
+export type ProgressToday = components['schemas']['ProgressToday']
+
+/** Минуты, серия и счётчики дня из журнала событий. */
+export async function getProgressToday(): Promise<ProgressToday> {
+  const res = await request('/api/v1/progress/today')
+  return (await res.json()) as ProgressToday
+}
