@@ -55,13 +55,14 @@ func buildProgress(events []db.ListActivityEventsRow, now time.Time, tz string, 
 			times = append(times, e.OccurredAt.Time)
 		}
 	}
-	perDay := activity.DayMinutes(times, tz)
-	today := activity.DayOf(now, tz)
+	loc := activity.Location(tz) // пояс разбираем один раз: на тысячах событий LoadLocation на каждое слишком дорог
+	perDay := activity.DayMinutes(times, loc)
+	today := activity.DayOf(now, loc)
 	todayDur := perDay[today]
 
 	var counts api.TodayCounts
 	for _, e := range events {
-		if activity.DayOf(e.OccurredAt.Time, tz) != today {
+		if activity.DayOf(e.OccurredAt.Time, loc) != today {
 			continue
 		}
 		switch e.Type {

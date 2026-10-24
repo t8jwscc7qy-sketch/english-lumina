@@ -30,6 +30,8 @@ type World = {
   /** на сколько минут вырастает прогресс после каждого ответа (карточки и упражнения) */
   step: number
   noExercise?: boolean
+  /** после ответа на упражнение в очереди снова появляется готовая карточка (шаг обучения FSRS, «Добавить в карточки») */
+  cardAfterAnswer?: boolean
   progressStatus?: number
   extra?: Record<string, unknown>
 }
@@ -58,6 +60,7 @@ function stubApi(w: World) {
     if (url.endsWith('/exercises/answer')) {
       calls.answers++
       w.minutes += w.step
+      if (w.cardAfterAnswer) w.due = 1
       return jsonResponse(200, { correct: true, answer: 'an', translation: 'Она инженер.', ratings: [] })
     }
     if (url.endsWith('/exercises/topics')) return jsonResponse(200, { topics: [] })
@@ -235,3 +238,34 @@ describe('SessionPage: состояния', () => {
     await waitForExercise()
   })
 })
+
+describe('SessionPage: устойчивость шага упражнений', () => {
+  it('карточка снова стала готова во время упражнений: результат ответа остаётся, карточка не перехватывает экран', async () => {
+    stubApi({ due: 0, minutes: 2, step: 1, cardAfterAnswer: true })
+    renderSession()
+    const user = userEvent.setup()
+    await waitForExercise()
+    await user.keyboard('2')
+    await screen.findByText('Верно')
+    await new Promise((r) => setTimeout(r, 400)) // очередь успела обновиться
+    expect(screen.getByText('Верно')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Карточка')).not.toBeInTheDocument()
+    await user.keyboard(' ')
+    await waitForExercise() // идём дальше по упражнениям, а не к карточке
+    expect(screen.queryByLabelText('Карточка')).not.toBeInTheDocument()
+  })
+
+  it('минимум уже выполнен при входе: «Ещё немного» не возвращает экран минимума после первого упражнения', async () => {
+    stubApi({ due: 0, minutes: 12, step: 1 })
+    renderSession()
+    const user = userEvent.setup()
+    await waitForExercise()
+    await screen.findByRole('progressbar', { name: 'Минимальный день' })
+    await user.keyboard('2')
+    await screen.findByText('Верно')
+    await user.keyboard(' ')
+    await waitForExercise()
+    expect(screen.queryByRole('heading', { name: 'Минимум на сегодня выполнен' })).not.toBeInTheDocument()
+  })
+})
+

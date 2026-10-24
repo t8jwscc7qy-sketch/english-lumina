@@ -21,9 +21,9 @@ const (
 // Day — календарные сутки в часовом поясе пользователя.
 type Day struct{ Y, M, D int }
 
-// DayOf возвращает сутки момента t в поясе tz; пустой или неизвестный пояс — UTC.
-func DayOf(t time.Time, tz string) Day {
-	y, m, d := t.In(location(tz)).Date()
+// DayOf возвращает сутки момента t в поясе loc.
+func DayOf(t time.Time, loc *time.Location) Day {
+	y, m, d := t.In(loc).Date()
 	return Day{y, int(m), d}
 }
 
@@ -37,7 +37,9 @@ func (d Day) ordinal() int {
 	return int(time.Date(d.Y, time.Month(d.M), d.D, 12, 0, 0, 0, time.UTC).Unix() / 86400)
 }
 
-func location(tz string) *time.Location {
+// Location разбирает имя пояса; пустое или неизвестное имя — UTC. Вызывать один раз на запрос:
+// time.LoadLocation каждый раз читает базу часовых поясов (около 18 мкс), на тысячах событий это сотни миллисекунд.
+func Location(tz string) *time.Location {
 	if tz == "" {
 		return time.UTC
 	}
@@ -66,12 +68,12 @@ func Minutes(times []time.Time) time.Duration {
 	return total
 }
 
-// DayMinutes раскладывает ответы по суткам в поясе tz и считает минуты каждых суток отдельно:
+// DayMinutes раскладывает ответы по суткам в поясе loc и считает минуты каждых суток отдельно:
 // пауза через полночь не склеивает сутки.
-func DayMinutes(times []time.Time, tz string) map[Day]time.Duration {
+func DayMinutes(times []time.Time, loc *time.Location) map[Day]time.Duration {
 	byDay := map[Day][]time.Time{}
 	for _, t := range times {
-		d := DayOf(t, tz)
+		d := DayOf(t, loc)
 		byDay[d] = append(byDay[d], t)
 	}
 	out := make(map[Day]time.Duration, len(byDay))

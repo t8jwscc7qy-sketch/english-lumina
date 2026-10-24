@@ -5,7 +5,7 @@ import { ApiError } from '@/api/client'
 import { XpBar } from '@/components/pixel/XpBar'
 import { Button } from '@/components/ui/button'
 import { meKey } from '@/features/auth/auth'
-import { cardQueueKey, useCardQueue } from '@/features/cards/cards'
+import { useCardQueue } from '@/features/cards/cards'
 import { ReviewCard } from '@/features/cards/ReviewCard'
 import { ExerciseCard } from '@/features/exercises/ExerciseCard'
 import { useNextExercise } from '@/features/exercises/exercises'
@@ -34,6 +34,10 @@ export function SessionPage() {
   const [phase, setPhase] = useState<Phase>('run')
   const [cardsDone, setCardsDone] = useState(0)
   const [extra, setExtra] = useState(false) // «Ещё немного»: экран минимума больше не показываем
+  // Шаг карточек завершается, когда показано первое упражнение, и больше не возвращается сам: карточка, снова ставшая
+  // готовой во время упражнений (короткий шаг обучения, «Добавить в карточки»), не должна прятать результат ответа.
+  const [cardsOver, setCardsOver] = useState(false)
+  const [entryChecked, setEntryChecked] = useState(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -44,10 +48,19 @@ export function SessionPage() {
     if (phase !== 'run') headingRef.current?.focus() // на экранах итога и минимума фокус идёт на заголовок
   }, [phase])
 
+  // Минимум уже выполнен при входе («Позаниматься ещё»): экран «Минимум выполнен» не нужен, он только что был.
+  // Корректировка состояния при рендере (однократно, по первым данным), а не эффект: так нет лишней перерисовки.
+  if (!entryChecked && progress.data) {
+    setEntryChecked(true)
+    if (progress.data.doneToday) setExtra(true)
+  }
+
   const unauthorized = isUnauthorized(queue.error) || isUnauthorized(progress.error)
   useEffect(() => {
     if (unauthorized) qc.setQueryData(meKey, null)
   }, [unauthorized, qc])
+
+  if (!cardsOver && phase === 'run' && queue.data && (!queue.data.card || cardsDone >= MAX_CARDS_PER_SESSION)) setCardsOver(true)
 
   const refreshProgress = useCallback(() => void qc.invalidateQueries({ queryKey: progressKey }), [qc])
   const onRated = useCallback(() => {
@@ -63,7 +76,7 @@ export function SessionPage() {
 
   const card = queue.data?.card
   const dueCount = queue.data?.dueCount ?? 0
-  const cardsStep = phase === 'run' && !!card && cardsDone < MAX_CARDS_PER_SESSION
+  const cardsStep = phase === 'run' && !cardsOver && !!card && cardsDone < MAX_CARDS_PER_SESSION
   const exercisesStep = phase === 'run' && !!queue.data && !cardsStep
   const cardsTotal = cardsDone + Math.min(dueCount, MAX_CARDS_PER_SESSION - cardsDone)
   const p = progress.data
@@ -119,10 +132,7 @@ export function SessionPage() {
         <ExercisesStep
           extra={extra}
           refetchProgress={() => progress.refetch()}
-          onAnswered={() => {
-            refreshProgress()
-            void qc.invalidateQueries({ queryKey: cardQueueKey })
-          }}
+          onAnswered={refreshProgress}
           onMinimum={() => setPhase('minimum')}
           onFinish={() => setPhase('summary')}
         />

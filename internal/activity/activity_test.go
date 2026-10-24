@@ -41,13 +41,13 @@ func TestMinutesUnordered(t *testing.T) {
 
 func TestDayOfTimezone(t *testing.T) {
 	ts := time.Date(2026, 10, 24, 23, 30, 0, 0, time.UTC)
-	if got := DayOf(ts, "Europe/Moscow"); got != (Day{2026, 10, 25}) {
+	if got := DayOf(ts, Location("Europe/Moscow")); got != (Day{2026, 10, 25}) {
 		t.Fatalf("Москва: %+v", got)
 	}
-	if got := DayOf(ts, "Нет/Такого"); got != (Day{2026, 10, 24}) {
+	if got := DayOf(ts, Location("Нет/Такого")); got != (Day{2026, 10, 24}) {
 		t.Fatalf("неизвестный пояс должен давать UTC: %+v", got)
 	}
-	if got := DayOf(ts, ""); got != (Day{2026, 10, 24}) {
+	if got := DayOf(ts, Location("")); got != (Day{2026, 10, 24}) {
 		t.Fatalf("пустой пояс должен давать UTC: %+v", got)
 	}
 }
@@ -65,7 +65,7 @@ func TestDayMinutesMidnightNotMerged(t *testing.T) {
 	loc, _ := time.LoadLocation("Europe/Moscow")
 	a := time.Date(2026, 10, 24, 23, 59, 50, 0, loc)
 	b := time.Date(2026, 10, 25, 0, 0, 10, 0, loc) // пауза 20 с, но сутки разные
-	got := DayMinutes([]time.Time{a, b}, "Europe/Moscow")
+	got := DayMinutes([]time.Time{a, b}, Location("Europe/Moscow"))
 	if len(got) != 2 || got[Day{2026, 10, 24}] != BurstStart || got[Day{2026, 10, 25}] != BurstStart {
 		t.Fatalf("сутки не должны склеиваться: %+v", got)
 	}
@@ -147,5 +147,24 @@ func TestStreakCap60(t *testing.T) {
 	}
 	if got := ComputeStreak(m, today); got.Days != HistoryDays {
 		t.Fatalf("серия ограничена %d сутками: %+v", HistoryDays, got)
+	}
+}
+
+// Часовой пояс разбирается один раз на запрос, а не на каждое событие: 18 000 событий (300 ответов в день
+// за 60 суток) должны считаться за доли секунды.
+func TestDayMinutesManyEventsIsFast(t *testing.T) {
+	var times []time.Time
+	for d := 0; d < 60; d++ {
+		for i := 0; i < 300; i++ {
+			times = append(times, t0.AddDate(0, 0, -d).Add(time.Duration(i)*20*time.Second))
+		}
+	}
+	start := time.Now()
+	got := DayMinutes(times, Location("Europe/Moscow"))
+	if elapsed := time.Since(start); elapsed > 150*time.Millisecond {
+		t.Fatalf("%d событий считались %v, ожидали быстрее 150 мс", len(times), elapsed)
+	}
+	if len(got) < 60 {
+		t.Fatalf("суток %d, ожидали не меньше 60", len(got))
 	}
 }
