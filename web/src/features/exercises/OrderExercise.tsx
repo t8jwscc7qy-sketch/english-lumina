@@ -102,7 +102,7 @@ export function OrderExercise({ tiles, frozen, pending, correct, onSubmit, resto
                   aria-label={`убрать ${tiles[i]}`}
                   className={cn(
                     tileClass,
-                    'border-input active:scale-[0.97]',
+                    'border-input hover:bg-muted active:scale-[0.97]',
                     correct === false && 'border-coral',
                   )}
                 >
