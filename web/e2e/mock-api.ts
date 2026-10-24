@@ -176,9 +176,20 @@ export const EXERCISES: ExerciseFixture[] = [
  * Подменяет API Go-сервера. `settings: null` — онбординг не пройден (GET /settings даёт 404);
  * PUT сохраняет присланное и дальше GET его возвращает. `puts` копит тела принятых PUT.
  */
+export type ProgressOpts = {
+  /** Минут занятий за сегодня к началу теста. */
+  minutes?: number
+  /** Сколько минут добавляет каждый ответ на карточку или упражнение (по умолчанию 0,5). */
+  step?: number
+  streakDays?: number
+  freezeUsedOn?: string
+  /** GET /progress/today отвечает 500, пока флаг включён. */
+  fail?: boolean
+}
+
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -243,6 +254,7 @@ export async function mockApi(
     return { id: i + 1, lemma, pos: w?.pos ?? 'verb', level: w?.level ?? 'A1', due: true }
   })
   const reviews: CardReview[] = []
+  const prog = { minutes: opts.progress?.minutes ?? 0, step: opts.progress?.step ?? 0.5, answers: 0, correct: 0, cardsReviewed: 0, opened: 0, closed: 0 }
   const seenKeys = new Set<string>()
   let nextCardId = 100
   const queueCard = (c: MockCard) => ({
@@ -289,6 +301,8 @@ export async function mockApi(
       if (!card) return route.fulfill(apiError(404, 'not_found', 'Такой карточки нет'))
       if (!seenKeys.has(body.key)) {
         seenKeys.add(body.key) // повтор с тем же ключом ничего не меняет
+        prog.cardsReviewed += 1
+        prog.minutes += prog.step
         card.due = false
       }
       return route.fulfill({ json: queueBody() })
@@ -382,11 +396,32 @@ export async function mockApi(
       ratings.set(fx.topic, r)
       exQueue.splice(exQueue.indexOf(fx), 1)
       const mistake = touchMistake(fx, body.given, correct)
+      prog.answers += 1
+      prog.correct += correct ? 1 : 0
+      prog.minutes += prog.step
+      if (mistake && !correct) prog.opened += 1
+      if (mistake?.status === 'closed') prog.closed += 1
       const result = { correct, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}), ...(mistake ? { mistake } : {}) }
       results.set(body.key, result)
       return route.fulfill({ json: result })
     }
     return route.fulfill({ status: 404 })
+  })
+
+  await page.route('**/api/v1/progress/today', (route) => {
+    if (opts.progress?.fail) return route.fulfill(apiError(500, 'internal', 'Внутренняя ошибка, попробуй ещё раз'))
+    const minutes = Math.round(prog.minutes * 10) / 10
+    return route.fulfill({
+      json: {
+        minutes,
+        minimumDay: 10,
+        goalMinutes: 15,
+        doneToday: prog.minutes >= 10,
+        streakDays: opts.progress?.streakDays ?? 3,
+        ...(opts.progress?.freezeUsedOn ? { freezeUsedOn: opts.progress.freezeUsedOn } : {}),
+        today: { answers: prog.answers, correct: prog.correct, cardsReviewed: prog.cardsReviewed, mistakesOpened: prog.opened, mistakesClosed: prog.closed },
+      },
+    })
   })
 
   return { puts, reviews, answers, exState, cardAdds }
