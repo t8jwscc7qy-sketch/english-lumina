@@ -120,7 +120,17 @@ export type ExerciseFixture = {
   word?: { lemma: string; pos: string; inCards: boolean }
   /** Только для form: POST /cards для этого слова отвечает 409 no_examples. */
   noExamples?: boolean
+  /** Повтор ошибки: ответ двигает ошибку этого упражнения (ошибка создаётся, если её ещё нет). */
+  repeat?: boolean
 }
+export type MistakeFixture = {
+  id: number; exerciseId?: number; topic: string; kind: string; prompt: string
+  given: string; answer: string; streak: number
+  /** Через сколько дней вернётся (отрицательное — уже ждёт). */
+  dueInDays: number
+}
+type MockMistake = Omit<MistakeFixture, 'dueInDays'> & { nextDue: string; firstWrongAt: string }
+const DAY_MS = 24 * 3600_000
 export type ExerciseOpts = {
   queue?: ExerciseFixture[]
   /** Сервер на GET /exercises/next отвечает 404 no_exercise. */
@@ -168,7 +178,7 @@ export const EXERCISES: ExerciseFixture[] = [
  */
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -306,7 +316,45 @@ export async function mockApi(
     ['grammar:articles', { topic: 'grammar:articles', rating: 1500, deviation: 350, attempts: 0 }],
     ['grammar:past_simple', { topic: 'grammar:past_simple', rating: 1500, deviation: 350, attempts: 0 }],
   ])
-  const publicExercise = ({ answer: _a, accept: _c, word: _w, noExamples: _n, ...rest }: ExerciseFixture) => rest
+  const publicExercise = ({ answer: _a, accept: _c, word: _w, noExamples: _n, repeat, ...rest }: ExerciseFixture) => ({ ...rest, ...(repeat ? { repeat: true } : {}) })
+
+  // Банк ошибок в памяти: неверный ответ открывает ошибку, верный повтор двигает её, второй верный закрывает.
+  const inDays = (d: number) => new Date(Date.now() + d * DAY_MS).toISOString()
+  const mistakes: MockMistake[] = (opts.mistakes ?? []).map(({ dueInDays, ...m }) => ({ ...m, nextDue: inDays(dueInDays), firstWrongAt: inDays(-2) }))
+  let closedThisWeek = opts.closedThisWeek ?? 0
+  let nextMistakeId = 1000
+  await page.route('**/api/v1/mistakes**', (route) => {
+    const sorted = [...mistakes].sort((a, b) => a.nextDue.localeCompare(b.nextDue))
+    const now = new Date().toISOString()
+    return route.fulfill({
+      json: {
+        open: sorted.map(({ exerciseId: _e, ...m }) => m),
+        counts: { open: mistakes.length, dueNow: mistakes.filter((m) => m.nextDue <= now).length, closedThisWeek },
+      },
+    })
+  })
+  const touchMistake = (fx: ExerciseFixture, given: string, correct: boolean) => {
+    let m = mistakes.find((x) => x.exerciseId === fx.id)
+    if (fx.repeat && m && correct) {
+      m.streak += 1
+      if (m.streak >= 2) {
+        mistakes.splice(mistakes.indexOf(m), 1)
+        closedThisWeek += 1
+        return { status: 'closed', streak: m.streak, nextDue: inDays(3) }
+      }
+      m.nextDue = inDays(3)
+      return { status: 'open', streak: m.streak, nextDue: m.nextDue }
+    }
+    if (correct) return undefined
+    if (!m) {
+      m = { id: nextMistakeId++, exerciseId: fx.id, topic: fx.topic, kind: fx.kind, prompt: fx.prompt, given, answer: fx.answer, streak: 0, nextDue: inDays(1), firstWrongAt: inDays(0) }
+      mistakes.push(m)
+    }
+    m.given = given
+    m.streak = 0
+    m.nextDue = inDays(1)
+    return { status: 'open', streak: 0, nextDue: m.nextDue }
+  }
 
   await page.route('**/api/v1/exercises/**', async (route) => {
     const path = new URL(route.request().url()).pathname
@@ -333,7 +381,8 @@ export async function mockApi(
       r.attempts += 1
       ratings.set(fx.topic, r)
       exQueue.splice(exQueue.indexOf(fx), 1)
-      const result = { correct, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}) }
+      const mistake = touchMistake(fx, body.given, correct)
+      const result = { correct, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}), ...(mistake ? { mistake } : {}) }
       results.set(body.key, result)
       return route.fulfill({ json: result })
     }

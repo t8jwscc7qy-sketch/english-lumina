@@ -6,6 +6,7 @@ import { SettingsPage } from '@/features/settings/SettingsPage'
 import { SourcesPage } from '@/features/sources/SourcesPage'
 import { WordsPage } from '@/features/words/WordsPage'
 import { ExercisesPage } from '@/features/exercises/ExercisesPage'
+import { MistakesPage } from '@/features/mistakes/MistakesPage'
 import { CardsPage } from '@/features/cards/CardsPage'
 import { AppShell } from '@/features/shell/AppShell'
 import { TodayPage } from '@/features/today/TodayPage'
@@ -46,7 +47,7 @@ export const routes: RouteObject[] = [
       { path: 'cards', element: <CardsPage /> },
       { path: 'exercises', element: <ExercisesPage /> },
       { path: 'words', element: <WordsPage /> },
-      { path: 'mistakes', element: soon('Ошибки', 'Здесь будет банк ошибок.') },
+      { path: 'mistakes', element: <MistakesPage /> },
       { path: 'progress', element: soon('Прогресс', 'Здесь будет линия прогресса и прогноз.') },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'sources', element: <SourcesPage /> },

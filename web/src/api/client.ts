@@ -153,3 +153,12 @@ export async function listExerciseTopics(): Promise<TopicList> {
   const res = await request('/api/v1/exercises/topics')
   return (await res.json()) as TopicList
 }
+
+export type MistakeList = components['schemas']['MistakeList']
+export type Mistake = components['schemas']['Mistake']
+
+/** Банк ошибок: открытые ошибки по сроку повтора и три счётчика. */
+export async function getMistakes(): Promise<MistakeList> {
+  const res = await request('/api/v1/mistakes')
+  return (await res.json()) as MistakeList
+}

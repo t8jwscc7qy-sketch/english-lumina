@@ -250,6 +250,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mistakes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Банк ошибок
+         * @description Открытые ошибки по сроку повтора (не больше 200) и счётчики
+         */
+        get: operations["listMistakes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -420,6 +440,8 @@ export interface components {
             hint?: string;
             /** @description Основная тема упражнения */
             topic: string;
+            /** @description Это повтор ошибки из банка ошибок */
+            repeat?: boolean;
         };
         AnswerRequest: {
             /** Format: int64 */
@@ -451,6 +473,57 @@ export interface components {
                 /** @description Слово уже есть в карточках пользователя */
                 inCards: boolean;
             };
+            mistake?: components["schemas"]["MistakeResult"];
+        };
+        /** @description Состояние ошибки после ответа (повтор или новый неверный ответ) */
+        MistakeResult: {
+            /** @enum {string} */
+            status: "open" | "closed";
+            /** @description Верных повторов подряд */
+            streak: number;
+            /**
+             * Format: date-time
+             * @description Когда ошибка вернётся (для закрытой — последний срок)
+             */
+            nextDue: string;
+        };
+        Mistake: {
+            /** Format: int64 */
+            id: number;
+            /** @description Основная тема ошибки */
+            topic: string;
+            /** @description Вид упражнения (gap, order или form, как у Exercise.kind) */
+            kind: string;
+            /** @description Предложение с пропуском (gap, form) или русский перевод (order) */
+            prompt: string;
+            /** @description Последний неверный ответ */
+            given: string;
+            /** @description Верный ответ */
+            answer: string;
+            streak: number;
+            /** Format: date-time */
+            nextDue: string;
+            /** Format: date-time */
+            firstWrongAt: string;
+        };
+        MistakeCounts: {
+            /**
+             * Format: int64
+             * @description Все открытые ошибки (не только показанные)
+             */
+            open: number;
+            /**
+             * Format: int64
+             * @description Ждут повтора сейчас
+             */
+            dueNow: number;
+            /** Format: int64 */
+            closedThisWeek: number;
+        };
+        MistakeList: {
+            /** @description Открытые ошибки по сроку повтора, не больше 200 */
+            open: components["schemas"]["Mistake"][];
+            counts: components["schemas"]["MistakeCounts"];
         };
         TopicList: {
             topics: components["schemas"]["Rating"][];
@@ -918,6 +991,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TopicList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listMistakes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Открытые ошибки пользователя */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MistakeList"];
                 };
             };
             401: components["responses"]["Unauthorized"];

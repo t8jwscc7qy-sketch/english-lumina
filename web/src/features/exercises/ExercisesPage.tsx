@@ -49,6 +49,12 @@ function Prompt({ text, answer }: { text: string; answer?: string }) {
   )
 }
 
+/** Что с ошибкой после ответа: верный повтор закрывает её со второго раза, неверный ответ (новый или повторный) вернёт её завтра. */
+function mistakeLine(correct: boolean, m: NonNullable<AnswerResult['mistake']>): string {
+  if (!correct) return 'Вернётся завтра'
+  return m.status === 'closed' ? 'Ошибка закрыта' : 'Ещё один верный ответ, и ошибка закрыта'
+}
+
 export function ExercisesPage() {
   const next = useNextExercise()
   const topics = useTopics()
@@ -178,6 +184,7 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
 
   return (
     <article ref={articleRef} tabIndex={-1} aria-label="Упражнение" className="surface flex flex-col gap-6 p-6 outline-none">
+      {exercise.repeat && <p className="text-sm font-semibold text-muted-foreground">Повтор ошибки</p>}
       <p className="text-sm text-muted-foreground">{topicName(exercise.topic)}</p>
 
       {isOrder ? (
@@ -308,6 +315,11 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
                 </span>
               ))}
             </div>
+          )}
+          {result.mistake && (
+            <p data-mistake className="text-sm text-muted-foreground">
+              {mistakeLine(result.correct, result.mistake)}
+            </p>
           )}
           {result.word && <AddToCards word={result.word} />}
           </>

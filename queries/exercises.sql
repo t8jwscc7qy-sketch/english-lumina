@@ -1,6 +1,7 @@
 -- name: InsertExercise :one
-INSERT INTO exercises (user_id, kind, sentence_id, topics, payload, answer)
-VALUES ($1, $2, $3, $4, $5, $6)
+-- mistake_id задан только у повтора ошибки; у обычного упражнения NULL.
+INSERT INTO exercises (user_id, kind, sentence_id, topics, payload, answer, mistake_id)
+VALUES (sqlc.arg(user_id), sqlc.arg(kind), sqlc.arg(sentence_id), sqlc.arg(topics), sqlc.arg(payload), sqlc.arg(answer), sqlc.narg(mistake_id))
 RETURNING id;
 
 -- name: GetExerciseForUpdate :one

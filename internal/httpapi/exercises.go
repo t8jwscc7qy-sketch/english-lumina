@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -80,6 +81,14 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	// Сначала возвращаем ошибки, которым пора: так работает банк ошибок.
+	if rep, ok, err := s.repeatExercise(ctx, user.ID, time.Now()); err != nil {
+		s.failExercises(w, err)
+		return
+	} else if ok {
+		writeJSON(w, http.StatusOK, rep)
+		return
+	}
 	stored, err := s.store.ListTopicRatings(ctx, user.ID)
 	if err != nil {
 		s.failExercises(w, err)
