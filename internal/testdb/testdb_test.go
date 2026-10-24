@@ -21,7 +21,7 @@ func tableExists(t *testing.T, pool *pgxpool.Pool, name string) bool {
 	return exists
 }
 
-var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs", "cards", "word_frequencies"}
+var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs", "cards", "word_frequencies", "exercises", "topic_ratings"}
 
 func TestMigrationsUpDownUp(t *testing.T) {
 	pool := Pool(t)
@@ -200,7 +200,7 @@ func TestUpsertSentenceReturnsStoredRow(t *testing.T) {
 func TestExamplesFullTextIndex(t *testing.T) {
 	pool := Pool(t)
 	var def string
-	err := pool.QueryRow(context.Background(), `SELECT indexdef FROM pg_indexes WHERE indexname = 'sentences_en_fts'`).Scan(&def)
+	err := pool.QueryRow(context.Background(), `SELECT indexdef FROM pg_indexes WHERE indexname = 'sentences_en_fts' AND schemaname = current_schema()`).Scan(&def)
 	if err != nil {
 		t.Fatalf("индекса sentences_en_fts нет: %v", err)
 	}

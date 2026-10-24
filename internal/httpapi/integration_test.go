@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/auth"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/rating"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/testdb"
 )
 
@@ -767,4 +770,150 @@ func TestWordsFrequencyOnRealDatabase(t *testing.T) {
 	if got["runway"].FrequencyRank != nil {
 		t.Fatalf("runway не в списке: %+v", got["runway"].FrequencyRank)
 	}
+}
+
+// Выдача и ответ на упражнение на настоящей базе: повтор по ключу, 409 с другим ключом и два параллельных ответа.
+func TestExerciseAnswerOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range []string{"i", "have", "a", "big", "dog"} {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w, Pos: "noun", SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: ds.ID, Level: "A1", Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	en, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "en", TatoebaID: 1, Text: "I have a big dog.", Author: "CK", WordCount: 5, SourceID: ds.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ru, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "ru", TatoebaID: 2, Text: "У меня большая собака.", Author: "a", WordCount: 3, SourceID: ds.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en.ID, RuID: ru.ID, SourceID: ds.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("next: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	if ex.Topic != "grammar:articles" {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+
+	// Неверный ответ: рейтинги упали, событие одно.
+	first := e.do(http.MethodPost, answerPath, answerBody(ex.Id, "the", "k1"), withCookie(token))
+	if first.Code != http.StatusOK {
+		t.Fatalf("ответ: статус %d, тело %s", first.Code, first.Body)
+	}
+	res := decodeResult(t, first)
+	if res.Correct || res.Answer != "a" || len(res.Ratings) == 0 || res.Ratings[0].Rating >= 1500 || res.Ratings[0].Attempts != 1 {
+		t.Fatalf("результат: %+v", res)
+	}
+	count := func(query string, args ...any) int {
+		t.Helper()
+		var n int
+		if err := pool.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	events := func() int { return count("SELECT count(*) FROM events WHERE type = 'exercise.answered'") }
+	attempts := func() int {
+		return count("SELECT coalesce(max(attempts), 0) FROM topic_ratings WHERE topic = 'grammar:articles'")
+	}
+
+	// Повтор по ключу: тот же ответ, ничего не меняется.
+	again := e.do(http.MethodPost, answerPath, answerBody(ex.Id, "the", "k1"), withCookie(token))
+	if again.Code != http.StatusOK || again.Body.String() != first.Body.String() || events() != 1 || attempts() != 1 {
+		t.Fatalf("повтор: статус %d, тело %s; событий %d, попыток %d", again.Code, again.Body, events(), attempts())
+	}
+	// Другой ключ: 409.
+	if rec := e.do(http.MethodPost, answerPath, answerBody(ex.Id, "a", "k2"), withCookie(token)); rec.Code != http.StatusConflict {
+		t.Fatalf("другой ключ: статус %d, тело %s", rec.Code, rec.Body)
+	}
+
+	// Два параллельных ответа с разными ключами на новое упражнение: один 200, один 409.
+	ex2 := seedRealExercise(t, q, en.ID, "grammar:articles", "level:B1")
+	codes := make(chan int, 2)
+	for _, key := range []string{"p1", "p2"} {
+		go func() {
+			codes <- e.do(http.MethodPost, answerPath, answerBody(ex2, "a", key), withCookie(token)).Code
+		}()
+	}
+	got := []int{<-codes, <-codes}
+	if got[0]+got[1] != 200+409 || got[0] == got[1] {
+		t.Fatalf("параллельные ответы: коды %v, ждали один 200 и один 409", got)
+	}
+	if n := count("SELECT count(*) FROM events WHERE type = 'exercise.answered' AND payload->>'exerciseId' = $1", fmt.Sprint(ex2)); n != 1 {
+		t.Fatalf("событий по второму упражнению %d, ждали 1", n)
+	}
+	if n := count("SELECT attempts FROM topic_ratings WHERE topic = 'level:B1'"); n != 1 {
+		t.Fatalf("попыток по level:B1 %d, ждали 1", n)
+	}
+
+	// Два параллельных ответа на РАЗНЫЕ упражнения с общей новой темой: оба 200, обновления не теряются.
+	a := seedRealExercise(t, q, en.ID, "grammar:modals", "level:C1")
+	b := seedRealExercise(t, q, en.ID, "grammar:modals", "level:C1")
+	var start, wg sync.WaitGroup
+	start.Add(1)
+	codes2 := make([]int, 2)
+	for i, id := range []int64{a, b} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			start.Wait()
+			codes2[i] = e.do(http.MethodPost, answerPath, answerBody(id, "a", fmt.Sprintf("q%d", i)), withCookie(token)).Code
+		}()
+	}
+	start.Done()
+	wg.Wait()
+	if codes2[0] != 200 || codes2[1] != 200 {
+		t.Fatalf("общая тема: коды %v, ждали 200 и 200", codes2)
+	}
+	var mu float64
+	var n int
+	if err := pool.QueryRow(ctx, "SELECT rating, attempts FROM topic_ratings WHERE topic = 'level:C1'").Scan(&mu, &n); err != nil {
+		t.Fatal(err)
+	}
+	opp := rating.Rating{Mu: 1600, Phi: 100, Sigma: 0.06}
+	want := rating.Update(rating.Update(rating.New(), opp, 1), opp, 1) // оба обновления одинаковы, порядок не важен
+	if n != 2 || math.Abs(mu-want.Mu) > 1e-9 {
+		t.Fatalf("level:C1: попыток %d, рейтинг %.6f; ждали 2 и %.6f", n, mu, want.Mu)
+	}
+}
+
+// seedRealExercise вставляет неотвеченное упражнение с заданными темами.
+func seedRealExercise(t *testing.T, q *db.Queries, sentenceID int64, topics ...string) int64 {
+	t.Helper()
+	payload, _ := json.Marshal(exercisePayload{Prompt: "I have _____ big dog.", Translation: "У меня большая собака.", Choices: []string{"a", "an", "the", "-"}, Topic: "grammar:articles"})
+	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"a"}})
+	id, err := q.InsertExercise(context.Background(), db.InsertExerciseParams{
+		UserID: 1, Kind: "gap", SentenceID: sentenceID, Topics: topics, Payload: payload, Answer: answer,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

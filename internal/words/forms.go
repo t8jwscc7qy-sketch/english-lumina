@@ -223,3 +223,51 @@ var irregularNouns = map[string][]string{
 var irregularAdjectives = map[string][]string{
 	"good": {"better", "best"}, "bad": {"worse", "worst"}, "far": {"farther", "further", "farthest", "furthest"},
 }
+
+// ambiguousPast — формы, которые чаще встречаются в другой роли (saw — пила, bit — кусочек,
+// left — левый): как прошедшее время их не засчитываем, спорное пропускаем.
+var ambiguousPast = map[string]bool{
+	"bit": true, "left": true, "rose": true, "saw": true, "lay": true, "bore": true,
+	"shot": true, "led": true, "got": true, "read": true, "put": true, "cut": true, "hit": true,
+}
+
+// irregularPastSet — неправильные формы именно прошедшего времени (went, bought).
+// В таблице irregularVerbs порядок: -s, -ing, прошедшее, причастие, поэтому берём третью форму
+// (и «lied» у lie); причастия вроде gone и taken не входят. Совпадающие формы (got, made) остаются:
+// отличить причастие по контексту должен вызывающий код.
+var irregularPastSet = func() map[string]bool {
+	set := map[string]bool{}
+	for _, forms := range irregularVerbs {
+		if len(forms) > 2 && !ambiguousPast[forms[2]] {
+			set[forms[2]] = true
+		}
+		if len(forms) > 4 && !ambiguousPast[forms[4]] {
+			set[forms[4]] = true // lied
+		}
+	}
+	return set
+}()
+
+// IrregularPast сообщает, что слово — неправильная форма прошедшего времени (регистр не важен).
+func IrregularPast(word string) bool {
+	return irregularPastSet[strings.ToLower(word)]
+}
+
+// IrregularLemma возвращает начальную форму неправильного глагола по его форме прошедшего времени
+// (went → go). false, если формы нет в таблице или она спорная (saw, left).
+func IrregularLemma(past string) (string, bool) {
+	past = strings.ToLower(past)
+	if !irregularPastSet[past] {
+		return "", false
+	}
+	lemmas := make([]string, 0, 1)
+	for lemma, forms := range irregularVerbs {
+		if (len(forms) > 2 && forms[2] == past) || (len(forms) > 4 && forms[4] == past) {
+			lemmas = append(lemmas, lemma)
+		}
+	}
+	if len(lemmas) != 1 { // две начальные формы с одной формой прошедшего: не угадываем
+		return "", false
+	}
+	return lemmas[0], true
+}

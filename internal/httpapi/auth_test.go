@@ -68,6 +68,17 @@ type fakeStore struct {
 	lastFreq      *db.ListWordFrequenciesParams
 	failEvents    bool // AppendEvent возвращает ошибку (проверка отката)
 	upserts       int
+
+	exercises      map[int64]db.Exercise
+	nextExerciseID int64
+	topicRatings   map[topicKey]db.TopicRating
+	sentencePool   []db.SampleSentencesRow         // для SampleSentences, по возрастанию id
+	wordLevels     map[string]db.SentenceLevelsRow // для SentenceLevels
+	rangeCalls     int
+	levelCalls     int
+	sampleErr      error
+	rangeOverride  *db.SentenceIDRangeRow
+	levelLexemes   map[string][]db.RandomLexemesByLevelRow // для RandomLexemesByLevel
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

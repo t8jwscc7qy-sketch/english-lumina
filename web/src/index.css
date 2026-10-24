@@ -19,6 +19,7 @@
   --ink: #1e2347;
   --sky: #4cc9f0;
   --grass: #52b788;
+  --grass-text: #2d7a56; /* зелёный для значков и рамок «верно»: контраст ≥ 3:1 на белом (5,2:1) */
   --sun: #ffd23f;
   --coral: #ef476f;
   --coral-text: #c42d52; /* коралл для текста: контраст ≥ 4.5:1 на бумаге */
@@ -74,6 +75,7 @@
   --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 38px -14px rgb(0 0 0 / 0.75);
   --shadow-button: 0 1px 2px rgb(0 0 0 / 0.4);
   --coral-text: #ff8fa8;
+  --grass-text: #52b788; /* на тёмных карточках обычный зелёный даёт 6,3:1 */
   --focus: var(--sky);
   --bridge: #8fd3b0; /* светлее зелёного: на тёмной платформе обычный зелёный тонет */
   --rail: #0f1126;
@@ -97,6 +99,7 @@
   --color-ink: var(--ink);
   --color-sky: var(--sky);
   --color-grass: var(--grass);
+  --color-grass-text: var(--grass-text);
   --color-sun: var(--sun);
   --color-coral: var(--coral);
   --color-coral-text: var(--coral-text);

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"regexp"
@@ -60,7 +61,21 @@ type AuthStore interface {
 	CountCards(ctx context.Context, arg db.CountCardsParams) (db.CountCardsRow, error)
 	ListCardLexemeIDs(ctx context.Context, arg db.ListCardLexemeIDsParams) ([]int64, error)
 	AppendEvent(ctx context.Context, arg db.AppendEventParams) (int64, error)
+	GetEventByKey(ctx context.Context, arg db.GetEventByKeyParams) (db.Event, error)
 	ListWordFrequencies(ctx context.Context, arg db.ListWordFrequenciesParams) ([]db.ListWordFrequenciesRow, error)
+
+	InsertExercise(ctx context.Context, arg db.InsertExerciseParams) (int64, error)
+	GetExerciseForUpdate(ctx context.Context, arg db.GetExerciseForUpdateParams) (db.Exercise, error)
+	MarkExerciseAnswered(ctx context.Context, arg db.MarkExerciseAnsweredParams) error
+	EnsureTopicRating(ctx context.Context, arg db.EnsureTopicRatingParams) error
+	ListTopicRatings(ctx context.Context, userID int64) ([]db.TopicRating, error)
+	GetTopicRatingForUpdate(ctx context.Context, arg db.GetTopicRatingForUpdateParams) (db.TopicRating, error)
+	UpsertTopicRating(ctx context.Context, arg db.UpsertTopicRatingParams) error
+	SampleSentences(ctx context.Context, arg db.SampleSentencesParams) ([]db.SampleSentencesRow, error)
+	SentenceLevels(ctx context.Context, words []string) ([]db.SentenceLevelsRow, error)
+	UsedSentences(ctx context.Context, arg db.UsedSentencesParams) ([]int64, error)
+	SentenceIDRange(ctx context.Context) (db.SentenceIDRangeRow, error)
+	RandomLexemesByLevel(ctx context.Context, arg db.RandomLexemesByLevelParams) ([]db.RandomLexemesByLevelRow, error)
 
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
 	// Хранилище, переданное в fn, работает на этой транзакции; вложенный InTx использует ту же транзакцию.
@@ -131,6 +146,8 @@ type authServer struct {
 	dummyHash func() (string, error)
 	// Семафор проверок пароля: занято место — идёт проверка.
 	verifySem chan struct{}
+	// Источник случайности упражнений: число от 0 до n-1 (n > 0). В тестах подменяется.
+	rnd func(n int64) int64
 }
 
 func newAuthServer(store AuthStore, throttle *auth.Throttle) *authServer {
@@ -139,6 +156,7 @@ func newAuthServer(store AuthStore, throttle *auth.Throttle) *authServer {
 		throttle:  throttle,
 		verifySem: make(chan struct{}, maxConcurrentVerify),
 		dummyHash: sync.OnceValues(func() (string, error) { return auth.HashPassword("dummy-password") }),
+		rnd:       rand.Int64N,
 	}
 }
 

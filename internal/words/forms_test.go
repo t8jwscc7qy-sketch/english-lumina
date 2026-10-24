@@ -106,3 +106,34 @@ func TestTSQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestIrregularPast(t *testing.T) {
+	yes := []string{"went", "Went", "bought", "lied", "found", "ate", "said", "showed"}
+	// причастия (gone, taken...) и неоднозначные слова (saw, bit, left...) — не прошедшее время.
+	no := []string{"go", "goes", "going", "walked", "put", "read", "beginning", "lies", "dog", "",
+		"gone", "seen", "taken", "written", "given", "known", "eaten", "broken", "drunk", "worn", "lain", "gotten",
+		"bit", "left", "rose", "saw", "lay", "bore", "shot", "led", "got"}
+	for _, w := range yes {
+		if !IrregularPast(w) {
+			t.Errorf("IrregularPast(%q) = false, ожидали true", w)
+		}
+	}
+	for _, w := range no {
+		if IrregularPast(w) {
+			t.Errorf("IrregularPast(%q) = true, ожидали false", w)
+		}
+	}
+}
+
+func TestIrregularLemma(t *testing.T) {
+	tests := map[string]struct {
+		lemma string
+		ok    bool
+	}{"went": {"go", true}, "Bought": {"buy", true}, "lied": {"lie", true}, "saw": {"", false}, "walked": {"", false}}
+	for in, want := range tests {
+		got, ok := IrregularLemma(in)
+		if got != want.lemma || ok != want.ok {
+			t.Errorf("IrregularLemma(%q) = %q, %v; ждали %q, %v", in, got, ok, want.lemma, want.ok)
+		}
+	}
+}

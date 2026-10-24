@@ -10,7 +10,7 @@ import (
 )
 
 const listExamples = `-- name: ListExamples :many
-SELECT e.tatoeba_id AS en_tatoeba_id, e.text AS en_text, e.author AS en_author,
+SELECT e.id AS en_id, e.tatoeba_id AS en_tatoeba_id, e.text AS en_text, e.author AS en_author,
        r.tatoeba_id AS ru_tatoeba_id, r.text AS ru_text, r.author AS ru_author
 FROM sentences e
 CROSS JOIN LATERAL (
@@ -34,6 +34,7 @@ type ListExamplesParams struct {
 }
 
 type ListExamplesRow struct {
+	EnID        int64
 	EnTatoebaID int64
 	EnText      string
 	EnAuthor    string
@@ -55,6 +56,7 @@ func (q *Queries) ListExamples(ctx context.Context, arg ListExamplesParams) ([]L
 	for rows.Next() {
 		var i ListExamplesRow
 		if err := rows.Scan(
+			&i.EnID,
 			&i.EnTatoebaID,
 			&i.EnText,
 			&i.EnAuthor,

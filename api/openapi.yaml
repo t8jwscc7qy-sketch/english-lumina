@@ -243,6 +243,85 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /api/v1/exercises/next:
+    get:
+      operationId: getNextExercise
+      summary: Следующее упражнение
+      description: >
+        Упражнение с пропуском: предложение, перевод-подсказка и варианты ответа (пустой список — ввод вручную).
+        Верного ответа в теле нет. Если подходящего не нашлось, 404 с кодом no_exercise.
+      responses:
+        "200":
+          description: Упражнение
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exercise"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Подходящего упражнения нет (код no_exercise)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/exercises/answer:
+    post:
+      operationId: answerExercise
+      summary: Ответить на упражнение
+      description: >
+        Номер упражнения в теле, а не в пути: параметры пути заставляют генератор добавить новую зависимость.
+        Повтор с тем же key возвращает тот же результат и ничего не пересчитывает. Ответ на уже отвеченное
+        упражнение с другим key даёт 409 already_answered. При повторе по тому же ключу тело запроса игнорируется,
+        correct и answer — как в первом ответе, ratings — текущие.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnswerRequest"
+      responses:
+        "200":
+          description: Результат (или тот же результат при повторе с тем же ключом)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnswerResult"
+        "400":
+          description: Некорректный запрос или пустой ответ (код invalid_request или invalid_answer)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Упражнения нет или оно чужое (код not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: На упражнение уже отвечали с другим ключом (код already_answered)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/exercises/topics:
+    get:
+      operationId: listExerciseTopics
+      summary: Темы с рейтингом
+      responses:
+        "200":
+          description: Рейтинги тем пользователя (для полосы слабых тем)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   schemas:
     LoginRequest:
@@ -509,6 +588,87 @@ components:
         card:
           $ref: "#/components/schemas/QueueCard"
           description: Следующая карточка; нет, если повторять нечего
+    Exercise:
+      type: object
+      required: [id, kind, prompt, translation, choices, topic]
+      properties:
+        id:
+          type: integer
+          format: int64
+        kind:
+          type: string
+          enum: [gap]
+          description: Вид упражнения (пока только пропуск)
+        prompt:
+          type: string
+          description: Предложение с пропуском, английский
+        translation:
+          type: string
+          description: Перевод-подсказка на русском
+        choices:
+          type: array
+          items:
+            type: string
+          description: Варианты ответа; пустой список — ответ вводится вручную
+        topic:
+          type: string
+          description: Основная тема упражнения
+    AnswerRequest:
+      type: object
+      required: [exerciseId, given, key]
+      properties:
+        exerciseId:
+          type: integer
+          format: int64
+        given:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Ответ пользователя
+        key:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Ключ идемпотентности, один на попытку
+    Rating:
+      type: object
+      required: [topic, rating, deviation, attempts]
+      properties:
+        topic:
+          type: string
+        rating:
+          type: number
+          format: double
+        deviation:
+          type: number
+          format: double
+        attempts:
+          type: integer
+          minimum: 0
+    AnswerResult:
+      type: object
+      required: [correct, answer, translation, ratings]
+      properties:
+        correct:
+          type: boolean
+        answer:
+          type: string
+          description: Верный ответ
+        translation:
+          type: string
+        ratings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rating"
+          description: Рейтинги затронутых тем после обновления
+    TopicList:
+      type: object
+      required: [topics]
+      properties:
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rating"
     Error:
       type: object
       required: [error]
@@ -520,7 +680,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, already_answered, invalid_answer, internal]
             message:
               type: string
               description: Текст для пользователя на русском
