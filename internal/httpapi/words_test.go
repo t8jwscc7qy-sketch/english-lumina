@@ -185,7 +185,81 @@ func TestWordsWithoutResultsDoNotAskForCards(t *testing.T) {
 			t.Fatalf("q=%q: статус %d", q, rec.Code)
 		}
 	}
-	if e.store.listCardCalls != 0 {
-		t.Fatalf("запрос карточек выполнен %d раз без найденных слов", e.store.listCardCalls)
+	if e.store.listCardCalls != 0 || e.store.freqCalls != 0 {
+		t.Fatalf("без найденных слов запросы карточек (%d) и частот (%d) не нужны", e.store.listCardCalls, e.store.freqCalls)
+	}
+}
+
+// Как настоящий запрос: только запрошенные слова.
+func (f *fakeStore) ListWordFrequencies(_ context.Context, arg db.ListWordFrequenciesParams) ([]db.ListWordFrequenciesRow, error) {
+	f.freqCalls++
+	f.lastFreq = &arg
+	var out []db.ListWordFrequenciesRow
+	for _, row := range f.frequencies {
+		if slices.Contains(arg.Words, row.Word) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func wordsByLemma(t *testing.T, body string) map[string]api.Word {
+	t.Helper()
+	out := map[string]api.Word{}
+	for _, w := range decodeWords(t, body).Words {
+		out[w.Lemma] = w
+	}
+	return out
+}
+
+func TestWordsFrequencyRankIsBestAmongForms(t *testing.T) {
+	e := newEnv(t)
+	e.store.lexemes = []db.SearchLexemesRow{
+		{ID: 1, Lemma: "run", Pos: "verb", Level: "A1"},
+		{ID: 2, Lemma: "runner", Pos: "noun", Level: "B1"},
+		{ID: 3, Lemma: "zebra", Pos: "noun", Level: "A2"},
+		{ID: 4, Lemma: "turn to", Pos: "verb", Level: "B1"},
+	}
+	e.store.frequencies = []db.ListWordFrequenciesRow{
+		{Word: "run", Rank: 17}, {Word: "running", Rank: 5}, {Word: "ran", Rank: 66}, {Word: "runner", Rank: 300},
+		{Word: "turn", Rank: 120}, {Word: "to", Rank: 4}, // у фразы места нет, даже если её слова в списке
+	}
+	token := login(t, e)
+	rec := e.do(http.MethodGet, wordsPath("r"), "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	got := wordsByLemma(t, rec.Body.String())
+	rank := func(lemma string) any {
+		if got[lemma].FrequencyRank == nil {
+			return nil
+		}
+		return *got[lemma].FrequencyRank
+	}
+	if rank("run") != 5 || rank("runner") != 300 || rank("zebra") != nil || rank("turn to") != nil {
+		t.Fatalf("места: run=%v runner=%v zebra=%v turn to=%v; ожидали 5, 300, нет, нет", rank("run"), rank("runner"), rank("zebra"), rank("turn to"))
+	}
+	if strings.Contains(rec.Body.String(), `"frequencyRank":null`) {
+		t.Fatalf("у слов без места поля быть не должно: %s", rec.Body)
+	}
+}
+
+func TestWordsAskForFrequenciesOncePerSearchWithOnlySingleWords(t *testing.T) {
+	e := newEnv(t)
+	e.store.lexemes = []db.SearchLexemesRow{
+		{ID: 1, Lemma: "run", Pos: "verb", Level: "A1"},
+		{ID: 2, Lemma: "turn to", Pos: "verb", Level: "B1"},
+	}
+	token := login(t, e)
+	if rec := e.do(http.MethodGet, wordsPath("r"), "", withCookie(token)); rec.Code != http.StatusOK {
+		t.Fatalf("статус %d", rec.Code)
+	}
+	if e.store.freqCalls != 1 || e.store.lastFreq == nil {
+		t.Fatalf("запросов частот %d, ожидали 1", e.store.freqCalls)
+	}
+	words := slices.Clone(e.store.lastFreq.Words)
+	slices.Sort(words)
+	if e.store.lastFreq.SourceName != "frequencywords" || !slices.Equal(words, []string{"ran", "run", "running", "runs"}) {
+		t.Fatalf("параметры %+v", e.store.lastFreq)
 	}
 }

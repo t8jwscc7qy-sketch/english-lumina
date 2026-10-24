@@ -45,6 +45,9 @@ test.describe('поиск слов', () => {
     await expect(items).toHaveCount(3)
     await expect(items.first()).toContainText('run')
     await expect(items.first().getByLabel('Уровень A1')).toBeVisible()
+    await expect(items.first()).toContainText(/Частота: очень частое слово, № 244 из 50\s000/)
+    await expect(items.nth(1)).toContainText(/Частота: обычное слово, № 5\s216/)
+    await expect(items.nth(2)).toContainText(/Частота: редкое слово, реже № 50\s000/)
   })
 
   test('слово с двумя оценками: уровень слова, обе оценки и заметки', async ({ page }) => {

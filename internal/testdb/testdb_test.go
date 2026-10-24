@@ -21,7 +21,7 @@ func tableExists(t *testing.T, pool *pgxpool.Pool, name string) bool {
 	return exists
 }
 
-var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs", "cards"}
+var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs", "cards", "word_frequencies"}
 
 func TestMigrationsUpDownUp(t *testing.T) {
 	pool := Pool(t)
@@ -286,5 +286,44 @@ func TestCardSchemaConstraints(t *testing.T) {
 	var n int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM cards`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("карточек после удаления пользователя: %d (%v)", n, err)
+	}
+}
+
+func TestWordFrequencySchemaConstraints(t *testing.T) {
+	pool := Pool(t)
+	ctx := context.Background()
+	var srcID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO data_sources (name, version, license, url, attribution) VALUES ('f', '1', 'l', 'u', 'a') RETURNING id`).Scan(&srcID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES ($1, 'you', 10, 1)`, srcID); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name string
+		sql  string
+		code string
+	}{
+		{"счёт ноль", `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES ($1, 'a', 0, 2)`, "23514"},
+		{"ранг ноль", `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES ($1, 'a', 5, 0)`, "23514"},
+		{"пустое слово", `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES ($1, '', 5, 2)`, "23514"},
+		{"слово из 65 символов", `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES ($1, repeat('x', 65), 5, 2)`, "23514"},
+		{"повтор слова", `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES ($1, 'you', 5, 2)`, "23505"},
+		{"повтор ранга", `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES ($1, 'the', 5, 1)`, "23505"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := pool.Exec(ctx, tc.sql, srcID)
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) || pgErr.Code != tc.code {
+				t.Fatalf("ожидали код %s, получили %v", tc.code, err)
+			}
+		})
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO word_frequencies (source_id, word, count, rank) VALUES (999999, 'x', 5, 9)`); err == nil {
+		t.Fatal("несуществующий источник должен отклоняться")
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM data_sources WHERE id = $1`, srcID); err == nil {
+		t.Fatal("источник с частотами удалился")
 	}
 }

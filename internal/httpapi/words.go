@@ -11,7 +11,11 @@ import (
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/words"
 )
 
-const maxWordResults = 50
+const (
+	maxWordResults = 50
+	// Имя источника частот: берётся его последний завершённый импорт.
+	frequencySource = "frequencywords"
+)
 
 // SearchWords ищет слово по началу (и по началу варианта через слэш). Запрос q читаем сами:
 // объявленный в контракте параметр заставил бы генератор добавить новую зависимость.
@@ -72,10 +76,41 @@ func (s *authServer) SearchWords(w http.ResponseWriter, r *http.Request) {
 			Source: l.Source, Level: api.CefrLevel(l.Level), Notes: notesOf(l.Extra),
 		})
 	}
-	for _, f := range found {
-		out.Words = append(out.Words, api.Word{
+
+	// Частота: у слов словаря леммы, а в списке частот написания (run, runs, running), поэтому по формам слов
+	// одним запросом берём места, и у каждого слова выбираем самое частое из его форм.
+	keysOf := make([][]string, len(found))
+	var wanted []string
+	seen := map[string]bool{}
+	for i, f := range found {
+		keysOf[i] = words.FrequencyKeys(f.Lemma, words.Forms(f.Lemma, f.Pos))
+		for _, form := range keysOf[i] {
+			if !seen[form] {
+				seen[form] = true
+				wanted = append(wanted, form)
+			}
+		}
+	}
+	ranks := map[string]int{}
+	if len(wanted) > 0 {
+		freqs, err := s.store.ListWordFrequencies(ctx, db.ListWordFrequenciesParams{SourceName: frequencySource, Words: wanted})
+		if err != nil {
+			s.failWords(w, err)
+			return
+		}
+		for _, fr := range freqs {
+			ranks[fr.Word] = int(fr.Rank)
+		}
+	}
+
+	for i, f := range found {
+		word := api.Word{
 			Lemma: f.Lemma, Pos: f.Pos, Level: api.CefrLevel(f.Level), Levels: append([]api.WordLevel{}, byWord[f.ID]...), InCards: inCards[f.ID],
-		})
+		}
+		if rank, ok := words.BestRankOf(keysOf[i], ranks); ok {
+			word.FrequencyRank = &rank
+		}
+		out.Words = append(out.Words, word)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

@@ -345,6 +345,12 @@ components:
         inCards:
           type: boolean
           description: Есть ли у пользователя карточка этого слова
+        frequencyRank:
+          type: integer
+          minimum: 1
+          description: >
+            Место слова в списке частот (1 — самое частое): лучшее среди его форм. Нет, если слова нет в списке
+            (реже 50 000-го) или это фраза.
         level:
           $ref: "#/components/schemas/CefrLevel"
           description: Уровень слова — самый низкий из оценок источников
