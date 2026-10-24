@@ -97,6 +97,7 @@ func (e ErrorErrorCode) Valid() bool {
 
 // Defines values for ExerciseKind.
 const (
+	Form  ExerciseKind = "form"
 	Gap   ExerciseKind = "gap"
 	Order ExerciseKind = "order"
 )
@@ -104,6 +105,8 @@ const (
 // Valid indicates whether the value is a known member of the ExerciseKind enum.
 func (e ExerciseKind) Valid() bool {
 	switch e {
+	case Form:
+		return true
 	case Gap:
 		return true
 	case Order:
@@ -172,6 +175,14 @@ type AnswerResult struct {
 	// Ratings Рейтинги затронутых тем после обновления
 	Ratings     []Rating `json:"ratings"`
 	Translation string   `json:"translation"`
+
+	// Word Только для form, слово упражнения (чтобы добавить его в карточки)
+	Word *struct {
+		// InCards Слово уже есть в карточках пользователя
+		InCards bool   `json:"inCards"`
+		Lemma   string `json:"lemma"`
+		Pos     string `json:"pos"`
+	} `json:"word,omitempty"`
 }
 
 // CardIntervals Через сколько секунд карточка вернётся при каждой оценке
@@ -243,9 +254,12 @@ type ExampleSentence struct {
 type Exercise struct {
 	// Choices Варианты ответа; пустой список — ответ вводится вручную (для order всегда пустой)
 	Choices []string `json:"choices"`
-	Id      int64    `json:"id"`
 
-	// Kind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
+	// Hint Только для form, начальная форма слова, которую нужно изменить
+	Hint *string `json:"hint,omitempty"`
+	Id   int64   `json:"id"`
+
+	// Kind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
 	Kind ExerciseKind `json:"kind"`
 
 	// Prompt gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles)
@@ -261,7 +275,7 @@ type Exercise struct {
 	Translation string `json:"translation"`
 }
 
-// ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
+// ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
 type ExerciseKind string
 
 // Level defines model for Level.

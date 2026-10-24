@@ -77,6 +77,7 @@ type AuthStore interface {
 	SentenceIDRange(ctx context.Context) (db.SentenceIDRangeRow, error)
 	RandomLexemesByLevel(ctx context.Context, arg db.RandomLexemesByLevelParams) ([]db.RandomLexemesByLevelRow, error)
 	ListEnglishAlternatives(ctx context.Context, arg db.ListEnglishAlternativesParams) ([]db.ListEnglishAlternativesRow, error)
+	ListWeakCardWords(ctx context.Context, arg db.ListWeakCardWordsParams) ([]db.ListWeakCardWordsRow, error)
 
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
 	// Хранилище, переданное в fn, работает на этой транзакции; вложенный InTx использует ту же транзакцию.

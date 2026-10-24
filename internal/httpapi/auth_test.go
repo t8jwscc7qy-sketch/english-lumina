@@ -82,6 +82,7 @@ type fakeStore struct {
 	sampleErr      error
 	rangeOverride  *db.SentenceIDRangeRow
 	levelLexemes   map[string][]db.RandomLexemesByLevelRow // для RandomLexemesByLevel
+	weakWords      []db.ListWeakCardWordsRow               // для ListWeakCardWords
 }
 
 func newFakeStore(t *testing.T) *fakeStore {
