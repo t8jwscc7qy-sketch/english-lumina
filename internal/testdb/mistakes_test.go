@@ -121,10 +121,16 @@ func TestMistakesQueries(t *testing.T) {
 		if err := q.UpdateMistakeProgress(ctx, db.UpdateMistakeProgressParams{ID: second, Streak: 1, Status: "open", NextDue: ts(base), Given: "the"}); err != nil {
 			t.Fatal(err)
 		}
-		if err := q.ResetMistake(ctx, db.ResetMistakeParams{ID: second, Given: "an", NextDue: ts(base.Add(48 * time.Hour))}); err != nil {
+		if err := q.ResetMistake(ctx, db.ResetMistakeParams{
+			ID: second, Given: "an", NextDue: ts(base.Add(48 * time.Hour)),
+			Payload: []byte(`{"prompt":"new"}`), Answer: []byte(`{"answers":["b"]}`), Topics: []string{"level:B1"},
+		}); err != nil {
 			t.Fatal(err)
 		}
 		r, _ := q.GetMistakeForUpdate(ctx, db.GetMistakeForUpdateParams{ID: second, UserID: me.ID})
+		if string(r.Payload) != `{"prompt": "new"}` || string(r.Answer) != `{"answers": ["b"]}` || !slices.Equal(r.Topics, []string{"level:B1"}) {
+			t.Fatalf("ResetMistake не заменил данные: %+v", r)
+		}
 		if r.Streak != 0 || r.Given != "an" || !r.NextDue.Time.Equal(base.Add(48*time.Hour)) || r.Status != "open" {
 			t.Fatalf("ResetMistake: %+v", r)
 		}
@@ -241,4 +247,44 @@ func TestMistakesQueries(t *testing.T) {
 			t.Fatalf("после удаления ошибки CountRepeatsToday = %d, ожидали 1", n)
 		}
 	})
+}
+
+// Статус и время закрытия согласованы на уровне базы: закрытая без closed_at и открытая с closed_at отклоняются.
+func TestMistakesClosedAtCheck(t *testing.T) {
+	ctx := context.Background()
+	pool := Pool(t)
+	q := db.New(pool)
+	me, err := q.CreateUser(ctx, db.CreateUserParams{Login: "vlad", PasswordHash: "$argon2id$x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "1", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "en", TatoebaID: 1, Text: "I went home.", Author: "a", WordCount: 3, SourceID: src.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	insert := func(status string, closedAt any) error {
+		_, err := pool.Exec(ctx, `INSERT INTO mistakes (user_id, kind, sentence_id, topics, payload, answer, given, status, closed_at, next_due, first_wrong_at)
+			VALUES ($1, 'gap', $2, ARRAY['t'], '{}', '{}', 'x', $3, $4, now(), now())`, me.ID, s.ID, status, closedAt)
+		return err
+	}
+	isCheck := func(err error) bool {
+		var pg *pgconn.PgError
+		return errors.As(err, &pg) && pg.Code == "23514"
+	}
+	if err := insert("closed", nil); !isCheck(err) {
+		t.Fatalf("закрытая без closed_at: %v", err)
+	}
+	if err := insert("open", time.Now()); !isCheck(err) {
+		t.Fatalf("открытая с closed_at: %v", err)
+	}
+	if err := insert("closed", time.Now()); err != nil {
+		t.Fatalf("закрытая с closed_at: %v", err)
+	}
+	if err := insert("open", nil); err != nil {
+		t.Fatalf("открытая без closed_at: %v", err)
+	}
 }

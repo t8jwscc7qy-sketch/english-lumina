@@ -39,18 +39,18 @@ func TestShouldServeRepeat(t *testing.T) {
 	tests := []struct {
 		name    string
 		repeats int
-		last2   bool
+		anyRep  bool
 		hasDue  bool
 		want    bool
 	}{
 		{"нет наступивших", 0, false, false, false},
 		{"лимит за сегодня", MaxRepeatsPerDay, false, true, false},
-		{"два последних повторы", 1, true, true, false},
+		{"один из двух последних повтор", 1, true, true, false},
 		{"можно", 4, false, true, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ShouldServeRepeat(tt.repeats, tt.last2, tt.hasDue); got != tt.want {
+			if got := ShouldServeRepeat(tt.repeats, tt.anyRep, tt.hasDue); got != tt.want {
 				t.Fatalf("got %v, want %v", got, tt.want)
 			}
 		})

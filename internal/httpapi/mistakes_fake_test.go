@@ -37,6 +37,10 @@ func (f *fakeStore) InsertMistake(_ context.Context, arg db.InsertMistakeParams)
 }
 
 func (f *fakeStore) GetOpenMistakeForUpdate(_ context.Context, arg db.GetOpenMistakeForUpdateParams) (db.Mistake, error) {
+	if f.missOpenOnce { // имитация гонки: поиск не видит строку, которую вставка потом найдёт
+		f.missOpenOnce = false
+		return db.Mistake{}, pgx.ErrNoRows
+	}
 	for _, m := range f.mistakes {
 		if m.UserID == arg.UserID && m.SentenceID == arg.SentenceID && m.Kind == arg.Kind && m.Status == "open" {
 			return m, nil
@@ -59,6 +63,7 @@ func (f *fakeStore) ResetMistake(_ context.Context, arg db.ResetMistakeParams) e
 		return nil
 	}
 	m.Streak, m.Given, m.NextDue = 0, arg.Given, arg.NextDue
+	m.Payload, m.Answer, m.Topics = arg.Payload, arg.Answer, slices.Clone(arg.Topics)
 	f.mistakes[arg.ID] = m
 	return nil
 }

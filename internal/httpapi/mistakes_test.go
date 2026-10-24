@@ -236,26 +236,39 @@ func answeredExercise(e env, mistakeID *int64, at time.Time) {
 	}
 }
 
+// Повтор не выдаётся, если ЛЮБОЕ из двух последних отвеченных упражнений было повтором.
 func TestNextRepeatNotTwiceInRow(t *testing.T) {
-	e := newExerciseEnv(t)
-	token := login(t, e)
-	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I have a dog.")}
-	knownWords(e, "i", "have", "a", "dog")
-	mid := seedMistake(e, 7, time.Now().Add(-time.Hour), 0)
-	answeredExercise(e, &mid, time.Now().Add(-3*time.Minute))
-	answeredExercise(e, &mid, time.Now().Add(-2*time.Minute))
-	ex := decodeExercise(t, getNext(t, e, token))
-	if ex.Repeat != nil && *ex.Repeat {
-		t.Fatalf("два повтора подряд: %+v", ex)
+	cases := []struct {
+		name       string
+		flags      []bool // от старого к новому: true — повтор
+		wantRepeat bool
+	}{
+		{"повтор, потом обычное", []bool{true, false}, false},
+		{"обычное, потом повтор", []bool{false, true}, false},
+		{"два повтора", []bool{true, true}, false},
+		{"повтор, два обычных", []bool{true, false, false}, true},
+		{"два обычных", []bool{false, false}, true},
+		{"одно обычное", []bool{false}, true},
 	}
-	// Один повтор, затем обычное: снова можно.
-	e2 := newExerciseEnv(t)
-	token2 := login(t, e2)
-	mid2 := seedMistake(e2, 7, time.Now().Add(-time.Hour), 0)
-	answeredExercise(e2, &mid2, time.Now().Add(-3*time.Minute))
-	answeredExercise(e2, nil, time.Now().Add(-2*time.Minute))
-	if ex := decodeExercise(t, getNext(t, e2, token2)); ex.Repeat == nil || !*ex.Repeat {
-		t.Fatalf("повтор не выдан: %+v", ex)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newExerciseEnv(t)
+			token := login(t, e)
+			e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I have a dog.")}
+			knownWords(e, "i", "have", "a", "dog")
+			mid := seedMistake(e, 7, time.Now().Add(-time.Hour), 0)
+			for i, isRepeat := range tc.flags {
+				var m *int64
+				if isRepeat {
+					m = &mid
+				}
+				answeredExercise(e, m, time.Now().Add(time.Duration(i-10)*time.Minute))
+			}
+			ex := decodeExercise(t, getNext(t, e, token))
+			if got := ex.Repeat != nil && *ex.Repeat; got != tc.wantRepeat {
+				t.Fatalf("повтор выдан: %v, ждали %v (%+v)", got, tc.wantRepeat, ex)
+			}
+		})
 	}
 }
 
@@ -340,6 +353,9 @@ func TestRepeatCorrectAdvancesAndCloses(t *testing.T) {
 	// Срок наступил (сдвигаем руками) и ещё один верный.
 	m.NextDue = ts(time.Now().Add(-time.Minute))
 	e.store.mistakes[mid] = m
+	// Два обычных упражнения после повтора, иначе второй повтор не выдаётся.
+	answeredExercise(e, nil, time.Now().Add(time.Second))
+	answeredExercise(e, nil, time.Now().Add(2*time.Second))
 	ex2 := decodeExercise(t, getNext(t, e, token))
 	if ex2.Id == ex.Id || ex2.Repeat == nil || !*ex2.Repeat {
 		t.Fatalf("второй повтор: %+v", ex2)
@@ -497,5 +513,73 @@ func TestListMistakes(t *testing.T) {
 		if m.Id == other {
 			t.Fatal("чужая ошибка в списке")
 		}
+	}
+}
+
+// Новая неверная ошибка с другим пропуском в том же предложении сбрасывает открытую ошибку и заменяет её данные.
+func TestAnswerWrongResetReplacesBlank(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	first := seedExercise(t, e, 1, "A1")
+	e.do(http.MethodPost, answerPath, answerBody(first, "the", "k1"), withCookie(token))
+	m := onlyMistake(t, e)
+	m.Streak = 1
+	e.store.mistakes[m.ID] = m
+
+	payload, _ := json.Marshal(exercisePayload{Prompt: "I have a big _____.", Translation: "У меня большая собака.", Choices: []string{"dog", "cat", "bird"}, Topic: "level:A1"})
+	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"dog"}})
+	second, err := e.store.InsertExercise(t.Context(), db.InsertExerciseParams{
+		UserID: 1, Kind: "gap", SentenceID: 1, Topics: []string{"level:A1", "pos:noun"}, Payload: payload, Answer: answer,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := e.do(http.MethodPost, answerPath, answerBody(second, "cat", "k2"), withCookie(token)); rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	got := onlyMistake(t, e)
+	if got.ID != m.ID || got.Streak != 0 || got.Given != "cat" || string(got.Payload) != string(payload) ||
+		string(got.Answer) != string(answer) || !slices.Equal(got.Topics, []string{"level:A1", "pos:noun"}) {
+		t.Fatalf("после сброса: %+v", got)
+	}
+	if n := len(mistakeEvents(e, "mistake.opened")); n != 1 {
+		t.Fatalf("событий opened %d, ждали 1", n)
+	}
+	// Следующий повтор строится из новых данных.
+	got.NextDue = ts(time.Now().Add(-time.Minute))
+	e.store.mistakes[got.ID] = got
+	ex := decodeExercise(t, getNext(t, e, token))
+	if ex.Repeat == nil || ex.Prompt != "I have a big _____." || len(ex.Choices) != 3 || !slices.Contains(ex.Choices, "dog") {
+		t.Fatalf("повтор из старых данных: %+v", ex)
+	}
+	if stored := e.store.exercises[ex.Id]; !slices.Equal(stored.Topics, []string{"level:A1", "pos:noun"}) || string(stored.Answer) != string(answer) {
+		t.Fatalf("строка повтора: %+v", stored)
+	}
+}
+
+// Одновременное открытие: первый поиск не видит открытую ошибку, вставка упирается в уникальный индекс (23505),
+// транзакция откатывается и проходит со второго раза: одна строка, рейтинг один раз, одно событие ответа.
+func TestAnswerRetriesOnUniqueViolation(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	seedMistake(e, 1, time.Now().Add(time.Hour), 1)
+	e.store.missOpenOnce = true
+	id := seedExercise(t, e, 1, "A1")
+	rec := e.do(http.MethodPost, answerPath, answerBody(id, "the", "k1"), withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	m := onlyMistake(t, e)
+	if m.Streak != 0 || m.Given != "the" {
+		t.Fatalf("ошибка не сброшена: %+v", m)
+	}
+	if got := e.store.topicRatings[topicKey{1, "grammar:articles"}].Attempts; got != 1 {
+		t.Fatalf("попыток по теме %d, ждали 1", got)
+	}
+	if n := len(answerEvents(e)); n != 1 {
+		t.Fatalf("событий ответа %d, ждали 1", n)
+	}
+	if n := len(mistakeEvents(e, "mistake.opened")); n != 0 {
+		t.Fatalf("событий opened %d, ждали 0 (ошибка уже была)", n)
 	}
 }

@@ -316,19 +316,32 @@ func (q *Queries) NextDueMistake(ctx context.Context, arg NextDueMistakeParams) 
 
 const resetMistake = `-- name: ResetMistake :exec
 UPDATE mistakes
-SET streak = 0, given = $1, next_due = $2, updated_at = now()
-WHERE id = $3
+SET streak = 0, given = $1, next_due = $2,
+    payload = $3, answer = $4, topics = $5, updated_at = now()
+WHERE id = $6
 `
 
 type ResetMistakeParams struct {
 	Given   string
 	NextDue pgtype.Timestamptz
+	Payload json.RawMessage
+	Answer  json.RawMessage
+	Topics  []string
 	ID      int64
 }
 
 // Повторная ошибка на уже открытую: серия снова 0, новый срок и новый неверный ответ.
+// Ключ ошибки (пользователь, предложение, вид) один и для разных пропусков в одном предложении, поэтому
+// данные упражнения тоже заменяются: ошибка всегда описывает последний неверный пропуск.
 func (q *Queries) ResetMistake(ctx context.Context, arg ResetMistakeParams) error {
-	_, err := q.db.Exec(ctx, resetMistake, arg.Given, arg.NextDue, arg.ID)
+	_, err := q.db.Exec(ctx, resetMistake,
+		arg.Given,
+		arg.NextDue,
+		arg.Payload,
+		arg.Answer,
+		arg.Topics,
+		arg.ID,
+	)
 	return err
 }
 

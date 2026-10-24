@@ -42,9 +42,9 @@ func Advance(s State, correct bool, now time.Time) State {
 }
 
 // ShouldServeRepeat решает, показывать ли повтор: есть наступивший, за сегодня меньше лимита
-// и два последних упражнения не были повторами.
-func ShouldServeRepeat(repeatsToday int, lastTwoWereRepeats bool, hasDue bool) bool {
-	return hasDue && repeatsToday < MaxRepeatsPerDay && !lastTwoWereRepeats
+// и ни одно из двух последних отвеченных упражнений не было повтором.
+func ShouldServeRepeat(repeatsToday int, anyOfLastTwoWasRepeat bool, hasDue bool) bool {
+	return hasDue && repeatsToday < MaxRepeatsPerDay && !anyOfLastTwoWasRepeat
 }
 
 // DayStart возвращает начало местных суток для now в поясе tz, в UTC. Пустой или неизвестный пояс — UTC.

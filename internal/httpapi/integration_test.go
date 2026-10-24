@@ -1168,7 +1168,7 @@ func TestMistakesOnRealDatabase(t *testing.T) {
 	if ex := decodeExercise(t, getNext(t, e, token)); ex.Repeat != nil {
 		t.Fatalf("повтор до срока: %+v", ex)
 	}
-	// Ответили на обычное; срок наступил — приходит повтор той же ошибки.
+	// Срок наступил: приходит повтор. После повтора два следующих упражнения обычные, затем повтор снова возможен.
 	for i, want := range []int{1, 2} {
 		if _, err := pool.Exec(ctx, "UPDATE mistakes SET next_due = now() - interval '1 minute' WHERE status = 'open'"); err != nil {
 			t.Fatal(err)
@@ -1184,12 +1184,24 @@ func TestMistakesOnRealDatabase(t *testing.T) {
 		if res.Mistake == nil || res.Mistake.Streak != want {
 			t.Fatalf("повтор %d: %+v", i, res.Mistake)
 		}
-		if i == 0 {
-			// Между повторами должно пройти обычное упражнение (два повтора подряд не выдаются, один можно).
-			continue
+		if i == 1 {
+			if res.Mistake.Status != api.Closed {
+				t.Fatalf("ошибка не закрыта: %+v", res.Mistake)
+			}
+			break
 		}
-		if res.Mistake.Status != api.Closed {
-			t.Fatalf("ошибка не закрыта: %+v", res.Mistake)
+		// Ошибка снова просрочена, но два упражнения после повтора обычные.
+		if _, err := pool.Exec(ctx, "UPDATE mistakes SET next_due = now() - interval '1 minute' WHERE status = 'open'"); err != nil {
+			t.Fatal(err)
+		}
+		for j := range 2 {
+			if ex := decodeExercise(t, getNext(t, e, token)); ex.Repeat != nil && *ex.Repeat {
+				t.Fatalf("повтор выдан подряд (после повтора %d обычных)", j)
+			}
+			ord := seedRealExercise(t, q, en.ID, "grammar:articles", "level:A1")
+			if rec := e.do(http.MethodPost, answerPath, answerBody(ord, "a", fmt.Sprintf("o%d-%d", i, j)), withCookie(token)); rec.Code != http.StatusOK {
+				t.Fatalf("обычный ответ: %d %s", rec.Code, rec.Body)
+			}
 		}
 	}
 	if count("SELECT count(*) FROM mistakes WHERE status = 'closed' AND closed_at IS NOT NULL") != 1 ||

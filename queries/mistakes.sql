@@ -16,8 +16,11 @@ SELECT * FROM mistakes WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) F
 
 -- name: ResetMistake :exec
 -- Повторная ошибка на уже открытую: серия снова 0, новый срок и новый неверный ответ.
+-- Ключ ошибки (пользователь, предложение, вид) один и для разных пропусков в одном предложении, поэтому
+-- данные упражнения тоже заменяются: ошибка всегда описывает последний неверный пропуск.
 UPDATE mistakes
-SET streak = 0, given = sqlc.arg(given), next_due = sqlc.arg(next_due), updated_at = now()
+SET streak = 0, given = sqlc.arg(given), next_due = sqlc.arg(next_due),
+    payload = sqlc.arg(payload), answer = sqlc.arg(answer), topics = sqlc.arg(topics), updated_at = now()
 WHERE id = sqlc.arg(id);
 
 -- name: UpdateMistakeProgress :exec

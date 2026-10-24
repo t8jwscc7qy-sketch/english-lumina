@@ -18,7 +18,8 @@ CREATE TABLE mistakes (
     closed_at          timestamptz,                                           -- пусто, пока ошибка открыта
     source_exercise_id bigint,                                                -- справочно, без внешнего ключа
     created_at         timestamptz NOT NULL DEFAULT now(),
-    updated_at         timestamptz NOT NULL DEFAULT now()
+    updated_at         timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT mistakes_closed_at_matches_status CHECK ((status = 'closed') = (closed_at IS NOT NULL))
 );
 -- Не больше одной открытой ошибки на одно предложение и вид упражнения.
 CREATE UNIQUE INDEX mistakes_open_unique ON mistakes (user_id, sentence_id, kind) WHERE status = 'open';

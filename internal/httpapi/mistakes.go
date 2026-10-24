@@ -146,7 +146,9 @@ func recordMistake(ctx context.Context, tx AuthStore, userID int64, ex db.Exerci
 	m, err := tx.GetOpenMistakeForUpdate(ctx, db.GetOpenMistakeForUpdateParams{UserID: userID, SentenceID: ex.SentenceID, Kind: ex.Kind})
 	switch {
 	case err == nil:
-		if err := tx.ResetMistake(ctx, db.ResetMistakeParams{ID: m.ID, Given: given, NextDue: ts(opened.NextDue)}); err != nil {
+		if err := tx.ResetMistake(ctx, db.ResetMistakeParams{
+			ID: m.ID, Given: given, NextDue: ts(opened.NextDue), Payload: ex.Payload, Answer: ex.Answer, Topics: ex.Topics,
+		}); err != nil {
 			return nil, fmt.Errorf("сброс ошибки %d: %w", m.ID, err)
 		}
 	case errors.Is(err, pgx.ErrNoRows):
@@ -203,8 +205,8 @@ func (s *authServer) repeatExercise(ctx context.Context, userID int64, now time.
 	if err != nil {
 		return api.Exercise{}, false, fmt.Errorf("последние упражнения: %w", err)
 	}
-	lastTwo := len(flags) == 2 && flags[0] && flags[1]
-	if !mistakes.ShouldServeRepeat(int(today), lastTwo, true) {
+	anyRepeat := slices.Contains(flags, true) // повтор среди двух последних отвеченных
+	if !mistakes.ShouldServeRepeat(int(today), anyRepeat, true) {
 		return api.Exercise{}, false, nil
 	}
 	open, err := s.store.ListOpenMistakes(ctx, db.ListOpenMistakesParams{UserID: userID, MaxRows: maxListedMistakes})
