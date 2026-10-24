@@ -104,13 +104,16 @@ export const SETTINGS: Settings = {
 
 export type ExerciseFixture = {
   id: number
-  kind: 'gap'
+  kind: 'gap' | 'order'
   prompt: string
   translation: string
   choices: string[]
   topic: string
   /** Верный ответ живёт только в подмене сервера, клиенту не отдаётся до ответа. */
   answer: string
+  /** Только для order: слова в перемешанном порядке; допустимые порядки (без точки) в `accept`. */
+  tiles?: string[]
+  accept?: string[]
 }
 export type ExerciseOpts = {
   queue?: ExerciseFixture[]
@@ -121,6 +124,12 @@ export type ExerciseOpts = {
 }
 export type ExerciseAnswer = { exerciseId: number; given: string; key: string }
 type TopicRating = { topic: string; rating: number; deviation: number; attempts: number }
+
+export const ORDER_EXERCISE: ExerciseFixture = {
+  id: 31, kind: 'order', prompt: 'Вчера я пошёл домой.', translation: 'Вчера я пошёл домой.',
+  choices: [], tiles: ['home', 'went', 'yesterday', 'I'], topic: 'skill:order',
+  answer: 'Yesterday I went home.', accept: ['Yesterday I went home.', 'I went home yesterday.'],
+}
 
 export const EXERCISES: ExerciseFixture[] = [
   {
@@ -273,7 +282,7 @@ export async function mockApi(
     ['grammar:articles', { topic: 'grammar:articles', rating: 1500, deviation: 350, attempts: 0 }],
     ['grammar:past_simple', { topic: 'grammar:past_simple', rating: 1500, deviation: 350, attempts: 0 }],
   ])
-  const publicExercise = ({ answer: _a, ...rest }: ExerciseFixture) => rest
+  const publicExercise = ({ answer: _a, accept: _c, ...rest }: ExerciseFixture) => rest
 
   await page.route('**/api/v1/exercises/**', async (route) => {
     const path = new URL(route.request().url()).pathname
@@ -291,7 +300,9 @@ export async function mockApi(
       if (results.has(body.key)) return route.fulfill({ json: results.get(body.key) })
       const fx = exQueue.find((e) => e.id === body.exerciseId)
       if (!fx) return route.fulfill(apiError(404, 'not_found', 'Такого упражнения нет'))
-      const correct = body.given.trim().toLowerCase() === fx.answer.toLowerCase()
+      const norm = (t: string) => t.trim().replace(/\s+/g, ' ').replace(/[.!?]$/, '').toLowerCase()
+      const correct =
+        fx.kind === 'order' ? (fx.accept ?? [fx.answer]).some((a) => norm(a) === norm(body.given)) : body.given.trim().toLowerCase() === fx.answer.toLowerCase()
       const r = ratings.get(fx.topic) ?? { topic: fx.topic, rating: 1500, deviation: 350, attempts: 0 }
       r.rating += correct ? 40 : -40
       r.deviation -= 20
