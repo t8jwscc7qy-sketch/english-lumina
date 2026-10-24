@@ -270,6 +270,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/progress/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Прогресс за сегодня
+         * @description Минуты занятий за сутки (по времени между ответами), «минимальный день», серия и счётчики дня. Считается из журнала событий, сутки — в часовом поясе настроек (без настроек UTC). Ничего не записывает.
+         */
+        get: operations["getProgressToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -524,6 +544,29 @@ export interface components {
             /** @description Открытые ошибки по сроку повтора, не больше 200 */
             open: components["schemas"]["Mistake"][];
             counts: components["schemas"]["MistakeCounts"];
+        };
+        TodayCounts: {
+            /** @description Ответов на упражнения за сегодня */
+            answers: number;
+            /** @description Из них верных */
+            correct: number;
+            cardsReviewed: number;
+            mistakesOpened: number;
+            mistakesClosed: number;
+        };
+        ProgressToday: {
+            /** @description Минут занятий за сегодня (одна десятая) */
+            minutes: number;
+            /** @description Сколько минут нужно для «минимального дня» */
+            minimumDay: number;
+            /** @description Цель дня из настроек (без настроек 15) */
+            goalMinutes: number;
+            doneToday: boolean;
+            /** @description Серия, сутки подряд с выполненным минимумом (не больше 60) */
+            streakDays: number;
+            /** @description Последний пропуск, прощённый «заморозкой» (YYYY-MM-DD); нет поля, если заморозка не использовалась */
+            freezeUsedOn?: string;
+            today: components["schemas"]["TodayCounts"];
         };
         TopicList: {
             topics: components["schemas"]["Rating"][];
@@ -1012,6 +1055,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MistakeList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getProgressToday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Прогресс за сегодня */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressToday"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -370,6 +370,27 @@ type MistakeResult struct {
 // MistakeResultStatus defines model for MistakeResult.Status.
 type MistakeResultStatus string
 
+// ProgressToday defines model for ProgressToday.
+type ProgressToday struct {
+	DoneToday bool `json:"doneToday"`
+
+	// FreezeUsedOn Последний пропуск, прощённый «заморозкой» (YYYY-MM-DD); нет поля, если заморозка не использовалась
+	FreezeUsedOn *string `json:"freezeUsedOn,omitempty"`
+
+	// GoalMinutes Цель дня из настроек (без настроек 15)
+	GoalMinutes int `json:"goalMinutes"`
+
+	// MinimumDay Сколько минут нужно для «минимального дня»
+	MinimumDay int `json:"minimumDay"`
+
+	// Minutes Минут занятий за сегодня (одна десятая)
+	Minutes float32 `json:"minutes"`
+
+	// StreakDays Серия, сутки подряд с выполненным минимумом (не больше 60)
+	StreakDays int         `json:"streakDays"`
+	Today      TodayCounts `json:"today"`
+}
+
 // QueueCard defines model for QueueCard.
 type QueueCard struct {
 	CardId int64 `json:"cardId"`
@@ -447,6 +468,18 @@ type TextRange struct {
 
 	// Start Начало в символах (не в байтах), включительно
 	Start int `json:"start"`
+}
+
+// TodayCounts defines model for TodayCounts.
+type TodayCounts struct {
+	// Answers Ответов на упражнения за сегодня
+	Answers       int `json:"answers"`
+	CardsReviewed int `json:"cardsReviewed"`
+
+	// Correct Из них верных
+	Correct        int `json:"correct"`
+	MistakesClosed int `json:"mistakesClosed"`
+	MistakesOpened int `json:"mistakesOpened"`
 }
 
 // TopicList defines model for TopicList.
@@ -544,6 +577,9 @@ type ServerInterface interface {
 	// ListMistakes Банк ошибок
 	// (GET /api/v1/mistakes)
 	ListMistakes(w http.ResponseWriter, r *http.Request)
+	// GetProgressToday Прогресс за сегодня
+	// (GET /api/v1/progress/today)
+	GetProgressToday(w http.ResponseWriter, r *http.Request)
 	// GetSettings Настройки обучения текущего пользователя
 	// (GET /api/v1/settings)
 	GetSettings(w http.ResponseWriter, r *http.Request)
@@ -701,6 +737,20 @@ func (siw *ServerInterfaceWrapper) ListMistakes(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListMistakes(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProgressToday operation middleware
+func (siw *ServerInterfaceWrapper) GetProgressToday(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProgressToday(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -915,6 +965,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/exercises/answer", wrapper.AnswerExercise)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/topics", wrapper.ListExerciseTopics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/mistakes", wrapper.ListMistakes)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/today", wrapper.GetProgressToday)
 
 	return m
 }

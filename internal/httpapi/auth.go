@@ -89,6 +89,7 @@ type AuthStore interface {
 	LastTwoExerciseRepeatFlags(ctx context.Context, userID int64) ([]bool, error)
 	GetUnansweredRepeat(ctx context.Context, arg db.GetUnansweredRepeatParams) (db.Exercise, error)
 	ListOpenMistakes(ctx context.Context, arg db.ListOpenMistakesParams) ([]db.Mistake, error)
+	ListActivityEvents(ctx context.Context, arg db.ListActivityEventsParams) ([]db.ListActivityEventsRow, error)
 	CountMistakes(ctx context.Context, arg db.CountMistakesParams) (db.CountMistakesRow, error)
 
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
