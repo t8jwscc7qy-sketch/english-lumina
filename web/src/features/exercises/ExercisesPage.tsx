@@ -8,6 +8,7 @@ import { meKey } from '@/features/auth/auth'
 import { cn } from '@/lib/utils'
 import { useAnswer, useNextExercise, useTopics, type AnswerResult, type Exercise } from './exercises'
 import { topicName } from './topics'
+import { OrderExercise } from './OrderExercise'
 import { WeakTopics } from './WeakTopics'
 
 /** Ключ идемпотентности: новый на каждое упражнение. Повтор с тем же ключом сервер не применяет дважды. */
@@ -110,7 +111,8 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
   const busyRef = useRef(false)
   const articleRef = useRef<HTMLElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const manual = exercise.choices.length === 0
+  const isOrder = exercise.kind === 'order'
+  const manual = !isOrder && exercise.choices.length === 0
 
   // Новое упражнение (и результат ответа) забирает фокус: клавиши работают сразу.
   // Фокус остаётся на контейнере и после ответа: тогда 1–4, Пробел и Enter работают без лишних Tab. В ручном вводе до ответа фокус в поле.
@@ -177,12 +179,29 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
     <article ref={articleRef} tabIndex={-1} aria-label="Упражнение" className="surface flex flex-col gap-6 p-6 outline-none">
       <p className="text-sm text-muted-foreground">{topicName(exercise.topic)}</p>
 
-      <div className="flex flex-col gap-3">
-        <p lang="en" className="break-words text-xl leading-relaxed">
-          <Prompt text={exercise.prompt} answer={result?.answer} />
+      {isOrder ? (
+        <p lang="ru" className="break-words text-xl leading-relaxed">
+          {exercise.prompt}
         </p>
-        <p lang="ru" className="break-words text-muted-foreground">{exercise.translation}</p>
-      </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <p lang="en" className="break-words text-xl leading-relaxed">
+            <Prompt text={exercise.prompt} answer={result?.answer} />
+          </p>
+          <p lang="ru" className="break-words text-muted-foreground">{exercise.translation}</p>
+        </div>
+      )}
+
+      {isOrder && (
+        <OrderExercise
+          tiles={exercise.tiles ?? []}
+          frozen={!!result || answer.isPending || locked !== undefined}
+          pending={answer.isPending}
+          correct={result?.correct}
+          onSubmit={submit}
+          restoreFocus={() => articleRef.current?.focus()}
+        />
+      )}
 
       {manual && !result && (
         <form
@@ -212,7 +231,7 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
         </form>
       )}
 
-      {!manual && (
+      {!manual && !isOrder && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {exercise.choices.map((choice, i) => {
             const isRight = !!result && choice === result.answer
