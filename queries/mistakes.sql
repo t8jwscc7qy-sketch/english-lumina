@@ -14,6 +14,7 @@ FOR UPDATE;
 -- name: GetMistakeForUpdate :one
 SELECT * FROM mistakes WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) FOR UPDATE;
 
+-- Вызывать только после GetMistakeForUpdate / GetOpenMistakeForUpdate в той же транзакции: запрос не проверяет пользователя и статус
 -- name: ResetMistake :exec
 -- Повторная ошибка на уже открытую: серия снова 0, новый срок и новый неверный ответ.
 -- Ключ ошибки (пользователь, предложение, вид) один и для разных пропусков в одном предложении, поэтому
@@ -23,6 +24,7 @@ SET streak = 0, given = sqlc.arg(given), next_due = sqlc.arg(next_due),
     payload = sqlc.arg(payload), answer = sqlc.arg(answer), topics = sqlc.arg(topics), updated_at = now()
 WHERE id = sqlc.arg(id);
 
+-- Вызывать только после GetMistakeForUpdate / GetOpenMistakeForUpdate в той же транзакции: запрос не проверяет пользователя и статус
 -- name: UpdateMistakeProgress :exec
 -- Результат повтора: серия, статус, срок, время закрытия (NULL у открытой) и последний неверный ответ.
 UPDATE mistakes

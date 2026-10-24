@@ -54,7 +54,7 @@ test.describe('банк ошибок', () => {
     await expect(row).toContainText('Серия 0 из 2')
   })
 
-  test('повтор: верно → ещё один верный → «Ошибка закрыта»', async ({ page }) => {
+  test('повтор: верно → «Ещё один верный ответ…» → следующий повтор', async ({ page }) => {
     await mockApi(page, {
       loggedIn: true,
       exercises: { queue: [REPEAT_A, REPEAT_B] },
@@ -87,7 +87,7 @@ test.describe('банк ошибок', () => {
     await page.goto('/exercises')
     await expect(page.getByText('Повтор ошибки')).toBeVisible()
     await page.keyboard.press('1')
-    await expect(page.getByText('Ошибка закрыта')).toBeVisible()
+    await expect(page.getByText('Ошибка закрыта', { exact: true })).toBeVisible()
     await page.goto('/mistakes')
     await expect(page.getByText('honest man')).toHaveCount(0)
     await expect(page.getByText('umbrella')).toBeVisible()
@@ -116,7 +116,7 @@ test.describe('банк ошибок', () => {
         await expect(page.getByText('Повтор ошибки')).toBeVisible()
         await shot('repeat')
         await page.keyboard.press('1')
-        await expect(page.getByText('Ошибка закрыта', { exact: false })).toBeVisible()
+        await expect(page.getByText('Ошибка закрыта', { exact: true })).toBeVisible()
         await shot('repeat-result')
         await context.close()
       })

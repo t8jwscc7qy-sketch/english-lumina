@@ -330,6 +330,7 @@ type ResetMistakeParams struct {
 	ID      int64
 }
 
+// Вызывать только после GetMistakeForUpdate / GetOpenMistakeForUpdate в той же транзакции: запрос не проверяет пользователя и статус
 // Повторная ошибка на уже открытую: серия снова 0, новый срок и новый неверный ответ.
 // Ключ ошибки (пользователь, предложение, вид) один и для разных пропусков в одном предложении, поэтому
 // данные упражнения тоже заменяются: ошибка всегда описывает последний неверный пропуск.
@@ -361,6 +362,7 @@ type UpdateMistakeProgressParams struct {
 	ID       int64
 }
 
+// Вызывать только после GetMistakeForUpdate / GetOpenMistakeForUpdate в той же транзакции: запрос не проверяет пользователя и статус
 // Результат повтора: серия, статус, срок, время закрытия (NULL у открытой) и последний неверный ответ.
 func (q *Queries) UpdateMistakeProgress(ctx context.Context, arg UpdateMistakeProgressParams) error {
 	_, err := q.db.Exec(ctx, updateMistakeProgress,
