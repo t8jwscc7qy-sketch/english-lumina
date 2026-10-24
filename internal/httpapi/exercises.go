@@ -29,6 +29,9 @@ const (
 // orderTopic — тема «порядка слов»; выбирается как любая другая слабая тема.
 const orderTopic = "skill:order"
 
+// formTopic — тема «выбора формы»; открывается через exercises.Unlocked.
+const formTopic = "skill:form"
+
 var allLevels = []string{"A1", "A2", "B1", "B2", "C1", "C2"}
 
 var grammarTopics = []string{grammar.Articles, grammar.Prepositions, grammar.Future, grammar.Modals, grammar.PastSimple}
@@ -40,11 +43,21 @@ type exercisePayload struct {
 	Choices     []string `json:"choices"`
 	Tiles       []string `json:"tiles,omitempty"` // только для order
 	Topic       string   `json:"topic"`
+	Hint        string   `json:"hint,omitempty"` // только для form: начальная форма слова
 }
 
 // exerciseAnswer — допустимые ответы; лежит в exercises.answer.
 type exerciseAnswer struct {
-	Answers []string `json:"answers"`
+	Answers  []string `json:"answers"`
+	LexemeID int64    `json:"lexemeId,omitempty"` // только для form: слово упражнения
+	Lemma    string   `json:"lemma,omitempty"`
+	Pos      string   `json:"pos,omitempty"`
+}
+
+// formInfo — слово упражнения «выбор формы».
+type formInfo struct {
+	lexemeID   int64
+	lemma, pos string
 }
 
 // gapCandidate — собранное упражнение до записи в базу.
@@ -55,6 +68,7 @@ type gapCandidate struct {
 	level       string           // уровень предложения
 	pos         string           // часть речи слова (только для level:*)
 	order       *exercises.Order // «порядок слов»: вместо gap
+	form        *formInfo        // «выбор формы»: слово упражнения
 }
 
 // GetNextExercise выбирает тему по рейтингам (слабая раньше), собирает пропуск и записывает упражнение.
@@ -66,11 +80,6 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	available, userLevel, err := s.availableTopics(ctx, user.ID)
-	if err != nil {
-		s.failExercises(w, err)
-		return
-	}
 	stored, err := s.store.ListTopicRatings(ctx, user.ID)
 	if err != nil {
 		s.failExercises(w, err)
@@ -79,6 +88,11 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 	ratings := make([]exercises.TopicRating, len(stored))
 	for i, tr := range stored {
 		ratings[i] = exercises.TopicRating{Topic: tr.Topic, Mu: tr.Rating, Phi: tr.Deviation, Attempts: int(tr.Attempts)}
+	}
+	available, userLevel, err := s.availableTopics(ctx, user.ID, ratings)
+	if err != nil {
+		s.failExercises(w, err)
+		return
 	}
 
 	var rng idRange
@@ -98,6 +112,8 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case topic == orderTopic:
 			cand, found, err = s.orderCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
+		case topic == formTopic:
+			cand, found, err = s.formCandidate(ctx, &rng, user.ID, userLevel, used)
 		case strings.HasPrefix(topic, "level:"):
 			cand, found, err = s.levelCandidate(ctx, topic, used)
 		default:
@@ -145,10 +161,13 @@ func (s *authServer) failExercises(w http.ResponseWriter, err error) {
 	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
 }
 
-// availableTopics: пять грамматических тем, «порядок слов», уровень пользователя и следующий за ним.
+// availableTopics: пять грамматических тем, «порядок слов», «выбор формы» (если открыт), уровень пользователя и следующий за ним.
 // Без настроек — без level:*. Вторым значением отдаёт текущий уровень пользователя (пусто без настроек).
-func (s *authServer) availableTopics(ctx context.Context, userID int64) ([]string, string, error) {
+func (s *authServer) availableTopics(ctx context.Context, userID int64, ratings []exercises.TopicRating) ([]string, string, error) {
 	out := append(slices.Clone(grammarTopics), orderTopic)
+	if exercises.Unlocked(formTopic, ratings) {
+		out = append(out, formTopic)
+	}
 	st, err := s.store.GetSettings(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, "", nil
@@ -206,11 +225,17 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 		// «Порядок слов»: пользователь видит перевод и перемешанные плитки.
 		kind, prompt, choices, answers, tiles = api.Order, c.translation, []string{}, c.order.Answers, c.order.Tiles
 	}
-	payload, err := json.Marshal(exercisePayload{Prompt: prompt, Translation: c.translation, Choices: choices, Tiles: tiles, Topic: topic})
+	var hint string
+	ans := exerciseAnswer{Answers: answers}
+	if c.form != nil {
+		kind, hint = api.Form, c.form.lemma
+		ans.LexemeID, ans.Lemma, ans.Pos = c.form.lexemeID, c.form.lemma, c.form.pos
+	}
+	payload, err := json.Marshal(exercisePayload{Prompt: prompt, Translation: c.translation, Choices: choices, Tiles: tiles, Topic: topic, Hint: hint})
 	if err != nil {
 		return api.Exercise{}, err
 	}
-	answer, err := json.Marshal(exerciseAnswer{Answers: answers})
+	answer, err := json.Marshal(ans)
 	if err != nil {
 		return api.Exercise{}, err
 	}
@@ -223,6 +248,9 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 	ex := api.Exercise{Id: id, Kind: kind, Prompt: prompt, Translation: c.translation, Choices: choices, Topic: topic}
 	if tiles != nil {
 		ex.Tiles = &tiles
+	}
+	if hint != "" {
+		ex.Hint = &hint
 	}
 	return ex, nil
 }

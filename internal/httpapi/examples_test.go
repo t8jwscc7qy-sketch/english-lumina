@@ -15,6 +15,9 @@ import (
 func (f *fakeStore) ListExamples(_ context.Context, arg db.ListExamplesParams) ([]db.ListExamplesRow, error) {
 	f.exampleCalls++
 	f.lastExamples = &arg
+	if f.examplesFor != nil {
+		return f.examplesFor(arg.Query), nil
+	}
 	return f.examples, nil
 }
 
