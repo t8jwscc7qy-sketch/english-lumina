@@ -7,6 +7,7 @@ const NAMES: Record<string, string> = {
   'grammar:modals': 'Модальные глаголы',
   'grammar:past_simple': 'Прошедшее простое',
   'skill:order': 'Порядок слов',
+  'skill:form': 'Выбор формы',
   'pos:noun': 'Существительные',
   'pos:verb': 'Глаголы',
   'pos:adjective': 'Прилагательные',
