@@ -11,6 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Card struct {
+	ID             int64
+	UserID         int64
+	LexemeID       int64
+	Due            pgtype.Timestamptz
+	Stability      float64
+	Difficulty     float64
+	ScheduledDays  int32
+	Reps           int32
+	Lapses         int32
+	State          int16
+	LastReview     pgtype.Timestamptz
+	RemainingSteps int32
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
 type DataSource struct {
 	ID          int64
 	Name        string

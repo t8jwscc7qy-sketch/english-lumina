@@ -21,7 +21,7 @@ func tableExists(t *testing.T, pool *pgxpool.Pool, name string) bool {
 	return exists
 }
 
-var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs"}
+var allTables = []string{"users", "settings", "data_sources", "lexemes", "lexeme_cefr", "sentences", "sentence_pairs", "cards"}
 
 func TestMigrationsUpDownUp(t *testing.T) {
 	pool := Pool(t)
@@ -208,5 +208,83 @@ func TestExamplesFullTextIndex(t *testing.T) {
 		if !strings.Contains(def, want) {
 			t.Fatalf("в определении индекса %q нет %q", def, want)
 		}
+	}
+}
+
+func TestCardSchemaConstraints(t *testing.T) {
+	pool := Pool(t)
+	ctx := context.Background()
+
+	var userID, srcID, lexID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (login, password_hash) VALUES ('vlad', '$argon2id$x') RETURNING id`).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO data_sources (name, version, license, url, attribution) VALUES ('s', '1', 'l', 'u', 'a') RETURNING id`).Scan(&srcID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO lexemes (lemma, pos, source_id) VALUES ('run', 'verb', $1) RETURNING id`, srcID).Scan(&lexID); err != nil {
+		t.Fatal(err)
+	}
+	const cols = `user_id, lexeme_id, due, stability, difficulty, scheduled_days, reps, lapses, state, remaining_steps`
+	insert := func(user, lex int64, over string) error {
+		_, err := pool.Exec(ctx, `INSERT INTO cards (`+cols+`) VALUES ($1, $2, now(), 0, 0, 0, 0, 0, 0, 0)`+over, user, lex)
+		return err
+	}
+	if err := insert(userID, lexID, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		sql  string
+		code string
+	}{
+		{"состояние 4", `UPDATE cards SET state = 4`, "23514"},
+		{"состояние -1", `UPDATE cards SET state = -1`, "23514"},
+		{"отрицательная стабильность", `UPDATE cards SET stability = -0.1`, "23514"},
+		{"отрицательная сложность", `UPDATE cards SET difficulty = -1`, "23514"},
+		{"отрицательные дни", `UPDATE cards SET scheduled_days = -1`, "23514"},
+		{"отрицательные повторения", `UPDATE cards SET reps = -1`, "23514"},
+		{"отрицательные ошибки", `UPDATE cards SET lapses = -1`, "23514"},
+		{"отрицательные шаги", `UPDATE cards SET remaining_steps = -1`, "23514"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := pool.Exec(ctx, tc.sql)
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) || pgErr.Code != tc.code {
+				t.Fatalf("ожидали код %s, получили %v", tc.code, err)
+			}
+		})
+	}
+	for name, run := range map[string]func() error{
+		"повтор пары пользователь–слово": func() error { return insert(userID, lexID, "") },
+		"несуществующий пользователь":    func() error { return insert(999999, lexID, "") },
+		"несуществующее слово":           func() error { return insert(userID, 999999, "") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := run()
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) || (pgErr.Code != "23505" && pgErr.Code != "23503") {
+				t.Fatalf("ожидали 23505 или 23503, получили %v", err)
+			}
+		})
+	}
+
+	// Слово с карточкой удалить нельзя, повторов не было ещё: last_review пуст.
+	if _, err := pool.Exec(ctx, `DELETE FROM lexemes WHERE id = $1`, lexID); err == nil {
+		t.Fatal("слово с карточкой удалилось")
+	}
+	var lastReviewNull bool
+	if err := pool.QueryRow(ctx, `SELECT last_review IS NULL FROM cards`).Scan(&lastReviewNull); err != nil || !lastReviewNull {
+		t.Fatalf("last_review должен быть пустым у нового: %v (%v)", lastReviewNull, err)
+	}
+	// Удаление пользователя каскадно убирает его карточки.
+	if _, err := pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM cards`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("карточек после удаления пользователя: %d (%v)", n, err)
 	}
 }

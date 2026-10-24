@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { XpBar } from '@/components/pixel/XpBar'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/auth/auth'
+import { useCardQueue } from '@/features/cards/cards'
 import { useSettings } from '@/features/settings/settings'
 import { describeDuration, forecastForward } from '@/lib/forecast'
 import { DEMO_TODAY } from './demo'
@@ -20,7 +21,7 @@ function TaskCard({
 }: {
   to: string
   title: string
-  value: number
+  value: number | string
   hint: string
   icon: ReactNode
   tone?: 'default' | 'error'
@@ -30,14 +31,15 @@ function TaskCard({
       to={to}
       className="block rounded-xl transition-[translate,box-shadow] duration-150 hover:-translate-y-0.5 hover:[--shadow-card:var(--shadow-card-hover)] active:translate-y-0"
     >
-      <article className="surface flex h-full flex-col gap-2 p-4">
+      {/* div, а не article: у ссылки с article внутри пустое доступное имя (контент article в него не попадает) */}
+      <div className="surface flex h-full flex-col gap-2 p-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <span className={tone === 'error' ? 'text-coral-text' : undefined}>{icon}</span>
           <h3 className="font-sans text-sm font-semibold">{title}</h3>
         </div>
         <p className="text-display tabular-nums">{value}</p>
         <p className="text-sm text-muted-foreground">{hint}</p>
-      </article>
+      </div>
     </Link>
   )
 }
@@ -45,6 +47,7 @@ function TaskCard({
 export function TodayPage() {
   const me = useMe()
   const settings = useSettings()
+  const cardQueue = useCardQueue()
   const [now] = useState(() => new Date())
   const d = DEMO_TODAY
 
@@ -155,7 +158,7 @@ export function TodayPage() {
         <TaskCard
           to="/cards"
           title="Карточки к повторению"
-          value={d.cardsDue}
+          value={cardQueue.data ? cardQueue.data.dueCount : '—'}
           hint="Слова, которые пора вспомнить"
           icon={<Layers className="size-5" strokeWidth={1.75} aria-hidden />}
         />

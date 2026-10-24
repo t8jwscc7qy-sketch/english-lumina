@@ -5,6 +5,7 @@ import { OnboardingPage } from '@/features/settings/OnboardingPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { SourcesPage } from '@/features/sources/SourcesPage'
 import { WordsPage } from '@/features/words/WordsPage'
+import { CardsPage } from '@/features/cards/CardsPage'
 import { AppShell } from '@/features/shell/AppShell'
 import { TodayPage } from '@/features/today/TodayPage'
 import { RedirectIfAuthed, RedirectIfOnboarded, RequireAuth, RequireOnboarded } from './guards'
@@ -41,7 +42,7 @@ export const routes: RouteObject[] = [
     ),
     children: [
       { index: true, element: <TodayPage /> },
-      { path: 'cards', element: soon('Карточки', 'Здесь будут слова для повторения.') },
+      { path: 'cards', element: <CardsPage /> },
       { path: 'exercises', element: soon('Упражнения', 'Здесь будут задания на слабые темы.') },
       { path: 'words', element: <WordsPage /> },
       { path: 'mistakes', element: soon('Ошибки', 'Здесь будет банк ошибок.') },

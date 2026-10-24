@@ -1,16 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { HighlightedText } from './HighlightedText'
+import { TatoebaCredit } from './TatoebaCredit'
 import { useWordExamples } from './words'
-
-const tatoebaUrl = (id: number) => `https://tatoeba.org/en/sentences/show/${id}`
-
-function TatoebaLink({ id }: { id: number }) {
-  return (
-    <a href={tatoebaUrl(id)} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4 hover:no-underline">
-      #{id}
-    </a>
-  )
-}
 
 /** Примеры предложений для слова. Лицензия CC BY требует автора: у каждого примера номер и автор обеих сторон со ссылкой на tatoeba.org. */
 export function ExamplesPanel({ lemma, pos }: { lemma: string; pos: string }) {
@@ -43,9 +34,7 @@ export function ExamplesPanel({ lemma, pos }: { lemma: string; pos: string }) {
             <HighlightedText text={ex.en.text} range={ex.highlight} />
           </p>
           <p className="text-sm break-words text-muted-foreground">{ex.ru.text}</p>
-          <p className="text-xs text-muted-foreground">
-            Tatoeba: <TatoebaLink id={ex.en.tatoebaId} /> {ex.en.author} · <TatoebaLink id={ex.ru.tatoebaId} /> {ex.ru.author}
-          </p>
+          <TatoebaCredit en={ex.en} ru={ex.ru} />
         </li>
       ))}
     </ul>

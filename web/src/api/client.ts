@@ -100,3 +100,30 @@ export async function getWordExamples(lemma: string, pos: string): Promise<Examp
   const res = await request(`/api/v1/words/examples?lemma=${encodeURIComponent(lemma)}&pos=${encodeURIComponent(pos)}`)
   return (await res.json()) as ExampleList
 }
+
+export type CardQueue = components['schemas']['CardQueue']
+export type QueueCard = components['schemas']['QueueCard']
+
+export async function getCardQueue(): Promise<CardQueue> {
+  const res = await request('/api/v1/cards/queue')
+  return (await res.json()) as CardQueue
+}
+
+/** Оценка карточки (1 забыл … 4 легко). key — ключ идемпотентности: повтор с тем же ключом не применяется дважды. */
+export async function reviewCard(cardId: number, rating: 1 | 2 | 3 | 4, key: string): Promise<CardQueue> {
+  const res = await request('/api/v1/cards/review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardId, rating, key }),
+  })
+  return (await res.json()) as CardQueue
+}
+
+export async function addCard(lemma: string, pos: string): Promise<{ cardId: number; created: boolean }> {
+  const res = await request('/api/v1/cards', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lemma, pos }),
+  })
+  return (await res.json()) as { cardId: number; created: boolean }
+}

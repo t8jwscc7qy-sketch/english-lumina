@@ -27,7 +27,7 @@ test.describe('вход и оболочка', () => {
   test('навигация доступна с клавиатуры, фокус виден', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
     await page.goto('/')
-    await page.getByRole('link', { name: 'Карточки' }).focus()
+    await page.getByRole('link', { name: 'Карточки', exact: true }).focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/cards$/)
     await expect(page.getByRole('heading', { name: 'Карточки' })).toBeVisible()

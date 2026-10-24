@@ -48,9 +48,12 @@ const (
 	ErrorErrorCodeInternal           ErrorErrorCode = "internal"
 	ErrorErrorCodeInvalidCredentials ErrorErrorCode = "invalid_credentials"
 	ErrorErrorCodeInvalidRequest     ErrorErrorCode = "invalid_request"
+	ErrorErrorCodeNoExamples         ErrorErrorCode = "no_examples"
+	ErrorErrorCodeNotFound           ErrorErrorCode = "not_found"
 	ErrorErrorCodeOnboardingRequired ErrorErrorCode = "onboarding_required"
 	ErrorErrorCodeTooManyAttempts    ErrorErrorCode = "too_many_attempts"
 	ErrorErrorCodeUnauthorized       ErrorErrorCode = "unauthorized"
+	ErrorErrorCodeWordNotFound       ErrorErrorCode = "word_not_found"
 )
 
 // Valid indicates whether the value is a known member of the ErrorErrorCode enum.
@@ -66,11 +69,17 @@ func (e ErrorErrorCode) Valid() bool {
 		return true
 	case ErrorErrorCodeInvalidRequest:
 		return true
+	case ErrorErrorCodeNoExamples:
+		return true
+	case ErrorErrorCodeNotFound:
+		return true
 	case ErrorErrorCodeOnboardingRequired:
 		return true
 	case ErrorErrorCodeTooManyAttempts:
 		return true
 	case ErrorErrorCodeUnauthorized:
+		return true
+	case ErrorErrorCodeWordNotFound:
 		return true
 	default:
 		return false
@@ -102,6 +111,44 @@ func (e Level) Valid() bool {
 	default:
 		return false
 	}
+}
+
+// AddCardRequest defines model for AddCardRequest.
+type AddCardRequest struct {
+	Lemma string `json:"lemma"`
+	Pos   string `json:"pos"`
+}
+
+// AddCardResponse defines model for AddCardResponse.
+type AddCardResponse struct {
+	CardId  int64 `json:"cardId"`
+	Created bool  `json:"created"`
+}
+
+// CardIntervals Через сколько секунд карточка вернётся при каждой оценке
+type CardIntervals struct {
+	Again int64 `json:"again"`
+	Easy  int64 `json:"easy"`
+	Good  int64 `json:"good"`
+	Hard  int64 `json:"hard"`
+}
+
+// CardQueue defines model for CardQueue.
+type CardQueue struct {
+	Card *QueueCard `json:"card,omitempty"`
+
+	// DueCount Сколько карточек к повторению сейчас
+	DueCount int64 `json:"dueCount"`
+
+	// TotalCount Сколько карточек всего
+	TotalCount int64 `json:"totalCount"`
+}
+
+// CardSentence defines model for CardSentence.
+type CardSentence struct {
+	En  ExampleSentence `json:"en"`
+	Gap TextRange       `json:"gap"`
+	Ru  ExampleSentence `json:"ru"`
 }
 
 // CefrLevel Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
@@ -157,6 +204,34 @@ type Me struct {
 	Login string `json:"login"`
 }
 
+// QueueCard defines model for QueueCard.
+type QueueCard struct {
+	CardId int64 `json:"cardId"`
+
+	// Intervals Через сколько секунд карточка вернётся при каждой оценке
+	Intervals CardIntervals `json:"intervals"`
+	Lemma     string        `json:"lemma"`
+
+	// Level Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
+	Level    CefrLevel     `json:"level"`
+	Pos      string        `json:"pos"`
+	Sentence *CardSentence `json:"sentence,omitempty"`
+
+	// State 0 новая, 1 обучение, 2 повторение, 3 переобучение
+	State int `json:"state"`
+}
+
+// ReviewCardRequest defines model for ReviewCardRequest.
+type ReviewCardRequest struct {
+	CardId int64 `json:"cardId"`
+
+	// Key Ключ идемпотентности; клиент создаёт новый для каждой показанной карточки
+	Key string `json:"key"`
+
+	// Rating 1 забыл, 2 трудно, 3 хорошо, 4 легко
+	Rating int `json:"rating"`
+}
+
 // Settings defines model for Settings.
 type Settings struct {
 	CurrentLevel Level `json:"currentLevel"`
@@ -202,7 +277,9 @@ type TextRange struct {
 
 // Word defines model for Word.
 type Word struct {
-	Lemma string `json:"lemma"`
+	// InCards Есть ли у пользователя карточка этого слова
+	InCards bool   `json:"inCards"`
+	Lemma   string `json:"lemma"`
 
 	// Level Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
 	Level CefrLevel `json:"level"`
@@ -241,6 +318,12 @@ type Unauthorized = Error
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
+// AddCardJSONRequestBody defines body for AddCard for application/json ContentType.
+type AddCardJSONRequestBody = AddCardRequest
+
+// ReviewCardJSONRequestBody defines body for ReviewCard for application/json ContentType.
+type ReviewCardJSONRequestBody = ReviewCardRequest
+
 // PutSettingsJSONRequestBody defines body for PutSettings for application/json ContentType.
 type PutSettingsJSONRequestBody = Settings
 
@@ -255,6 +338,15 @@ type ServerInterface interface {
 	// GetMe Текущий пользователь
 	// (GET /api/v1/auth/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// AddCard Добавить слово в карточки
+	// (POST /api/v1/cards)
+	AddCard(w http.ResponseWriter, r *http.Request)
+	// GetCardQueue Очередь карточек на сейчас
+	// (GET /api/v1/cards/queue)
+	GetCardQueue(w http.ResponseWriter, r *http.Request)
+	// ReviewCard Оценить карточку
+	// (POST /api/v1/cards/review)
+	ReviewCard(w http.ResponseWriter, r *http.Request)
 	// GetSettings Настройки обучения текущего пользователя
 	// (GET /api/v1/settings)
 	GetSettings(w http.ResponseWriter, r *http.Request)
@@ -314,6 +406,48 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddCard operation middleware
+func (siw *ServerInterfaceWrapper) AddCard(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddCard(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCardQueue operation middleware
+func (siw *ServerInterfaceWrapper) GetCardQueue(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCardQueue(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReviewCard operation middleware
+func (siw *ServerInterfaceWrapper) ReviewCard(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReviewCard(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -521,6 +655,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/sources", wrapper.ListSources)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/words", wrapper.SearchWords)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/words/examples", wrapper.ListWordExamples)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/cards", wrapper.AddCard)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/cards/queue", wrapper.GetCardQueue)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/cards/review", wrapper.ReviewCard)
 
 	return m
 }

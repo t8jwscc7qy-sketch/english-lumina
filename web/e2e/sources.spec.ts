@@ -5,7 +5,7 @@ test.describe('источники и лицензии', () => {
   test('из меню открывается страница с атрибуцией источника', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
     await page.goto('/')
-    await page.getByRole('link', { name: 'Источники' }).click()
+    await page.getByRole('link', { name: 'Источники', exact: true }).click()
     await expect(page).toHaveURL(/\/sources$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Источники и лицензии' })).toBeVisible()
     await expect(page.getByText('The CEFR-J Wordlist Version 1.5. Compiled by Yukio Tono, Tokyo University of Foreign Studies.')).toBeVisible()

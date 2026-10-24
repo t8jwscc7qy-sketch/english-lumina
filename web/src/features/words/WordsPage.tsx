@@ -1,10 +1,11 @@
-import { ChevronDown } from 'lucide-react'
-import { useEffect, useId, useState } from 'react'
+import { Check, ChevronDown, Plus } from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { components } from '@/api/schema.gen'
 import { cn } from '@/lib/utils'
+import { useAddCard } from '@/features/cards/cards'
 import { useDebounced } from '@/lib/useDebounced'
 import { ExamplesPanel } from './ExamplesPanel'
 import { useWordSearch } from './words'
@@ -16,6 +17,47 @@ const MAX_RESULTS = 50 // столько отдаёт сервер
 
 const SOURCE_NAMES: Record<string, string> = { cefrj: 'CEFR-J', octanove: 'Octanove' }
 const sourceName = (name: string) => SOURCE_NAMES[name] ?? name
+
+/** Кнопка «В карточки»: слово без примеров сервер отклоняет (409), текст ответа показываем как есть. */
+function AddToCards({ word }: { word: Word }) {
+  const add = useAddCard()
+  const busy = useRef(false)
+
+  if (word.inCards || add.isSuccess) {
+    return (
+      <Button variant="ghost" size="sm" disabled className="-ml-3">
+        <Check className="size-4" aria-hidden />В карточках
+      </Button>
+    )
+  }
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={add.isPending}
+        onClick={() => {
+          if (busy.current) return // двойной клик: пока идёт запрос, второго нет
+          busy.current = true
+          add.mutate({ lemma: word.lemma, pos: word.pos }, { onSettled: () => (busy.current = false) })
+        }}
+      >
+        {add.isPending ? (
+          'Добавляем…'
+        ) : (
+          <>
+            <Plus className="size-4" aria-hidden />В карточки
+          </>
+        )}
+      </Button>
+      {add.isError && (
+        <p role="alert" className="text-sm text-coral-text">
+          {add.error.message}
+        </p>
+      )}
+    </div>
+  )
+}
 
 function WordRow({ word }: { word: Word }) {
   const [open, setOpen] = useState(false)
@@ -37,17 +79,19 @@ function WordRow({ word }: { word: Word }) {
       <p className="text-sm text-muted-foreground">{levels}</p>
       {notes && <p className="text-sm break-words">{notes}</p>}
       <div className="flex flex-col items-start gap-3">
+        <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+          <AddToCards word={word} />
         <Button
           variant="ghost"
           size="sm"
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
           onClick={() => setOpen((v) => !v)}
-          className="-ml-3"
         >
           Примеры
           <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
         </Button>
+        </div>
         {open && (
           <div id={panelId} className="w-full">
             <ExamplesPanel lemma={word.lemma} pos={word.pos} />
