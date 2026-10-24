@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getMe, getSettings, getSources, login, logout, putSettings } from './client'
+import { ApiError, getMe, getSettings, getSources, login, searchWords, logout, putSettings } from './client'
 
 function mockFetch(response: Response | Error) {
   const fn = vi.fn(async (_url: string, _init?: RequestInit) => {
@@ -131,5 +131,14 @@ describe('sources', () => {
     const fetchMock = mockFetch(json(200, list))
     expect(await getSources()).toEqual(list)
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/sources')
+  })
+})
+
+describe('words', () => {
+  it('searchWords экранирует запрос в URL и отдаёт список', async () => {
+    const list = { words: [{ lemma: 'café', pos: 'noun', level: 'A1', levels: [] }] }
+    const fetchMock = mockFetch(json(200, list))
+    expect(await searchWords('Café & more/50%')).toEqual(list)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/words?q=Caf%C3%A9%20%26%20more%2F50%25')
   })
 })

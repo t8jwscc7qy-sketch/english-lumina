@@ -11,6 +11,36 @@ import (
 	"time"
 )
 
+// Defines values for CefrLevel.
+const (
+	CefrLevelA1 CefrLevel = "A1"
+	CefrLevelA2 CefrLevel = "A2"
+	CefrLevelB1 CefrLevel = "B1"
+	CefrLevelB2 CefrLevel = "B2"
+	CefrLevelC1 CefrLevel = "C1"
+	CefrLevelC2 CefrLevel = "C2"
+)
+
+// Valid indicates whether the value is a known member of the CefrLevel enum.
+func (e CefrLevel) Valid() bool {
+	switch e {
+	case CefrLevelA1:
+		return true
+	case CefrLevelA2:
+		return true
+	case CefrLevelB1:
+		return true
+	case CefrLevelB2:
+		return true
+	case CefrLevelC1:
+		return true
+	case CefrLevelC2:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorErrorCode.
 const (
 	ErrorErrorCodeBusy               ErrorErrorCode = "busy"
@@ -49,30 +79,33 @@ func (e ErrorErrorCode) Valid() bool {
 
 // Defines values for Level.
 const (
-	A1 Level = "A1"
-	A2 Level = "A2"
-	B1 Level = "B1"
-	B2 Level = "B2"
-	C1 Level = "C1"
+	LevelA1 Level = "A1"
+	LevelA2 Level = "A2"
+	LevelB1 Level = "B1"
+	LevelB2 Level = "B2"
+	LevelC1 Level = "C1"
 )
 
 // Valid indicates whether the value is a known member of the Level enum.
 func (e Level) Valid() bool {
 	switch e {
-	case A1:
+	case LevelA1:
 		return true
-	case A2:
+	case LevelA2:
 		return true
-	case B1:
+	case LevelB1:
 		return true
-	case B2:
+	case LevelB2:
 		return true
-	case C1:
+	case LevelC1:
 		return true
 	default:
 		return false
 	}
 }
+
+// CefrLevel Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
+type CefrLevel string
 
 // Error defines model for Error.
 type Error struct {
@@ -136,6 +169,35 @@ type SourceList struct {
 	Sources []Source `json:"sources"`
 }
 
+// Word defines model for Word.
+type Word struct {
+	Lemma string `json:"lemma"`
+
+	// Level Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
+	Level CefrLevel `json:"level"`
+
+	// Levels Оценки по источникам
+	Levels []WordLevel `json:"levels"`
+	Pos    string      `json:"pos"`
+}
+
+// WordLevel defines model for WordLevel.
+type WordLevel struct {
+	// Level Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
+	Level CefrLevel `json:"level"`
+
+	// Notes Заметки источника о значении слова (если есть)
+	Notes []string `json:"notes"`
+
+	// Source Имя источника (cefrj, octanove)
+	Source string `json:"source"`
+}
+
+// WordList defines model for WordList.
+type WordList struct {
+	Words []Word `json:"words"`
+}
+
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
@@ -171,6 +233,9 @@ type ServerInterface interface {
 	// ListSources Загруженные источники данных с лицензиями и атрибуцией
 	// (GET /api/v1/sources)
 	ListSources(w http.ResponseWriter, r *http.Request)
+	// SearchWords Поиск слова по началу (без учёта регистра)
+	// (GET /api/v1/words)
+	SearchWords(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -257,6 +322,20 @@ func (siw *ServerInterfaceWrapper) ListSources(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListSources(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchWords operation middleware
+func (siw *ServerInterfaceWrapper) SearchWords(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchWords(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -392,6 +471,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/settings", wrapper.GetSettings)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/settings", wrapper.PutSettings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/sources", wrapper.ListSources)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/words", wrapper.SearchWords)
 
 	return m
 }

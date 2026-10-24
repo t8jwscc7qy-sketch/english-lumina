@@ -32,6 +32,29 @@ export const SOURCES: Source[] = [
   },
 ]
 
+type WordFixture = {
+  lemma: string
+  pos: string
+  level: string
+  levels: { source: string; level: string; notes: string[] }[]
+}
+
+export const WORDS: WordFixture[] = [
+  { lemma: 'run', pos: 'verb', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }] },
+  { lemma: 'runner', pos: 'noun', level: 'B1', levels: [{ source: 'cefrj', level: 'B1', notes: [] }] },
+  { lemma: 'runway', pos: 'noun', level: 'B2', levels: [{ source: 'cefrj', level: 'B2', notes: [] }] },
+  {
+    lemma: 'complexity',
+    pos: 'noun',
+    level: 'B2',
+    levels: [
+      { source: 'cefrj', level: 'B2', notes: [] },
+      { source: 'octanove', level: 'C1', notes: ['сложность', 'запутанность'] },
+    ],
+  },
+  { lemma: 'cafe/café', pos: 'noun', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }] },
+]
+
 export const SETTINGS: Settings = {
   currentLevel: 'B1',
   targetLevel: 'B2',
@@ -102,6 +125,13 @@ export async function mockApi(
   await page.route('**/api/v1/sources', (route) =>
     route.fulfill({ json: { sources: opts.sources ?? SOURCES } }),
   )
+
+  // Поиск как у сервера: по началу слова без учёта регистра.
+  await page.route('**/api/v1/words**', (route) => {
+    const q = (new URL(route.request().url()).searchParams.get('q') ?? '').trim().toLowerCase()
+    const words = q ? WORDS.filter((w) => w.lemma.toLowerCase().startsWith(q)) : []
+    return route.fulfill({ json: { words } })
+  })
 
   return { puts }
 }

@@ -84,3 +84,11 @@ export async function getSources(): Promise<SourceList> {
   const res = await request('/api/v1/sources')
   return (await res.json()) as SourceList
 }
+
+export type WordList = components['schemas']['WordList']
+
+/** Поиск слова по началу; q экранируется, чтобы & / % и пробелы не ломали адрес. */
+export async function searchWords(q: string): Promise<WordList> {
+  const res = await request(`/api/v1/words?q=${encodeURIComponent(q)}`)
+  return (await res.json()) as WordList
+}
