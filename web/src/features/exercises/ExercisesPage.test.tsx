@@ -485,3 +485,61 @@ describe('выбор формы', () => {
     expect(screen.queryByText(/начальная форма/)).not.toBeInTheDocument()
   })
 })
+
+describe('ExercisesPage: повтор ошибки', () => {
+  const mr = (status: 'open' | 'closed', streak: number) => ({ status, streak, nextDue: '2026-10-25T12:00:00Z' })
+
+  it('у повтора над предложением ярлык «Повтор ошибки»', async () => {
+    stubApi({ next: () => jsonResponse(200, { ...ex(1), repeat: true }) })
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    expect(screen.getByText('Повтор ошибки')).toBeInTheDocument()
+  })
+
+  it('без repeat и mistake ничего нового не видно', async () => {
+    stubApi({ next: () => jsonResponse(200, ex(1)) })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('2')
+    await screen.findByText('Верно')
+    expect(screen.queryByText('Повтор ошибки')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ошибка закрыта|закрыта|Вернётся завтра/)).not.toBeInTheDocument()
+  })
+
+  it('второй верный повтор: «Ошибка закрыта»', async () => {
+    stubApi({
+      next: () => jsonResponse(200, { ...ex(1), repeat: true }),
+      answer: () => jsonResponse(200, { ...result(true), mistake: mr('closed', 2) }),
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('2')
+    expect(await screen.findByText('Ошибка закрыта')).toBeInTheDocument()
+  })
+
+  it('первый верный повтор: нужен ещё один', async () => {
+    stubApi({
+      next: () => jsonResponse(200, { ...ex(1), repeat: true }),
+      answer: () => jsonResponse(200, { ...result(true), mistake: mr('open', 1) }),
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('2')
+    expect(await screen.findByText('Ещё один верный ответ, и ошибка закрыта')).toBeInTheDocument()
+  })
+
+  it('неверный ответ открывает ошибку: «Вернётся завтра»', async () => {
+    stubApi({
+      next: () => jsonResponse(200, ex(1)),
+      answer: () => jsonResponse(200, { ...result(false), mistake: mr('open', 0) }),
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('1')
+    expect(await screen.findByText('Вернётся завтра')).toBeInTheDocument()
+  })
+})
