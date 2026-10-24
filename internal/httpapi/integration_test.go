@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -260,5 +262,122 @@ func TestWordsOnRealDatabase(t *testing.T) {
 	if w[0].Levels[0].Source != "cefrj" || w[0].Levels[1].Source != "octanove" || w[0].Levels[1].Level != api.CefrLevelC1 ||
 		strings.Join(w[0].Levels[1].Notes, "|") != "сложность" {
 		t.Fatalf("оценки: %+v", w[0].Levels)
+	}
+}
+
+// Примеры на настоящей базе: формы слова, отбор по длине, ближе к 8 словам, лучший перевод, подсветка, лимит, безопасность.
+func TestExamplesOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sentence := func(lang string, id int64, text, author string) int64 {
+		row, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{
+			Lang: lang, TatoebaID: id, Text: text, Author: author, WordCount: int16(len(strings.Fields(text))), SourceID: ds.ID,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return row.ID
+	}
+	link := func(enID, ruID int64) {
+		if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: enID, RuID: ruID, SourceID: ds.ID}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// id Tatoeba ниже растут вместе с номером примера; длина в словах указана в комментарии.
+	add := func(id int64, en string) int64 {
+		e := sentence("en", id, en, "CK")
+		link(e, sentence("ru", id+1000, "Перевод "+en, "marafon"))
+		return e
+	}
+	add(1, "Run.")                                                                                 // 1 слово: слишком коротко
+	add(2, "We run.")                                                                              // 2
+	add(3, "She ran home quickly yesterday.")                                                      // 5
+	add(4, "They were running along the river.")                                                   // 6
+	add(5, "He runs a small shop in town.")                                                        // 7
+	add(6, "I like to run every morning before work.")                                             // 8: ближе всех к 8
+	add(7, "I like to run every single morning before work today.")                                // 10
+	add(8, "Running in the park every day makes me feel very good now.")                           // 12
+	add(9, "I like to run every single morning before work today and then go home to rest a bit.") // 17: слишком длинно
+	add(10, "He is a runner and he likes it very much.")                                           // 10, но «runner» — другое слово
+	add(11, "A big runaway truck hit the wall near here.")                                         // 9, «runaway» — другое слово
+	// Предложение без перевода в примеры не попадает.
+	sentence("en", 12, "I like to run with my best friend.", "CK")
+	// Перевод выбирается самый короткий.
+	e13 := sentence("en", 13, "Do you run in the park on Sundays?", "CM") // 8 слов
+	link(e13, sentence("ru", 2013, "Ты бегаешь в парке по воскресеньям, когда погода хорошая?", "a"))
+	link(e13, sentence("ru", 2014, "Ты бегаешь в парке?", "b"))
+
+	e := env{h: NewHandler(pool, q, auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	get := func(lemma, pos string) api.ExampleList {
+		t.Helper()
+		rec := e.do(http.MethodGet, examplesPath(lemma, pos), "", withCookie(token))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s/%s: статус %d, тело %s", lemma, pos, rec.Code, rec.Body)
+		}
+		var list api.ExampleList
+		if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+			t.Fatal(err)
+		}
+		return list
+	}
+	ids := func(l api.ExampleList) []int64 {
+		var out []int64
+		for _, ex := range l.Examples {
+			out = append(out, ex.En.TatoebaId)
+		}
+		return out
+	}
+
+	// Глагол run: формы run/runs/running/ran; 4–12 слов; ближе к 8, при равенстве по номеру; не больше 5.
+	// Расстояния до 8: №6 → 0, №13 → 0, №5 → 1, №4 → 2, №7 → 2, №3 → 3, №8 → 4.
+	got := get("run", "verb")
+	if fmt.Sprint(ids(got)) != "[6 13 5 4 7]" {
+		t.Fatalf("примеры: %v, ожидали [6 13 5 4 7]", ids(got))
+	}
+	first := got.Examples[0]
+	if first.Ru.Text != "Перевод I like to run every morning before work." || first.En.Author != "CK" || first.Ru.Author != "marafon" || first.Ru.TatoebaId != 1006 {
+		t.Fatalf("первый пример: %+v", first)
+	}
+	if first.Highlight == nil || first.Highlight.Start != 10 || first.Highlight.End != 13 {
+		t.Fatalf("подсветка: %+v", first.Highlight)
+	}
+	// Самый короткий из переводов.
+	if second := got.Examples[1]; second.Ru.Text != "Ты бегаешь в парке?" || second.Ru.TatoebaId != 2014 {
+		t.Fatalf("перевод должен быть самый короткий: %+v", second.Ru)
+	}
+	// Подсветка находит форму, а не лемму.
+	if h := got.Examples[3].Highlight; h == nil || h.Start != 10 || h.End != 17 { // «They were running…»
+		t.Fatalf("подсветка running: %+v", h)
+	}
+
+	// У существительного формы только run и runs: «ran» и «running» не подходят.
+	if noun := ids(get("run", "noun")); fmt.Sprint(noun) != "[6 13 5 7]" {
+		t.Fatalf("run/noun: %v, ожидали [6 13 5 7]", noun)
+	}
+	// Неизвестное слово и слово без предложений.
+	if n := len(get("zebra", "noun").Examples); n != 0 {
+		t.Fatalf("zebra: %d примеров", n)
+	}
+	// Синтаксис tsquery в лемме безопасен.
+	if n := len(get("run' | 'x & !y:*", "noun").Examples); n != 0 {
+		t.Fatalf("лемма со знаками синтаксиса: %d примеров", n)
+	}
+	// Фраза ищется как слова подряд: «like to» есть в №6 и №7 (№9 длинный, №12 без перевода, «likes» — другая форма).
+	if phrase := ids(get("like to", "verb")); fmt.Sprint(phrase) != "[6 7]" {
+		t.Fatalf("фраза like to: %v, ожидали [6 7]", phrase)
 	}
 }

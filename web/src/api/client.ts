@@ -92,3 +92,11 @@ export async function searchWords(q: string): Promise<WordList> {
   const res = await request(`/api/v1/words?q=${encodeURIComponent(q)}`)
   return (await res.json()) as WordList
 }
+
+export type ExampleList = components['schemas']['ExampleList']
+
+/** Примеры предложений для слова; lemma и pos экранируются (в лемме бывает косая черта). */
+export async function getWordExamples(lemma: string, pos: string): Promise<ExampleList> {
+  const res = await request(`/api/v1/words/examples?lemma=${encodeURIComponent(lemma)}&pos=${encodeURIComponent(pos)}`)
+  return (await res.json()) as ExampleList
+}

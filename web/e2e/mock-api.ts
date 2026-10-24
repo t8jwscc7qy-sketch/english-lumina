@@ -55,6 +55,21 @@ export const WORDS: WordFixture[] = [
   { lemma: 'cafe/café', pos: 'noun', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }] },
 ]
 
+export const EXAMPLES = {
+  examples: [
+    {
+      en: { text: 'I like to run every morning before work.', author: 'CK', tatoebaId: 1234567 },
+      ru: { text: 'Я люблю бегать по утрам перед работой.', author: 'marafon', tatoebaId: 7654321 },
+      highlight: { start: 10, end: 13 },
+    },
+    {
+      en: { text: 'They were running along the river.', author: 'Hybrid', tatoebaId: 2345678 },
+      ru: { text: 'Они бежали вдоль реки.', author: 'ksenija', tatoebaId: 8765432 },
+      highlight: { start: 10, end: 17 },
+    },
+  ],
+}
+
 export const SETTINGS: Settings = {
   currentLevel: 'B1',
   targetLevel: 'B2',
@@ -132,6 +147,9 @@ export async function mockApi(
     const words = q ? WORDS.filter((w) => w.lemma.toLowerCase().startsWith(q)) : []
     return route.fulfill({ json: { words } })
   })
+
+  // Примеры для слова. Регистрируется после поиска слов: Playwright сначала пробует поздние маршруты.
+  await page.route('**/api/v1/words/examples**', (route) => route.fulfill({ json: EXAMPLES }))
 
   return { puts }
 }

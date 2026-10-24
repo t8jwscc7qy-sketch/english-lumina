@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getMe, getSettings, getSources, login, searchWords, logout, putSettings } from './client'
+import { ApiError, getMe, getSettings, getSources, getWordExamples, login, searchWords, logout, putSettings } from './client'
 
 function mockFetch(response: Response | Error) {
   const fn = vi.fn(async (_url: string, _init?: RequestInit) => {
@@ -140,5 +140,14 @@ describe('words', () => {
     const fetchMock = mockFetch(json(200, list))
     expect(await searchWords('Café & more/50%')).toEqual(list)
     expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/words?q=Caf%C3%A9%20%26%20more%2F50%25')
+  })
+})
+
+describe('examples', () => {
+  it('getWordExamples передаёт слово и часть речи, экранируя их', async () => {
+    const list = { examples: [] }
+    const fetchMock = mockFetch(json(200, list))
+    expect(await getWordExamples('cafe/café', 'noun')).toEqual(list)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/words/examples?lemma=cafe%2Fcaf%C3%A9&pos=noun')
   })
 })
