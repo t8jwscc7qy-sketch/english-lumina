@@ -49,6 +49,23 @@ type LexemeCefr struct {
 	Extra    json.RawMessage
 }
 
+type Sentence struct {
+	ID        int64
+	Lang      string
+	TatoebaID int64
+	Text      string
+	Author    string
+	WordCount int16
+	SourceID  int64
+	CreatedAt pgtype.Timestamptz
+}
+
+type SentencePair struct {
+	EnID     int64
+	RuID     int64
+	SourceID int64
+}
+
 type Session struct {
 	ID         int64
 	UserID     int64

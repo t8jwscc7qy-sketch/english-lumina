@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -197,5 +198,22 @@ func TestDownloadCanceledContext(t *testing.T) {
 func TestNewHTTPClientHasTimeout(t *testing.T) {
 	if NewHTTPClient().Timeout <= 0 {
 		t.Fatal("у клиента нет таймаута")
+	}
+}
+
+// Некоторые сайты (например manythings.org) отвечают 406 на стандартный User-Agent Go: представляемся честно.
+func TestDownloadSendsDescriptiveUserAgent(t *testing.T) {
+	var got atomic.Value
+	srv, _ := tlsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		got.Store(r.UserAgent())
+		_, _ = w.Write([]byte(body))
+	})
+	dest := filepath.Join(t.TempDir(), "f.csv")
+	if err := Download(context.Background(), srv.Client(), srv.URL, dest, sum(body), 1<<20); err != nil {
+		t.Fatal(err)
+	}
+	ua, _ := got.Load().(string)
+	if !strings.HasPrefix(ua, "english-pass-importer/") || strings.Contains(ua, "Go-http-client") {
+		t.Fatalf("User-Agent %q", ua)
 	}
 }

@@ -16,6 +16,9 @@ import (
 
 const downloadTimeout = 2 * time.Minute
 
+// userAgent представляет импортёр честно: часть сайтов отвечает 406 на стандартный Go-http-client.
+const userAgent = "english-pass-importer/1.0 (personal study tool)"
+
 // NewHTTPClient — клиент для скачивания баз: с общим таймаутом. Правила про HTTPS и редиректы
 // действуют внутри Download, какой бы клиент ему ни передали.
 func NewHTTPClient() *http.Client {
@@ -60,6 +63,7 @@ func Download(ctx context.Context, client *http.Client, rawURL, dest, wantSHA256
 	if err != nil {
 		return err
 	}
+	req.Header.Set("User-Agent", userAgent)
 	resp, err := c.Do(req)
 	if err != nil {
 		return fmt.Errorf("скачивание: %w", err)

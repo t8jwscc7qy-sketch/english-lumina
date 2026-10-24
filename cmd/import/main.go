@@ -18,6 +18,7 @@ import (
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/importer"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/cefrj"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/octanove"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/tatoeba"
 )
 
 // cacheDir лежит вне Git (см. .gitignore): скачанные базы в репозиторий не попадают.
@@ -34,6 +35,7 @@ func main() {
 	reg := importer.NewRegistry()
 	reg.Register(cefrj.New()) // новый источник подключается одной такой строкой
 	reg.Register(octanove.New())
+	reg.Register(tatoeba.New())
 
 	if err := run(ctx, os.Args[1:], os.Stdout, reg, runOnDatabase); err != nil {
 		fmt.Fprintln(os.Stderr, "ошибка:", err)
