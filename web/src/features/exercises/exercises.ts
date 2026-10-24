@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { mistakesKey } from '@/features/mistakes/mistakes'
 import { answerExercise, getNextExercise, listExerciseTopics } from '@/api/client'
 
 export type { Exercise, AnswerResult, Rating } from '@/api/client'
@@ -19,6 +20,6 @@ export function useAnswer() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ exerciseId, given, key }: { exerciseId: number; given: string; key: string }) => answerExercise(exerciseId, given, key),
-    onSuccess: () => qc.invalidateQueries({ queryKey: topicsKey }),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: topicsKey }), qc.invalidateQueries({ queryKey: mistakesKey })]),
   })
 }

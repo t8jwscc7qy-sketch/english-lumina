@@ -1,11 +1,19 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { errorResponse, jsonResponse, renderAt } from '@/test/render'
 import { formatDue } from './mistakes'
 import { MistakesPage } from './MistakesPage'
 
-afterEach(() => vi.unstubAllGlobals())
+// Часы закреплены: страница считает срок от реального времени, а данные собраны от NOW. Подменяется только Date, таймеры настоящие.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(NOW)
+})
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 const NOW = new Date('2026-10-24T12:00:00Z')
 const iso = (hours: number) => new Date(NOW.getTime() + hours * 3600_000).toISOString()
@@ -31,14 +39,24 @@ function renderPage() {
 }
 
 describe('formatDue', () => {
-  it('прошлое и настоящее: ждёт повтора', () => {
+  const local = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m)
+
+  it('прошлое, настоящее и неверная дата: ждёт повтора', () => {
     expect(formatDue(iso(-5), NOW)).toBe('ждёт повтора')
     expect(formatDue(NOW.toISOString(), NOW)).toBe('ждёт повтора')
+    expect(formatDue('не дата', NOW)).toBe('ждёт повтора')
   })
-  it('завтра: вернётся завтра', () => {
-    expect(formatDue(iso(24), NOW)).toBe('вернётся завтра')
+  it('позже в тот же календарный день: вернётся сегодня', () => {
+    expect(formatDue(local(24, 12).toISOString(), local(24, 8))).toBe('вернётся сегодня')
   })
-  it('через три дня: через 3 дн.', () => {
+  it('следующая календарная дата: вернётся завтра, хоть и через 20 минут', () => {
+    expect(formatDue(local(25, 0, 10).toISOString(), local(24, 23, 50))).toBe('вернётся завтра')
+  })
+  it('завтра в 12:00 при просмотре в 08:00 (28 часов): вернётся завтра, не «через 2 дн.»', () => {
+    expect(formatDue(local(25, 12).toISOString(), local(24, 8))).toBe('вернётся завтра')
+  })
+  it('через три календарных дня: через 3 дн.', () => {
+    expect(formatDue(local(27, 6).toISOString(), local(24, 23))).toBe('через 3 дн.')
     expect(formatDue(iso(72), NOW)).toBe('через 3 дн.')
   })
 })

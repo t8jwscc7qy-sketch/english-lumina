@@ -542,4 +542,16 @@ describe('ExercisesPage: повтор ошибки', () => {
     await user.keyboard('1')
     expect(await screen.findByText('Вернётся завтра')).toBeInTheDocument()
   })
+
+  it('после ответа список ошибок помечается устаревшим', async () => {
+    stubApi({ next: () => jsonResponse(200, ex(1)), answer: () => jsonResponse(200, result(false)) })
+    const user = userEvent.setup()
+    const { client } = renderPage()
+    client.setQueryData(['mistakes'], { open: [], counts: { open: 0, dueNow: 0, closedThisWeek: 0 } })
+    await findPrompt('She is _____ engineer.')
+    expect(client.getQueryState(['mistakes'])?.isInvalidated).toBe(false)
+    await user.keyboard('1')
+    await screen.findByText('Неверно')
+    await waitFor(() => expect(client.getQueryState(['mistakes'])?.isInvalidated).toBe(true))
+  })
 })

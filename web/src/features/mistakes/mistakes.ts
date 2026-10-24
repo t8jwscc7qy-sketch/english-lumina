@@ -12,10 +12,17 @@ export function useMistakes() {
 
 const DAY = 24 * 3600_000
 
-/** Когда ошибка вернётся: прошлое и настоящее — «ждёт повтора», до суток вперёд — «вернётся завтра», дальше — «через N дн.». */
+/** Номер локального календарного дня: разница номеров не зависит от перехода на летнее время. */
+function dayNumber(d: Date): number {
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY)
+}
+
+/** Когда ошибка вернётся, по локальным календарным дням: прошлое и неверная дата — «ждёт повтора», тот же день — «сегодня», следующий — «завтра», дальше — «через N дн.». */
 export function formatDue(nextDue: string, now: Date): string {
-  const diff = new Date(nextDue).getTime() - now.getTime()
-  if (!(diff > 0)) return 'ждёт повтора'
-  const days = Math.ceil(diff / DAY)
-  return days <= 1 ? 'вернётся завтра' : `через ${days} дн.`
+  const due = new Date(nextDue)
+  if (!(due.getTime() > now.getTime())) return 'ждёт повтора'
+  const days = dayNumber(due) - dayNumber(now)
+  if (days <= 0) return 'вернётся сегодня'
+  if (days === 1) return 'вернётся завтра'
+  return `через ${days} дн.`
 }
