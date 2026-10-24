@@ -255,4 +255,40 @@ describe('OrderExercise', () => {
     await user.keyboard('1234{Enter}')
     await screen.findByText('Экран входа')
   })
+
+  it('с клавиатуры (Tab, Enter): после выбора плитки фокус на следующей свободной, а не на карточке', async () => {
+    stubApi({ next: () => jsonResponse(200, order(1, ['a', 'b', 'c', 'd'])) })
+    const user = await open()
+    const bankBtn = (name: string) => within(bank()).getByRole('button', { name })
+    bankBtn('b').focus()
+    await user.keyboard('{Enter}')
+    expect(bankBtn('c')).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(bankBtn('d')).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(bankBtn('a')).toHaveFocus() // за последней — первая свободная
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('button', { name: 'Проверить' })).toHaveFocus() // все использованы
+    expect(rowWords()).toEqual(['b', 'c', 'd', 'a'])
+  })
+
+  it('с клавиатуры: возврат плитки из строки ставит фокус на соседнюю плитку строки, а при пустой строке на плитку в банке', async () => {
+    stubApi({ next: () => jsonResponse(200, order(1, ['a', 'b', 'c', 'd'])) })
+    const user = await open()
+    await user.keyboard('123')
+    within(row()).getByRole('button', { name: 'убрать b' }).focus()
+    await user.keyboard('{Enter}')
+    expect(within(row()).getByRole('button', { name: 'убрать c' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(within(row()).getByRole('button', { name: 'убрать a' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(within(bank()).getByRole('button', { name: 'a' })).toHaveFocus()
+  })
+
+  it('клик мышью возвращает фокус на карточку, как раньше', async () => {
+    stubApi({ next: () => jsonResponse(200, order(1)) })
+    const user = await open()
+    await user.click(within(bank()).getByRole('button', { name: 'I' }))
+    expect(screen.getByRole('article', { name: 'Упражнение' })).toHaveFocus()
+  })
 })

@@ -98,7 +98,7 @@ func TestListEnglishAlternatives(t *testing.T) {
 	}
 	pair(unrelated, ruOther)
 
-	rows, err := q.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: a, MaxRows: 5})
+	rows, err := q.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: a, RuID: ru, MaxRows: 5})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,8 +115,51 @@ func TestListEnglishAlternatives(t *testing.T) {
 
 	c := sent("en", 15, "I walked home yesterday.", 4)
 	pair(c, ru)
-	rows, err = q.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: a, MaxRows: 1})
+	rows, err = q.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: a, RuID: ru, MaxRows: 1})
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("лимит 1: %+v (%v)", rows, err)
+	}
+}
+
+// Альтернативы берутся только по показанному русскому переводу и только с тем же числом слов:
+// иначе лимит съедают чужие предложения, а вопрос засчитывается как ответ на утверждение.
+func TestListEnglishAlternativesShownTranslationAndWordCount(t *testing.T) {
+	ctx := context.Background()
+	pool := Pool(t)
+	q := db.New(pool)
+	src, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "1", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sent := func(lang string, tid int64, text string, wc int16) int64 {
+		s, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: lang, TatoebaID: tid, Text: text, Author: "a", WordCount: wc, SourceID: src.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s.ID
+	}
+	pair := func(en, ru int64) {
+		if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en, RuID: ru, SourceID: src.ID}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ru1 := sent("ru", 1, "Он сейчас здесь", 3)
+	ru2 := sent("ru", 2, "Он здесь сейчас, да", 4)
+	a := sent("en", 10, "He is here now.", 4)
+	five := sent("en", 11, "He is right here now.", 5) // другое число слов, id меньше нужного
+	question := sent("en", 12, "Is he here now?", 4)  // связан только со вторым переводом
+	good := sent("en", 13, "Now he is here.", 4)
+	pair(a, ru1)
+	pair(a, ru2)
+	pair(five, ru1)
+	pair(question, ru2)
+	pair(good, ru1)
+
+	rows, err := q.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: a, RuID: ru1, MaxRows: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].ID != good {
+		t.Fatalf("ожидали только %d (тот же перевод и 4 слова), получили %+v", good, rows)
 	}
 }

@@ -44,8 +44,34 @@ export function OrderExercise({ tiles, frozen, pending, correct, onSubmit, resto
     stateRef.current = { placed, full, given, frozen, tiles, onSubmit }
   })
 
-  const place = (i: number) => setPlaced((p) => (p.includes(i) ? p : [...p, i]))
-  const remove = (i: number) => setPlaced((p) => p.filter((x) => x !== i))
+  const rootRef = useRef<HTMLDivElement>(null)
+  // Куда поставить фокус после следующего рендера (только когда плитку нажали с клавиатуры).
+  const focusAfter = useRef<string | null>(null)
+  useEffect(() => {
+    const sel = focusAfter.current
+    focusAfter.current = null
+    if (sel) rootRef.current?.querySelector<HTMLElement>(sel)?.focus()
+  }, [placed])
+
+  /** С клавиатуры фокус идёт на следующую свободную плитку (или «Проверить»), мышью — на карточку: цифры и Enter работают сразу. */
+  function place(i: number, fromKeyboard: boolean) {
+    if (placed.includes(i)) return
+    if (fromKeyboard) {
+      const taken = new Set([...placed, i])
+      const order = [...tiles.keys()]
+      const next = [...order.slice(i + 1), ...order.slice(0, i)].find((j) => !taken.has(j))
+      focusAfter.current = next === undefined ? '[data-check]' : `[data-bank="${next}"]`
+    } else restoreFocus()
+    setPlaced([...placed, i])
+  }
+  function remove(i: number, fromKeyboard: boolean) {
+    if (fromKeyboard) {
+      const at = placed.indexOf(i)
+      const neighbour = placed[at + 1] ?? placed[at - 1]
+      focusAfter.current = neighbour === undefined ? `[data-bank="${i}"]` : `[data-row="${neighbour}"]`
+    } else restoreFocus()
+    setPlaced(placed.filter((x) => x !== i))
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -76,7 +102,7 @@ export function OrderExercise({ tiles, frozen, pending, correct, onSubmit, resto
     'min-h-11 rounded-xl border bg-card px-3 py-1.5 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default'
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={rootRef} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <p className="text-sm font-semibold" id="order-row-label">
           Твой ответ
@@ -95,10 +121,8 @@ export function OrderExercise({ tiles, frozen, pending, correct, onSubmit, resto
                 <button
                   type="button"
                   disabled={frozen}
-                  onClick={() => {
-                    remove(i)
-                    restoreFocus()
-                  }}
+                  data-row={i}
+                  onClick={(e) => remove(i, e.detail === 0)}
                   aria-label={`убрать ${tiles[i]}`}
                   className={cn(
                     tileClass,
@@ -136,10 +160,8 @@ export function OrderExercise({ tiles, frozen, pending, correct, onSubmit, resto
               key={i}
               type="button"
               disabled={used || frozen}
-              onClick={() => {
-                place(i)
-                restoreFocus()
-              }}
+              data-bank={i}
+              onClick={(e) => place(i, e.detail === 0)}
               aria-keyshortcuts={keyOf(i)}
               className={cn(
                 tileClass,
@@ -168,6 +190,7 @@ export function OrderExercise({ tiles, frozen, pending, correct, onSubmit, resto
           <Button
             type="button"
             disabled={!full || pending || frozen}
+            data-check
             onClick={() => onSubmit(given)}
             aria-keyshortcuts="Enter"
           >

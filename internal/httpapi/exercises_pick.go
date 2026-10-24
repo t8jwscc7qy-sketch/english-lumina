@@ -273,7 +273,7 @@ func (s *authServer) orderCandidate(ctx context.Context, rng *idRange, maxLevel 
 		if !ok || (maxLevel != "" && level > maxLevel) {
 			continue
 		}
-		alts, err := s.store.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: p.row.ID, MaxRows: maxAlternatives})
+		alts, err := s.store.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: p.row.ID, RuID: p.row.RuID, MaxRows: maxAlternatives})
 		if err != nil {
 			return gapCandidate{}, false, err
 		}

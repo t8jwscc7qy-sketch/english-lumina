@@ -113,18 +113,21 @@ func (q *Queries) InsertExercise(ctx context.Context, arg InsertExerciseParams) 
 
 const listEnglishAlternatives = `-- name: ListEnglishAlternatives :many
 SELECT DISTINCT e.id, e.text
-FROM sentence_pairs mine
-JOIN sentence_pairs p ON p.ru_id = mine.ru_id AND p.en_id <> mine.en_id
+FROM sentence_pairs p
 JOIN sentences e ON e.id = p.en_id
-WHERE mine.en_id = $1::bigint
+JOIN sentences mine ON mine.id = $1::bigint
+WHERE p.ru_id = $2::bigint
+  AND p.en_id <> mine.id
   AND e.lang = 'en'
+  AND e.word_count = mine.word_count
   AND e.word_count BETWEEN 4 AND 10
 ORDER BY e.id
-LIMIT $2::int
+LIMIT $3::int
 `
 
 type ListEnglishAlternativesParams struct {
 	EnID    int64
+	RuID    int64
 	MaxRows int32
 }
 
@@ -133,10 +136,11 @@ type ListEnglishAlternativesRow struct {
 	Text string
 }
 
-// Другие английские предложения (4–10 слов) с тем же русским переводом, что у en_id: для «порядка слов»
-// они тоже верные ответы. Само предложение не возвращается.
+// Другие английские предложения с тем же показанным русским переводом (ru_id) и тем же числом слов, что у en_id:
+// для «порядка слов» они тоже верные ответы. Само предложение не возвращается. Число слов совпадает заранее,
+// чтобы лимит не съедали предложения, которые всё равно не подойдут.
 func (q *Queries) ListEnglishAlternatives(ctx context.Context, arg ListEnglishAlternativesParams) ([]ListEnglishAlternativesRow, error) {
-	rows, err := q.db.Query(ctx, listEnglishAlternatives, arg.EnID, arg.MaxRows)
+	rows, err := q.db.Query(ctx, listEnglishAlternatives, arg.EnID, arg.RuID, arg.MaxRows)
 	if err != nil {
 		return nil, err
 	}

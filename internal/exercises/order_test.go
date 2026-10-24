@@ -180,3 +180,24 @@ func TestOrderTopics(t *testing.T) {
 		t.Fatalf("OrderTopics(\"\") = %v", got)
 	}
 }
+
+func TestBuildOrderRejectsPunctuationHints(t *testing.T) {
+	for _, s := range []string{
+		`"Come here," she said quietly.`,
+		`She said, "Come here now."`,
+		`(Please) close the door now.`,
+		"Élodie is my best friend.",
+		"I don't know what to do…",
+		"She said “come here now”.",
+		"We [all] went home early.",
+	} {
+		if _, ok := BuildOrder(s, nil, 1); ok {
+			t.Errorf("%q: пунктуация или регистр выдают место слова, ожидали отказ", s)
+		}
+	}
+	for _, s := range []string{"I don't know what to do.", "Well, I went home early.", "I’m here right now."} {
+		if _, ok := BuildOrder(s, nil, 1); !ok {
+			t.Errorf("%q: обычная запятая и апостроф допустимы", s)
+		}
+	}
+}

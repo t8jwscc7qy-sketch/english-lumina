@@ -25,12 +25,16 @@ type Order struct {
 // BuildOrder собирает упражнение из английского предложения. Альтернативы — другие английские
 // предложения с тем же переводом: они принимаются как верные, если состоят из тех же слов (без учёта
 // регистра). Слова — куски между пробелами; запятые остаются на словах, завершающие .!? в плитки не входят. false, если предложение
-// не подходит: длина вне 4–10 слов, имя собственное не в начале (регистр выдал бы начало), символы,
+// не подходит: длина вне 4–10 слов, кавычки, скобки, многоточие или не-ASCII первая буква, имя собственное не в начале (регистр выдал бы начало), символы,
 // у которых ToLower меняет длину, или плитки не удалось перемешать так, чтобы они не сложились в ответ.
 func BuildOrder(sentence string, alternatives []string, seed int64) (Order, bool) {
 	sentence = strings.TrimSpace(sentence)
 	words := strings.Fields(sentence)
 	if len(words) < OrderMinTiles || len(words) > OrderMaxTiles || len(strings.ToLower(sentence)) != len(sentence) {
+		return Order{}, false
+	}
+	// Кавычки, скобки и многоточие выдают начало и конец слова-плитки, а не-ASCII первая буква не приводится к строчной.
+	if strings.ContainsAny(sentence, "\"“”„«»()[]{}…") || sentence[0] >= utf8.RuneSelf {
 		return Order{}, false
 	}
 	for i, w := range words {
