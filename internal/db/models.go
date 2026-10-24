@@ -61,6 +61,7 @@ type Exercise struct {
 	Answer     json.RawMessage
 	CreatedAt  pgtype.Timestamptz
 	AnsweredAt pgtype.Timestamptz
+	MistakeID  *int64
 }
 
 type Lexeme struct {
@@ -76,6 +77,25 @@ type LexemeCefr struct {
 	SourceID int64
 	Level    string
 	Extra    json.RawMessage
+}
+
+type Mistake struct {
+	ID               int64
+	UserID           int64
+	Kind             string
+	SentenceID       int64
+	Topics           []string
+	Payload          json.RawMessage
+	Answer           json.RawMessage
+	Given            string
+	Streak           int16
+	Status           string
+	NextDue          pgtype.Timestamptz
+	FirstWrongAt     pgtype.Timestamptz
+	ClosedAt         pgtype.Timestamptz
+	SourceExerciseID *int64
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 type Sentence struct {

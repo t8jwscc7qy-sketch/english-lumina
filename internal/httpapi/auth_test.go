@@ -84,6 +84,8 @@ type fakeStore struct {
 	rangeOverride  *db.SentenceIDRangeRow
 	levelLexemes   map[string][]db.RandomLexemesByLevelRow // для RandomLexemesByLevel
 	weakWords      []db.ListWeakCardWordsRow               // для ListWeakCardWords
+	mistakes       map[int64]db.Mistake                    // банк ошибок (mistakes_fake_test.go)
+	nextMistakeID  int64
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

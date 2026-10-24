@@ -26,7 +26,7 @@ func (f *fakeStore) InsertExercise(_ context.Context, arg db.InsertExerciseParam
 	f.nextExerciseID++
 	f.exercises[f.nextExerciseID] = db.Exercise{
 		ID: f.nextExerciseID, UserID: arg.UserID, Kind: arg.Kind, SentenceID: arg.SentenceID,
-		Topics: slices.Clone(arg.Topics), Payload: arg.Payload, Answer: arg.Answer,
+		Topics: slices.Clone(arg.Topics), Payload: arg.Payload, Answer: arg.Answer, MistakeID: arg.MistakeID,
 		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	}
 	return f.nextExerciseID, nil
@@ -187,14 +187,17 @@ type exerciseSnapshot struct {
 	ratings   map[topicKey]db.TopicRating
 	nextID    int64
 	upserts   int
+	mistakes  map[int64]db.Mistake
+	nextMID   int64
 }
 
 func (f *fakeStore) snapshotExercises() exerciseSnapshot {
-	return exerciseSnapshot{maps.Clone(f.exercises), maps.Clone(f.topicRatings), f.nextExerciseID, f.upserts}
+	return exerciseSnapshot{maps.Clone(f.exercises), maps.Clone(f.topicRatings), f.nextExerciseID, f.upserts, maps.Clone(f.mistakes), f.nextMistakeID}
 }
 
 func (f *fakeStore) restoreExercises(s exerciseSnapshot) {
 	f.exercises, f.topicRatings, f.nextExerciseID, f.upserts = s.exercises, s.ratings, s.nextID, s.upserts
+	f.mistakes, f.nextMistakeID = s.mistakes, s.nextMID
 }
 
 func (f *fakeStore) GetEventByKey(_ context.Context, arg db.GetEventByKeyParams) (db.Event, error) {

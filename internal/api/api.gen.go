@@ -143,6 +143,24 @@ func (e Level) Valid() bool {
 	}
 }
 
+// Defines values for MistakeResultStatus.
+const (
+	Closed MistakeResultStatus = "closed"
+	Open   MistakeResultStatus = "open"
+)
+
+// Valid indicates whether the value is a known member of the MistakeResultStatus enum.
+func (e MistakeResultStatus) Valid() bool {
+	switch e {
+	case Closed:
+		return true
+	case Open:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddCardRequest defines model for AddCardRequest.
 type AddCardRequest struct {
 	Lemma string `json:"lemma"`
@@ -171,6 +189,9 @@ type AnswerResult struct {
 	// Answer Верный ответ
 	Answer  string `json:"answer"`
 	Correct bool   `json:"correct"`
+
+	// Mistake Состояние ошибки после ответа (повтор или новый неверный ответ)
+	Mistake *MistakeResult `json:"mistake,omitempty"`
 
 	// Ratings Рейтинги затронутых тем после обновления
 	Ratings     []Rating `json:"ratings"`
@@ -265,6 +286,9 @@ type Exercise struct {
 	// Prompt gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles)
 	Prompt string `json:"prompt"`
 
+	// Repeat Это повтор ошибки из банка ошибок
+	Repeat *bool `json:"repeat,omitempty"`
+
 	// Tiles Только для order: слова английского предложения в перемешанном порядке (первое слово строчное, завершающей точки нет). Верный порядок до ответа клиенту не отдаётся
 	Tiles *[]string `json:"tiles,omitempty"`
 
@@ -291,6 +315,60 @@ type LoginRequest struct {
 type Me struct {
 	Login string `json:"login"`
 }
+
+// Mistake defines model for Mistake.
+type Mistake struct {
+	// Answer Верный ответ
+	Answer       string    `json:"answer"`
+	FirstWrongAt time.Time `json:"firstWrongAt"`
+
+	// Given Последний неверный ответ
+	Given string `json:"given"`
+	Id    int64  `json:"id"`
+
+	// Kind Вид упражнения (gap, order или form, как у Exercise.kind)
+	Kind    string    `json:"kind"`
+	NextDue time.Time `json:"nextDue"`
+
+	// Prompt Предложение с пропуском (gap, form) или русский перевод (order)
+	Prompt string `json:"prompt"`
+	Streak int    `json:"streak"`
+
+	// Topic Основная тема ошибки
+	Topic string `json:"topic"`
+}
+
+// MistakeCounts defines model for MistakeCounts.
+type MistakeCounts struct {
+	ClosedThisWeek int64 `json:"closedThisWeek"`
+
+	// DueNow Ждут повтора сейчас
+	DueNow int64 `json:"dueNow"`
+
+	// Open Все открытые ошибки (не только показанные)
+	Open int64 `json:"open"`
+}
+
+// MistakeList defines model for MistakeList.
+type MistakeList struct {
+	Counts MistakeCounts `json:"counts"`
+
+	// Open Открытые ошибки по сроку повтора, не больше 200
+	Open []Mistake `json:"open"`
+}
+
+// MistakeResult Состояние ошибки после ответа (повтор или новый неверный ответ)
+type MistakeResult struct {
+	// NextDue Когда ошибка вернётся (для закрытой — последний срок)
+	NextDue time.Time           `json:"nextDue"`
+	Status  MistakeResultStatus `json:"status"`
+
+	// Streak Верных повторов подряд
+	Streak int `json:"streak"`
+}
+
+// MistakeResultStatus defines model for MistakeResult.Status.
+type MistakeResultStatus string
 
 // QueueCard defines model for QueueCard.
 type QueueCard struct {
@@ -463,6 +541,9 @@ type ServerInterface interface {
 	// ListExerciseTopics Темы с рейтингом
 	// (GET /api/v1/exercises/topics)
 	ListExerciseTopics(w http.ResponseWriter, r *http.Request)
+	// ListMistakes Банк ошибок
+	// (GET /api/v1/mistakes)
+	ListMistakes(w http.ResponseWriter, r *http.Request)
 	// GetSettings Настройки обучения текущего пользователя
 	// (GET /api/v1/settings)
 	GetSettings(w http.ResponseWriter, r *http.Request)
@@ -606,6 +687,20 @@ func (siw *ServerInterfaceWrapper) ListExerciseTopics(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListExerciseTopics(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMistakes operation middleware
+func (siw *ServerInterfaceWrapper) ListMistakes(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMistakes(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -819,6 +914,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/next", wrapper.GetNextExercise)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/exercises/answer", wrapper.AnswerExercise)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/topics", wrapper.ListExerciseTopics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/mistakes", wrapper.ListMistakes)
 
 	return m
 }

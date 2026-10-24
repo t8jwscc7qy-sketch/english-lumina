@@ -31,7 +31,7 @@ func (q *Queries) EnsureTopicRating(ctx context.Context, arg EnsureTopicRatingPa
 }
 
 const getExerciseForUpdate = `-- name: GetExerciseForUpdate :one
-SELECT id, user_id, kind, sentence_id, topics, payload, answer, created_at, answered_at FROM exercises WHERE id = $1 AND user_id = $2 FOR UPDATE
+SELECT id, user_id, kind, sentence_id, topics, payload, answer, created_at, answered_at, mistake_id FROM exercises WHERE id = $1 AND user_id = $2 FOR UPDATE
 `
 
 type GetExerciseForUpdateParams struct {
@@ -53,6 +53,7 @@ func (q *Queries) GetExerciseForUpdate(ctx context.Context, arg GetExerciseForUp
 		&i.Answer,
 		&i.CreatedAt,
 		&i.AnsweredAt,
+		&i.MistakeID,
 	)
 	return i, err
 }
@@ -83,8 +84,8 @@ func (q *Queries) GetTopicRatingForUpdate(ctx context.Context, arg GetTopicRatin
 }
 
 const insertExercise = `-- name: InsertExercise :one
-INSERT INTO exercises (user_id, kind, sentence_id, topics, payload, answer)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO exercises (user_id, kind, sentence_id, topics, payload, answer, mistake_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id
 `
 
@@ -95,8 +96,10 @@ type InsertExerciseParams struct {
 	Topics     []string
 	Payload    json.RawMessage
 	Answer     json.RawMessage
+	MistakeID  *int64
 }
 
+// mistake_id задан только у повтора ошибки; у обычного упражнения NULL.
 func (q *Queries) InsertExercise(ctx context.Context, arg InsertExerciseParams) (int64, error) {
 	row := q.db.QueryRow(ctx, insertExercise,
 		arg.UserID,
@@ -105,6 +108,7 @@ func (q *Queries) InsertExercise(ctx context.Context, arg InsertExerciseParams) 
 		arg.Topics,
 		arg.Payload,
 		arg.Answer,
+		arg.MistakeID,
 	)
 	var id int64
 	err := row.Scan(&id)

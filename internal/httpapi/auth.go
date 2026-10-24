@@ -79,6 +79,18 @@ type AuthStore interface {
 	ListEnglishAlternatives(ctx context.Context, arg db.ListEnglishAlternativesParams) ([]db.ListEnglishAlternativesRow, error)
 	ListWeakCardWords(ctx context.Context, arg db.ListWeakCardWordsParams) ([]db.ListWeakCardWordsRow, error)
 
+	InsertMistake(ctx context.Context, arg db.InsertMistakeParams) (int64, error)
+	GetOpenMistakeForUpdate(ctx context.Context, arg db.GetOpenMistakeForUpdateParams) (db.Mistake, error)
+	GetMistakeForUpdate(ctx context.Context, arg db.GetMistakeForUpdateParams) (db.Mistake, error)
+	ResetMistake(ctx context.Context, arg db.ResetMistakeParams) error
+	UpdateMistakeProgress(ctx context.Context, arg db.UpdateMistakeProgressParams) error
+	NextDueMistake(ctx context.Context, arg db.NextDueMistakeParams) (db.Mistake, error)
+	CountRepeatsToday(ctx context.Context, arg db.CountRepeatsTodayParams) (int64, error)
+	LastTwoExerciseRepeatFlags(ctx context.Context, userID int64) ([]bool, error)
+	GetUnansweredRepeat(ctx context.Context, arg db.GetUnansweredRepeatParams) (db.Exercise, error)
+	ListOpenMistakes(ctx context.Context, arg db.ListOpenMistakesParams) ([]db.Mistake, error)
+	CountMistakes(ctx context.Context, arg db.CountMistakesParams) (db.CountMistakesRow, error)
+
 	// InTx выполняет fn в одной транзакции: ошибка или паника в fn откатывают всё, успех фиксирует.
 	// Хранилище, переданное в fn, работает на этой транзакции; вложенный InTx использует ту же транзакцию.
 	InTx(ctx context.Context, fn func(AuthStore) error) error
