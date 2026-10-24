@@ -1115,3 +1115,95 @@ func TestExerciseFormOnRealDatabase(t *testing.T) {
 		t.Fatalf("попыток skill:form: %d (%v)", attempts, err)
 	}
 }
+
+// Банк ошибок на настоящей Postgres: неверный ответ открывает ошибку, через сдвиг срока приходит повтор,
+// два верных закрывают её; повтор по ключу ничего не меняет, другой ключ даёт 409, список отдаёт ошибку.
+func TestMistakesOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	en, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: "en", TatoebaID: 1, Text: "I have a big dog.", Author: "CK", WordCount: 5, SourceID: ds.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	count := func(query string, args ...any) int {
+		t.Helper()
+		var n int
+		if err := pool.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	first := seedRealExercise(t, q, en.ID, "grammar:articles", "level:A1")
+	res1 := e.do(http.MethodPost, answerPath, answerBody(first, "the", "k1"), withCookie(token))
+	if res1.Code != http.StatusOK {
+		t.Fatalf("ответ: %d %s", res1.Code, res1.Body)
+	}
+	if n := count("SELECT count(*) FROM mistakes WHERE status = 'open' AND streak = 0"); n != 1 {
+		t.Fatalf("открытых ошибок %d, ждали 1", n)
+	}
+	if again := e.do(http.MethodPost, answerPath, answerBody(first, "the", "k1"), withCookie(token)); again.Body.String() != res1.Body.String() ||
+		count("SELECT count(*) FROM mistakes") != 1 || count("SELECT count(*) FROM events WHERE type = 'mistake.opened'") != 1 {
+		t.Fatalf("повтор по ключу изменил данные: %s", again.Body)
+	}
+	if rec := e.do(http.MethodPost, answerPath, answerBody(first, "a", "k2"), withCookie(token)); rec.Code != http.StatusConflict {
+		t.Fatalf("другой ключ: %d", rec.Code)
+	}
+	// Срок ещё не наступил: повтора нет.
+	if ex := decodeExercise(t, getNext(t, e, token)); ex.Repeat != nil {
+		t.Fatalf("повтор до срока: %+v", ex)
+	}
+	// Ответили на обычное; срок наступил — приходит повтор той же ошибки.
+	for i, want := range []int{1, 2} {
+		if _, err := pool.Exec(ctx, "UPDATE mistakes SET next_due = now() - interval '1 minute' WHERE status = 'open'"); err != nil {
+			t.Fatal(err)
+		}
+		rep := decodeExercise(t, getNext(t, e, token))
+		if rep.Repeat == nil || !*rep.Repeat {
+			t.Fatalf("повтор %d не выдан: %+v", i, rep)
+		}
+		if n := count("SELECT count(*) FROM exercises WHERE id = $1 AND mistake_id IS NOT NULL", rep.Id); n != 1 {
+			t.Fatal("в exercises нет mistake_id")
+		}
+		res := decodeResult(t, e.do(http.MethodPost, answerPath, answerBody(rep.Id, "a", fmt.Sprintf("r%d", i)), withCookie(token)))
+		if res.Mistake == nil || res.Mistake.Streak != want {
+			t.Fatalf("повтор %d: %+v", i, res.Mistake)
+		}
+		if i == 0 {
+			// Между повторами должно пройти обычное упражнение (два повтора подряд не выдаются, один можно).
+			continue
+		}
+		if res.Mistake.Status != api.Closed {
+			t.Fatalf("ошибка не закрыта: %+v", res.Mistake)
+		}
+	}
+	if count("SELECT count(*) FROM mistakes WHERE status = 'closed' AND closed_at IS NOT NULL") != 1 ||
+		count("SELECT count(*) FROM events WHERE type = 'mistake.closed'") != 1 {
+		t.Fatal("закрытие не записано")
+	}
+
+	// Новая ошибка видна в списке.
+	second := seedRealExercise(t, q, en.ID, "grammar:articles", "level:A1")
+	e.do(http.MethodPost, answerPath, answerBody(second, "an", "k3"), withCookie(token))
+	rec := e.do(http.MethodGet, mistakesPath, "", withCookie(token))
+	var list api.MistakeList
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list.Open) != 1 || list.Counts.Open != 1 ||
+		list.Counts.ClosedThisWeek != 1 || list.Open[0].Answer != "a" || list.Open[0].Given != "an" {
+		t.Fatalf("список: %d %s (%v)", rec.Code, rec.Body, err)
+	}
+}
