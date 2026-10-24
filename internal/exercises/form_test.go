@@ -90,9 +90,52 @@ func TestBuildFormRejectsAmbiguousLemma(t *testing.T) {
 
 func TestBuildFormDeterministic(t *testing.T) {
 	s := "Yesterday she went to the cinema."
-	a, _, _ := BuildForm(s, "verb", goForms, 7)
-	b, _, _ := BuildForm(s, "verb", goForms, 7)
+	a, _, ok1 := BuildForm(s, "verb", goForms, 7)
+	b, _, ok2 := BuildForm(s, "verb", goForms, 7)
+	if !ok1 || !ok2 {
+		t.Fatalf("ожидали упражнение, ok: %v %v", ok1, ok2)
+	}
 	if !slices.Equal(a.Choices, b.Choices) {
 		t.Fatalf("%v != %v", a.Choices, b.Choices)
+	}
+}
+
+func TestSameSpelling(t *testing.T) {
+	for _, tc := range []struct {
+		a, b string
+		want bool
+	}{
+		{"travelled", "traveled", true},
+		{"stopped", "stoped", true},
+		{"bigger", "biger", true},
+		{"stopped", "stopping", false},
+		{"walked", "walking", false},
+		{"went", "go", false},
+	} {
+		if got := sameSpelling(tc.a, tc.b); got != tc.want {
+			t.Errorf("sameSpelling(%q, %q) = %v, ждали %v", tc.a, tc.b, got, tc.want)
+		}
+	}
+}
+
+func TestBuildFormDropsSpellingVariants(t *testing.T) {
+	cases := []struct {
+		sentence string
+		forms    []string
+		bad      string
+	}{
+		{"I traveled there last year.", []string{"travel", "travels", "traveled", "travelled", "traveling", "travelling"}, "travelled"},
+		{"He stopped there yesterday.", []string{"stop", "stops", "stopped", "stoped", "stopping"}, "stoped"},
+	}
+	for _, c := range cases {
+		for seed := int64(0); seed < 50; seed++ {
+			g, _, ok := BuildForm(c.sentence, "verb", c.forms, seed)
+			if !ok {
+				t.Fatalf("%q: ожидали упражнение", c.sentence)
+			}
+			if slices.Contains(g.Choices, c.bad) {
+				t.Fatalf("%q, seed %d: среди вариантов написание-двойник %q: %v", c.sentence, seed, c.bad, g.Choices)
+			}
+		}
 	}
 }

@@ -11,14 +11,14 @@ func TestUnlockedDefaultOpen(t *testing.T) {
 }
 
 func TestUnlockedGate(t *testing.T) {
-	gates := map[string]Gate{"skill:x": {Requires: "skill:order", MinRating: 1550, MinAttempts: 10}}
-	if unlocked("skill:x", nil, gates) {
+	table := map[string]Gate{"skill:x": {Requires: "skill:order", MinRating: 1550, MinAttempts: 10}}
+	if unlocked("skill:x", nil, table) {
 		t.Error("нет рейтинга: ожидали закрыто")
 	}
-	if unlocked("skill:x", []TopicRating{{Topic: "skill:order", Mu: 1560, Attempts: 9}}, gates) {
+	if unlocked("skill:x", []TopicRating{{Topic: "skill:order", Mu: 1560, Attempts: 9}}, table) {
 		t.Error("9 попыток: ожидали закрыто")
 	}
-	if !unlocked("skill:x", []TopicRating{{Topic: "skill:order", Mu: 1560, Attempts: 10}}, gates) {
+	if !unlocked("skill:x", []TopicRating{{Topic: "skill:order", Mu: 1560, Attempts: 10}}, table) {
 		t.Error("1560 при 10 попытках: ожидали открыто")
 	}
 }

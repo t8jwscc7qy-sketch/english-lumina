@@ -16,8 +16,8 @@ func Unlocked(topic string, ratings []TopicRating) bool {
 	return unlocked(topic, ratings, gates)
 }
 
-func unlocked(topic string, ratings []TopicRating, gates map[string]Gate) bool {
-	g, ok := gates[topic]
+func unlocked(topic string, ratings []TopicRating, table map[string]Gate) bool {
+	g, ok := table[topic]
 	if !ok {
 		return true
 	}

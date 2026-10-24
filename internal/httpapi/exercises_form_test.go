@@ -23,11 +23,19 @@ func formFirst(e env) {
 	e.store.topicRatings[topicKey{1, orderTopic}] = rated(orderTopic, 1700, 5)
 }
 
+// freqOf кладёт слова в список частот фейка (ListWordFrequencies отдаёт только их).
+func freqOf(e env, ws ...string) {
+	for i, w := range ws {
+		e.store.frequencies = append(e.store.frequencies, db.ListWordFrequenciesRow{Word: w, Rank: int32(i + 1)})
+	}
+}
+
 func formEnv(t *testing.T) (env, string) {
 	e := newExerciseEnv(t)
 	token := login(t, e)
 	formFirst(e)
 	knownAll(e, "A1", "yesterday", "she", "walked", "home", "tomorrow", "will", "we", "he")
+	freqOf(e, "walk", "walks", "walked", "walking", "talk", "talks", "talked", "talking")
 	return e, token
 }
 
@@ -242,5 +250,36 @@ func TestAnswerFormRepeatByKey(t *testing.T) {
 	}
 	if rec := e.do(http.MethodPost, answerPath, answerBody(id, "walked", "k2"), withCookie(token)); rec.Code != http.StatusConflict {
 		t.Fatalf("другой ключ: %d", rec.Code)
+	}
+}
+
+func TestNextFormKeepsOnlyFrequentDistractors(t *testing.T) {
+	e, token := formEnv(t)
+	e.store.levelLexemes = map[string][]db.RandomLexemesByLevelRow{"A1": {{ID: 1, Lemma: "stop", Pos: "verb"}}}
+	e.store.examples = formExamples(7, "He stopped there yesterday.")
+	knownAll(e, "A1", "he", "stopped", "there")
+	freqOf(e, "stopped", "stopping", "stop") // "stops" и "stoped" в списке нет
+	ex := decodeExercise(t, getNext(t, e, token))
+	if ex.Kind != api.Form {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+	for _, c := range ex.Choices {
+		if !slices.Contains([]string{"stopped", "stopping", "stop"}, c) {
+			t.Fatalf("вариант %q не из списка частот: %v", c, ex.Choices)
+		}
+	}
+	if e.store.freqCalls != 1 {
+		t.Fatalf("запросов частот %d, ждали 1 на слово", e.store.freqCalls)
+	}
+}
+
+func TestNextFormSkipsWordWithFewFrequentDistractors(t *testing.T) {
+	e, token := formEnv(t)
+	e.store.levelLexemes = map[string][]db.RandomLexemesByLevelRow{"A1": {{ID: 1, Lemma: "stop", Pos: "verb"}}}
+	e.store.examples = formExamples(7, "He stopped there yesterday.")
+	knownAll(e, "A1", "he", "stopped", "there")
+	freqOf(e, "stopped", "stop") // один подходящий вариант: мало
+	if rec := getNext(t, e, token); rec.Code != http.StatusNotFound {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
 	}
 }

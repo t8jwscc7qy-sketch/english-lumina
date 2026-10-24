@@ -355,6 +355,18 @@ func (s *authServer) formCandidate(ctx context.Context, _ *idRange, userID int64
 		if tries++; tries > formWordTries {
 			break
 		}
+		// Правила дают и несуществующие формы (stoped, visitted): в варианты идут только формы из списка частот.
+		freqs, err := s.store.ListWordFrequencies(ctx, db.ListWordFrequenciesParams{SourceName: frequencySource, Words: forms})
+		if err != nil {
+			return gapCandidate{}, false, err
+		}
+		real := make([]string, 0, len(freqs))
+		for _, fr := range freqs {
+			real = append(real, fr.Word)
+		}
+		if len(real) < 2 {
+			continue
+		}
 		rows, err := s.store.ListExamples(ctx, db.ListExamplesParams{Query: words.TSQuery(words.Forms(w.lemma, w.pos)), MaxRows: levelExamples})
 		if err != nil {
 			return gapCandidate{}, false, err
@@ -365,7 +377,14 @@ func (s *authServer) formCandidate(ctx context.Context, _ *idRange, userID int64
 			if used[row.EnID] {
 				continue
 			}
-			gap, _, ok := exercises.BuildForm(row.EnText, w.pos, forms, s.rnd(1<<62))
+			seed := s.rnd(1 << 62)
+			// Сначала по всем формам узнаём форму из предложения: она верна, даже если её нет в списке частот.
+			_, answer, ok := exercises.BuildForm(row.EnText, w.pos, forms, seed)
+			if !ok {
+				continue
+			}
+			allowed := append(slices.Clone(real), strings.ToLower(answer))
+			gap, _, ok := exercises.BuildForm(row.EnText, w.pos, allowed, seed)
 			if !ok {
 				continue
 			}

@@ -1057,6 +1057,19 @@ func TestExerciseFormOnRealDatabase(t *testing.T) {
 	if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en, RuID: ru, SourceID: ds.ID}); err != nil {
 		t.Fatal(err)
 	}
+	freq, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "frequencywords", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, w := range []string{"walk", "walks", "walked", "walking"} {
+		if err := q.UpsertWordFrequency(ctx, db.UpsertWordFrequencyParams{SourceID: freq.ID, Word: w, Count: 100, Rank: int32(i + 1)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n := int32(4)
+	if err := q.FinishDataSource(ctx, db.FinishDataSourceParams{ID: freq.ID, RowCount: &n}); err != nil {
+		t.Fatal(err)
+	}
 	// Остальные темы освоены, поэтому новая skill:form выбирается первой.
 	for _, tp := range append(append([]string{}, grammarTopics...), orderTopic) {
 		if err := q.EnsureTopicRating(ctx, db.EnsureTopicRatingParams{UserID: user.ID, Topic: tp}); err != nil {

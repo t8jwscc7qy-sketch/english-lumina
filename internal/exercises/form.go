@@ -37,6 +37,7 @@ func BuildForm(sentence, pos string, forms []string, seed int64) (gap Gap, answe
 			return Gap{}, "", false
 		}
 	}
+	// target перезаписывается для каждой найденной формы; верим ему, только если вхождение ровно одно.
 	target, found := "", 0
 	for _, f := range uniq {
 		if n := len(findWords(sentence, f)); n > 0 {
@@ -49,7 +50,9 @@ func BuildForm(sentence, pos string, forms []string, seed int64) (gap Gap, answe
 	if pos == "verb" && !hasTimeMarker(sentence) {
 		return Gap{}, "", false
 	}
-	g, ok := build(sentence, target, uniq, 2, seed)
+	// Написание-двойник ответа (travelled при ответе traveled) верно, но выглядело бы ошибкой: в варианты не берём.
+	cands := slices.DeleteFunc(slices.Clone(uniq), func(f string) bool { return f != target && sameSpelling(f, target) })
+	g, ok := build(sentence, target, cands, 2, seed)
 	if !ok {
 		return Gap{}, "", false
 	}
@@ -59,4 +62,17 @@ func BuildForm(sentence, pos string, forms []string, seed int64) (gap Gap, answe
 func hasTimeMarker(sentence string) bool {
 	words := strings.FieldsFunc(strings.ToLower(sentence), func(r rune) bool { return !wordRune(r) })
 	return slices.ContainsFunc(words, func(w string) bool { return slices.Contains(timeMarkers, w) })
+}
+
+// sameSpelling: два написания равны после схлопывания удвоенных букв (travelled и traveled, stopped и stoped).
+func sameSpelling(a, b string) bool { return collapseDoubles(a) == collapseDoubles(b) }
+
+func collapseDoubles(w string) string {
+	var out []rune
+	for _, r := range w {
+		if len(out) == 0 || out[len(out)-1] != r {
+			out = append(out, r)
+		}
+	}
+	return string(out)
 }
