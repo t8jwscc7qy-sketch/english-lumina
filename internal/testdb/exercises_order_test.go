@@ -147,7 +147,7 @@ func TestListEnglishAlternativesShownTranslationAndWordCount(t *testing.T) {
 	ru2 := sent("ru", 2, "Он здесь сейчас, да", 4)
 	a := sent("en", 10, "He is here now.", 4)
 	five := sent("en", 11, "He is right here now.", 5) // другое число слов, id меньше нужного
-	question := sent("en", 12, "Is he here now?", 4)  // связан только со вторым переводом
+	question := sent("en", 12, "Is he here now?", 4)   // связан только со вторым переводом
 	good := sent("en", 13, "Now he is here.", 4)
 	pair(a, ru1)
 	pair(a, ru2)
