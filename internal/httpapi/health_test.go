@@ -28,7 +28,7 @@ func TestHealth(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/health", nil)
 
-			NewHandler(fakePinger{err: tt.pingErr}).ServeHTTP(rec, req)
+			NewHandler(fakePinger{err: tt.pingErr}, nil, nil).ServeHTTP(rec, req)
 
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("статус = %d, ожидали %d", rec.Code, tt.wantStatus)
@@ -48,7 +48,7 @@ func TestHealth(t *testing.T) {
 
 func TestHealthRejectsPost(t *testing.T) {
 	rec := httptest.NewRecorder()
-	NewHandler(fakePinger{}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/health", nil))
+	NewHandler(fakePinger{}, nil, nil).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/health", nil))
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("статус = %d, ожидали 405", rec.Code)
 	}
