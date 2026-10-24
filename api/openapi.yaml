@@ -100,6 +100,20 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/v1/sources:
+    get:
+      operationId: listSources
+      summary: Загруженные источники данных с лицензиями и атрибуцией
+      description: Только источники, импорт которых завершён.
+      responses:
+        "200":
+          description: Список источников (может быть пустым)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   schemas:
     LoginRequest:
@@ -143,6 +157,36 @@ components:
         timezone:
           type: string
           description: Часовой пояс IANA, например Europe/Moscow
+    Source:
+      type: object
+      required: [name, version, license, url, attribution, rowCount, importedAt]
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        license:
+          type: string
+          description: Условия лицензии по-русски
+        url:
+          type: string
+          description: Откуда скачан файл
+        attribution:
+          type: string
+          description: Текст, который обязаны показать по лицензии
+        rowCount:
+          type: integer
+        importedAt:
+          type: string
+          format: date-time
+    SourceList:
+      type: object
+      required: [sources]
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/Source"
     Error:
       type: object
       required: [error]

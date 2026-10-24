@@ -34,11 +34,11 @@ describe('AppShell', () => {
     expect(screen.getByRole('main')).toHaveAttribute('id', 'content')
   })
 
-  it('показывает навигацию с семью разделами', async () => {
+  it('показывает навигацию с восемью разделами', async () => {
     stubFetch()
     renderAt('/', routes)
     const nav = await screen.findByRole('navigation', { name: 'Разделы' })
-    for (const name of ['Сегодня', 'Карточки', 'Упражнения', 'Слова', 'Ошибки', 'Прогресс', 'Настройки']) {
+    for (const name of ['Сегодня', 'Карточки', 'Упражнения', 'Слова', 'Ошибки', 'Прогресс', 'Настройки', 'Источники']) {
       expect(nav).toHaveTextContent(name)
     }
   })

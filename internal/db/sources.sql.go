@@ -50,6 +50,41 @@ func (q *Queries) GetDataSource(ctx context.Context, arg GetDataSourceParams) (D
 	return i, err
 }
 
+const listDataSources = `-- name: ListDataSources :many
+SELECT id, name, version, license, url, attribution, row_count, imported_at, created_at FROM data_sources WHERE imported_at IS NOT NULL ORDER BY name, version
+`
+
+// Только завершённые импорты: недогруженный источник (imported_at пуст) показывать нельзя.
+func (q *Queries) ListDataSources(ctx context.Context) ([]DataSource, error) {
+	rows, err := q.db.Query(ctx, listDataSources)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DataSource{}
+	for rows.Next() {
+		var i DataSource
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Version,
+			&i.License,
+			&i.Url,
+			&i.Attribution,
+			&i.RowCount,
+			&i.ImportedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertDataSource = `-- name: UpsertDataSource :one
 INSERT INTO data_sources (name, version, license, url, attribution)
 VALUES ($1, $2, $3, $4, $5)

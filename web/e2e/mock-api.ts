@@ -10,6 +10,28 @@ export type Settings = {
   timezone: string
 }
 
+export type Source = {
+  name: string
+  version: string
+  license: string
+  url: string
+  attribution: string
+  rowCount: number
+  importedAt: string
+}
+
+export const SOURCES: Source[] = [
+  {
+    name: 'cefrj',
+    version: '1.5',
+    license: 'Бесплатно для исследований и коммерции с указанием источника (Tono Laboratory, TUFS); при коммерческом использовании условия согласуются отдельно',
+    url: 'https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/d4e45b75b38f27b30dfc5c44d8c571aec7e7092f/cefrj-vocabulary-profile-1.5.csv',
+    attribution: 'The CEFR-J Wordlist Version 1.5. Compiled by Yukio Tono, Tokyo University of Foreign Studies.',
+    rowCount: 7799,
+    importedAt: '2026-10-23T12:00:00Z',
+  },
+]
+
 export const SETTINGS: Settings = {
   currentLevel: 'B1',
   targetLevel: 'B2',
@@ -23,7 +45,7 @@ export const SETTINGS: Settings = {
  */
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[] },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -76,6 +98,10 @@ export async function mockApi(
           json: { error: { code: 'onboarding_required', message: 'Сначала настрой цель и уровень' } },
         })
   })
+
+  await page.route('**/api/v1/sources', (route) =>
+    route.fulfill({ json: { sources: opts.sources ?? SOURCES } }),
+  )
 
   return { puts }
 }
