@@ -92,11 +92,16 @@ cmd/server  cmd/import  internal/  migrations/  queries/  api/  web/  docs/
 | Выбор библиотеки для фронтенда (только когда нужна новая; зависимость согласовать с пользователем) | `pick-ui-library` |
 | Несколько вариантов компонента на выбор | `prototype` |
 | Телефон и PWA (позже) | `mobile-native` |
-| Go-код (`cmd/`, `internal/`) и SQL | `go-conventions` |
-| Миграции и схема БД | `db-migration` (после согласия пользователя и `pg_dump`) |
+| Go-код (`cmd/`, `internal/`) и SQL | `go-conventions` (главный, правила проекта); справочники по теме: `golang-error-handling` (ошибки), `golang-concurrency` (горутины, гонки), `golang-database` (pgx, транзакции, пул), `golang-testing` (тесты) |
+| Миграции и схема БД | `db-migration` (после согласия пользователя и `pg_dump`); индексы, типы, медленные запросы, `EXPLAIN` — `supabase-postgres-best-practices` (только правила Postgres, остальное про Supabase игнорируем) |
+| Безопасность кода: вход, сессии, ввод пользователя, зависимости, перед выпуском | `security-and-hardening` + `golang-security` для Go; «ревью безопасности» ветки — встроенный `security-review` |
+| Производительность: замеры, N+1, Web Vitals | `performance-optimization` (общий), `golang-performance` и `golang-benchmark` (Go), `vercel-react-best-practices` (React; правила про Next.js игнорируем, у нас Vite) |
+| Сквозные тесты Playwright: нестабильные, моки API, ожидания | `playwright-best-practices` |
 | Новый внешний источник данных | `new-source` |
 | «Прожарить» план или решение | `grilling` (псевдоним `grill-me`) |
 | Безопасность API-контракта (`api/openapi.yaml`): аудит и скан | плагин 42Crunch (`42crunch-audit`, `42crunch-scan`); только по просьбе пользователя: нужен аккаунт и ключ в `.env`, спек уходит во внешний сервис, скан только по тестовой базе |
+
+Сторонние навыки (Addy Osmani, samber, Supabase, Vercel, Currents) поставлены 2026-10-24 командой `npx skills add` на уровне проекта; в git каталог `.claude/skills` не идёт (после чистой установки проекта поставить заново). Если навык противоречит правилам этого файла, прав этот файл.
 
 Не используем: GSAP и Three.js (анимации делает Motion, 3D нет), `genjutsu` (дублирует `impeccable`). Их навыки удалены 2026-10-24 (были симлинками на `~/.agents/skills`, восстановить можно ссылкой).
 
