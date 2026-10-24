@@ -75,8 +75,13 @@ func TestNextFormPrefersWeakCards(t *testing.T) {
 	e, token := formEnv(t)
 	e.store.weakWords = []db.ListWeakCardWordsRow{{LexemeID: 9, Lemma: "talk", Pos: "verb"}}
 	e.store.levelLexemes = map[string][]db.RandomLexemesByLevelRow{"A1": {{ID: 1, Lemma: "walk", Pos: "verb"}}}
+	var queries []string
 	e.store.examplesFor = func(q string) []db.ListExamplesRow {
-		return formExamples(7, "Yesterday she talked home.")
+		queries = append(queries, q)
+		if strings.Contains(q, "'talk'") {
+			return formExamples(7, "Yesterday she talked home.")
+		}
+		return formExamples(8, formSentence) // для walk тоже есть рабочее предложение
 	}
 	knownAll(e, "A1", "talked")
 	ex := decodeExercise(t, getNext(t, e, token))
@@ -85,6 +90,9 @@ func TestNextFormPrefersWeakCards(t *testing.T) {
 	}
 	if a := storedAnswer(t, e, ex.Id); a.LexemeID != 9 {
 		t.Fatalf("слово: %+v", a)
+	}
+	if len(queries) == 0 || !strings.Contains(queries[0], "'talk'") {
+		t.Fatalf("первый поиск примеров был не для слабого слова: %v", queries)
 	}
 }
 
