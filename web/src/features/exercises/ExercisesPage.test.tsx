@@ -409,3 +409,79 @@ describe('ExercisesPage', () => {
     await findPrompt('They go _____ school.')
   })
 })
+
+describe('выбор формы', () => {
+  const form = (id = 5) => ({
+    id,
+    kind: 'form',
+    prompt: 'Yesterday we _____ to the park.',
+    hint: 'go',
+    translation: 'Вчера мы ходили в парк.',
+    choices: ['went', 'goed', 'gone'],
+    topic: 'skill:form',
+  })
+  const formResult = (inCards: boolean) => ({
+    correct: true,
+    answer: 'went',
+    translation: 'Вчера мы ходили в парк.',
+    ratings: [rating('skill:form', 1510)],
+    word: { lemma: 'go', pos: 'verb', inCards },
+  })
+
+  it('под предложением подсказка «(go)» с доступным названием и перевод', async () => {
+    stubApi({ next: () => jsonResponse(200, form()) })
+    renderPage()
+    await findPrompt('Yesterday we _____ to the park.')
+    expect(screen.getByText('(go)')).toBeInTheDocument()
+    expect(screen.getByText('начальная форма: go')).toHaveClass('sr-only')
+    expect(screen.getByText('Вчера мы ходили в парк.')).toBeInTheDocument()
+    expect(screen.getByText('Выбор формы')).toBeInTheDocument()
+  })
+
+  it('клавиши 1–3 отвечают, как в пропуске', async () => {
+    const { answers } = stubApi({ next: () => jsonResponse(200, form(9)), answer: () => jsonResponse(200, formResult(true)) })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('Yesterday we _____ to the park.')
+    await waitFor(() => expect(screen.getByRole('article', { name: 'Упражнение' })).toHaveFocus())
+    await user.keyboard('1')
+    await screen.findByText('Верно')
+    expect(answers[0]).toMatchObject({ exerciseId: 9, given: 'went' })
+  })
+
+  it('inCards=false: кнопка «Добавить в карточки», клик один запрос, потом «В карточках»', async () => {
+    const { fn } = stubApi({ next: () => jsonResponse(200, form()), answer: () => jsonResponse(200, formResult(false)) })
+    const origin = fn.getMockImplementation()!
+    fn.mockImplementation(async (url: string, init?: RequestInit) =>
+      url === '/api/v1/cards' ? jsonResponse(201, { cardId: 1, created: true }) : origin(url, init),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('Yesterday we _____ to the park.')
+    await user.keyboard('1')
+    await user.click(await screen.findByRole('button', { name: 'Добавить в карточки' }))
+    expect(await screen.findByRole('button', { name: 'В карточках' })).toBeDisabled()
+    expect(fn.mock.calls.filter((c) => c[0] === '/api/v1/cards')).toHaveLength(1)
+  })
+
+  it('inCards=true: только «В карточках»', async () => {
+    stubApi({ next: () => jsonResponse(200, form()), answer: () => jsonResponse(200, formResult(true)) })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('Yesterday we _____ to the park.')
+    await user.keyboard('1')
+    expect(await screen.findByRole('button', { name: 'В карточках' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Добавить в карточки' })).not.toBeInTheDocument()
+  })
+
+  it('для gap кнопки и подсказки нет', async () => {
+    stubApi({ next: () => jsonResponse(200, ex(1)) })
+    const user = userEvent.setup()
+    renderPage()
+    await findPrompt('She is _____ engineer.')
+    await user.keyboard('2')
+    await screen.findByText('Верно')
+    expect(screen.queryByRole('button', { name: /карточк/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/начальная форма/)).not.toBeInTheDocument()
+  })
+})

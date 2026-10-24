@@ -8,6 +8,7 @@ import { meKey } from '@/features/auth/auth'
 import { cn } from '@/lib/utils'
 import { useAnswer, useNextExercise, useTopics, type AnswerResult, type Exercise } from './exercises'
 import { topicName } from './topics'
+import { AddToCards } from './AddToCards'
 import { OrderExercise } from './OrderExercise'
 import { WeakTopics } from './WeakTopics'
 
@@ -188,6 +189,12 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
           <p lang="en" className="break-words text-xl leading-relaxed">
             <Prompt text={exercise.prompt} answer={result?.answer} />
           </p>
+          {exercise.kind === 'form' && exercise.hint && (
+            <p lang="en" className="text-muted-foreground">
+              <span aria-hidden>({exercise.hint})</span>
+              <span className="sr-only" lang="ru">начальная форма: {exercise.hint}</span>
+            </p>
+          )}
           <p lang="ru" className="break-words text-muted-foreground">{exercise.translation}</p>
         </div>
       )}
@@ -302,6 +309,7 @@ function ExerciseCard({ exercise, onNext, loadingNext }: { exercise: Exercise; o
               ))}
             </div>
           )}
+          {result.word && <AddToCards word={result.word} />}
           </>
         )}
       </div>

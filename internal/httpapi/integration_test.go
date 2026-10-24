@@ -1013,3 +1013,105 @@ func TestExerciseOrderOnRealDatabase(t *testing.T) {
 		t.Fatalf("событий: %d (%v)", events, err)
 	}
 }
+
+func TestExerciseFormOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "tatoeba", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Служебные слова — существительными: в подбор попадают только глаголы и прилагательные.
+	var walkID int64
+	for _, w := range []struct{ lemma, pos string }{{"walk", "verb"}, {"yesterday", "noun"}, {"she", "noun"}, {"walked", "noun"}, {"home", "noun"}} {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w.lemma, Pos: w.pos, SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if w.lemma == "walk" {
+			walkID = id
+		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: ds.ID, Level: "A1", Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sent := func(lang string, tid int64, text string, wc int16) int64 {
+		s, err := q.UpsertSentence(ctx, db.UpsertSentenceParams{Lang: lang, TatoebaID: tid, Text: text, Author: "a", WordCount: wc, SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s.ID
+	}
+	ru := sent("ru", 1, "Вчера она шла домой.", 4)
+	en := sent("en", 10, "Yesterday she walked home.", 4)
+	if err := q.UpsertSentencePair(ctx, db.UpsertSentencePairParams{EnID: en, RuID: ru, SourceID: ds.ID}); err != nil {
+		t.Fatal(err)
+	}
+	freq, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "frequencywords", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, w := range []string{"walk", "walks", "walked", "walking"} {
+		if err := q.UpsertWordFrequency(ctx, db.UpsertWordFrequencyParams{SourceID: freq.ID, Word: w, Count: 100, Rank: int32(i + 1)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n := int32(4)
+	if err := q.FinishDataSource(ctx, db.FinishDataSourceParams{ID: freq.ID, RowCount: &n}); err != nil {
+		t.Fatal(err)
+	}
+	// Остальные темы освоены, поэтому новая skill:form выбирается первой.
+	for _, tp := range append(append([]string{}, grammarTopics...), orderTopic) {
+		if err := q.EnsureTopicRating(ctx, db.EnsureTopicRatingParams{UserID: user.ID, Topic: tp}); err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertTopicRating(ctx, db.UpsertTopicRatingParams{UserID: user.ID, Topic: tp, Rating: 1900, Deviation: 80, Volatility: 0.06, AttemptsDelta: 3}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("next: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	if ex.Kind != api.Form || ex.Hint == nil || *ex.Hint != "walk" || ex.Prompt != "Yesterday she _____ home." || ex.Topic != "skill:form" {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+
+	first := e.do(http.MethodPost, answerPath, answerBody(ex.Id, "walked", "k1"), withCookie(token))
+	if first.Code != http.StatusOK {
+		t.Fatalf("ответ: статус %d, тело %s", first.Code, first.Body)
+	}
+	res := decodeResult(t, first)
+	if !res.Correct || res.Word == nil || res.Word.Lemma != "walk" || res.Word.InCards {
+		t.Fatalf("результат: %+v", res)
+	}
+	again := e.do(http.MethodPost, answerPath, answerBody(ex.Id, "walked", "k1"), withCookie(token))
+	if again.Code != http.StatusOK || again.Body.String() != first.Body.String() {
+		t.Fatalf("повтор: статус %d, тело %s", again.Code, again.Body)
+	}
+	if other := e.do(http.MethodPost, answerPath, answerBody(ex.Id, "walked", "k2"), withCookie(token)); other.Code != http.StatusConflict {
+		t.Fatalf("другой ключ: статус %d, ждали 409", other.Code)
+	}
+	var lexemeID int64
+	if err := pool.QueryRow(ctx, "SELECT (payload->>'lexemeId')::bigint FROM events WHERE type = 'exercise.answered'").Scan(&lexemeID); err != nil || lexemeID != walkID {
+		t.Fatalf("lexemeId в событии: %d, ждали %d (%v)", lexemeID, walkID, err)
+	}
+	var attempts int
+	if err := pool.QueryRow(ctx, "SELECT attempts FROM topic_ratings WHERE topic = 'skill:form'").Scan(&attempts); err != nil || attempts != 1 {
+		t.Fatalf("попыток skill:form: %d (%v)", attempts, err)
+	}
+}

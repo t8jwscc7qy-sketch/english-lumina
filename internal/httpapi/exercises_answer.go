@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -99,6 +100,9 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 				Correct: old.Correct, Answer: answer.Answers[0], Translation: payload.Translation,
 				Ratings: currentRatings(rows, ex.Topics),
 			}
+			if result.Word, err = formWord(ctx, tx, user.ID, ex.Kind, answer); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -140,10 +144,14 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 		if err := tx.MarkExerciseAnswered(ctx, db.MarkExerciseAnsweredParams{ID: ex.ID, AnsweredAt: ts(now)}); err != nil {
 			return err
 		}
-		evPayload, err := json.Marshal(map[string]any{
+		evData := map[string]any{
 			"exerciseId": ex.ID, "kind": ex.Kind, "topics": ex.Topics, "correct": correct, "given": req.Given,
 			"ratingBefore": before, "ratingAfter": after,
-		})
+		}
+		if ex.Kind == string(api.Form) {
+			evData["lexemeId"] = answer.LexemeID
+		}
+		evPayload, err := json.Marshal(evData)
 		if err != nil {
 			return err
 		}
@@ -157,6 +165,9 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 		for _, topic := range ex.Topics {
 			result.Ratings = append(result.Ratings, updated[topic])
 		}
+		if result.Word, err = formWord(ctx, tx, user.ID, ex.Kind, answer); err != nil {
+			return err
+		}
 		return nil
 	})
 	switch {
@@ -169,6 +180,28 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusOK, result)
 	}
+}
+
+type answerWord = *struct {
+	InCards bool   `json:"inCards"`
+	Lemma   string `json:"lemma"`
+	Pos     string `json:"pos"`
+}
+
+// formWord — слово упражнения «выбор формы» для результата ответа (nil у других видов).
+func formWord(ctx context.Context, tx AuthStore, userID int64, kind string, a exerciseAnswer) (answerWord, error) {
+	if kind != string(api.Form) {
+		return nil, nil
+	}
+	ids, err := tx.ListCardLexemeIDs(ctx, db.ListCardLexemeIDsParams{UserID: userID, Ids: []int64{a.LexemeID}})
+	if err != nil {
+		return nil, err
+	}
+	return &struct {
+		InCards bool   `json:"inCards"`
+		Lemma   string `json:"lemma"`
+		Pos     string `json:"pos"`
+	}{InCards: slices.Contains(ids, a.LexemeID), Lemma: a.Lemma, Pos: a.Pos}, nil
 }
 
 func sortedCopy(in []string) []string {

@@ -104,7 +104,7 @@ export const SETTINGS: Settings = {
 
 export type ExerciseFixture = {
   id: number
-  kind: 'gap' | 'order'
+  kind: 'gap' | 'order' | 'form'
   prompt: string
   translation: string
   choices: string[]
@@ -114,6 +114,12 @@ export type ExerciseFixture = {
   /** Только для order: слова в перемешанном порядке; допустимые порядки (без точки) в `accept`. */
   tiles?: string[]
   accept?: string[]
+  /** Только для form: начальная форма в скобках. */
+  hint?: string
+  /** Только для form: слово, которое ответ возвращает после проверки. */
+  word?: { lemma: string; pos: string; inCards: boolean }
+  /** Только для form: POST /cards для этого слова отвечает 409 no_examples. */
+  noExamples?: boolean
 }
 export type ExerciseOpts = {
   queue?: ExerciseFixture[]
@@ -122,6 +128,7 @@ export type ExerciseOpts = {
   /** POST /exercises/answer отвечает 500, пока флаг включён; тест может его снять. */
   failAnswers?: boolean
 }
+export type CardAdd = { lemma: string; pos: string }
 export type ExerciseAnswer = { exerciseId: number; given: string; key: string }
 type TopicRating = { topic: string; rating: number; deviation: number; attempts: number }
 
@@ -129,6 +136,12 @@ export const ORDER_EXERCISE: ExerciseFixture = {
   id: 31, kind: 'order', prompt: 'Вчера я пошёл домой.', translation: 'Вчера я пошёл домой.',
   choices: [], tiles: ['home', 'went', 'yesterday', 'I'], topic: 'skill:order',
   answer: 'Yesterday I went home.', accept: ['Yesterday I went home.', 'I went home yesterday.'],
+}
+
+export const FORM_EXERCISE: ExerciseFixture = {
+  id: 41, kind: 'form', prompt: 'Yesterday she _____ to the cinema.', hint: 'go',
+  translation: 'Вчера она ходила в кино.', choices: ['went', 'goes', 'going', 'gone'],
+  topic: 'skill:form', answer: 'went', word: { lemma: 'go', pos: 'verb', inCards: false },
 }
 
 export const EXERCISES: ExerciseFixture[] = [
@@ -231,6 +244,10 @@ export async function mockApi(
     const due = cards.filter((c) => c.due)
     return { dueCount: due.length, totalCount: cards.length, ...(due[0] ? { card: queueCard(due[0]) } : {}) }
   }
+  // Слова из упражнений «выбор формы» (не из WORDS): значение true — отвечать 409 no_examples.
+  const formWords = new Map<string, boolean>(
+    (opts.exercises?.queue ?? []).filter((e) => e.word).map((e) => [e.word!.lemma, !!e.noExamples]),
+  )
   const apiError = (status: number, code: string, message: string) => ({ status, json: { error: { code, message } } })
 
   await page.route('**/api/v1/words**', (route) => {
@@ -244,9 +261,16 @@ export async function mockApi(
   // Примеры для слова. Регистрируется после поиска слов: Playwright сначала пробует поздние маршруты.
   await page.route('**/api/v1/words/examples**', (route) => route.fulfill({ json: EXAMPLES }))
 
+  const cardAdds: CardAdd[] = []
   await page.route('**/api/v1/cards**', async (route) => {
     const url = new URL(route.request().url())
     const method = route.request().method()
+    if (method === 'POST' && url.pathname.endsWith('/cards') && formWords.has(route.request().postDataJSON().lemma)) {
+      const body = route.request().postDataJSON() as CardAdd
+      cardAdds.push(body)
+      if (formWords.get(body.lemma)) return route.fulfill(apiError(409, 'no_examples', 'Для этого слова нет подходящих примеров, карточку не собрать'))
+      return route.fulfill({ status: 201, json: { cardId: nextCardId++, created: true } })
+    }
     if (url.pathname.endsWith('/cards/queue')) return route.fulfill({ json: queueBody() })
     if (url.pathname.endsWith('/cards/review')) {
       const body = route.request().postDataJSON() as CardReview
@@ -282,7 +306,7 @@ export async function mockApi(
     ['grammar:articles', { topic: 'grammar:articles', rating: 1500, deviation: 350, attempts: 0 }],
     ['grammar:past_simple', { topic: 'grammar:past_simple', rating: 1500, deviation: 350, attempts: 0 }],
   ])
-  const publicExercise = ({ answer: _a, accept: _c, ...rest }: ExerciseFixture) => rest
+  const publicExercise = ({ answer: _a, accept: _c, word: _w, noExamples: _n, ...rest }: ExerciseFixture) => rest
 
   await page.route('**/api/v1/exercises/**', async (route) => {
     const path = new URL(route.request().url()).pathname
@@ -309,12 +333,12 @@ export async function mockApi(
       r.attempts += 1
       ratings.set(fx.topic, r)
       exQueue.splice(exQueue.indexOf(fx), 1)
-      const result = { correct, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }] }
+      const result = { correct, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}) }
       results.set(body.key, result)
       return route.fulfill({ json: result })
     }
     return route.fulfill({ status: 404 })
   })
 
-  return { puts, reviews, answers, exState }
+  return { puts, reviews, answers, exState, cardAdds }
 }

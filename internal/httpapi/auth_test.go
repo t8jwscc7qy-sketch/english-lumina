@@ -55,6 +55,7 @@ type fakeStore struct {
 	searches      int
 	examples      []db.ListExamplesRow
 	lastExamples  *db.ListExamplesParams
+	examplesFor   func(query string) []db.ListExamplesRow // если задано, ListExamples отвечает по запросу
 	exampleCalls  int
 	lexemesByID   map[int64]db.Lexeme
 	cardLevels    map[int64]string // уровень слова для очереди (lexeme_id → уровень)
@@ -82,6 +83,7 @@ type fakeStore struct {
 	sampleErr      error
 	rangeOverride  *db.SentenceIDRangeRow
 	levelLexemes   map[string][]db.RandomLexemesByLevelRow // для RandomLexemesByLevel
+	weakWords      []db.ListWeakCardWordsRow               // для ListWeakCardWords
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

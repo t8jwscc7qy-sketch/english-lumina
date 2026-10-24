@@ -404,10 +404,10 @@ export interface components {
             /** Format: int64 */
             id: number;
             /**
-             * @description Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
+             * @description Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
              * @enum {string}
              */
-            kind: "gap" | "order";
+            kind: "gap" | "order" | "form";
             /** @description gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles) */
             prompt: string;
             /** @description Перевод-подсказка на русском */
@@ -416,6 +416,8 @@ export interface components {
             choices: string[];
             /** @description Только для order: слова английского предложения в перемешанном порядке (первое слово строчное, завершающей точки нет). Верный порядок до ответа клиенту не отдаётся */
             tiles?: string[];
+            /** @description Только для form, начальная форма слова, которую нужно изменить */
+            hint?: string;
             /** @description Основная тема упражнения */
             topic: string;
         };
@@ -442,6 +444,13 @@ export interface components {
             translation: string;
             /** @description Рейтинги затронутых тем после обновления */
             ratings: components["schemas"]["Rating"][];
+            /** @description Только для form, слово упражнения (чтобы добавить его в карточки) */
+            word?: {
+                lemma: string;
+                pos: string;
+                /** @description Слово уже есть в карточках пользователя */
+                inCards: boolean;
+            };
         };
         TopicList: {
             topics: components["schemas"]["Rating"][];

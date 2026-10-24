@@ -191,6 +191,52 @@ func (q *Queries) ListTopicRatings(ctx context.Context, userID int64) ([]TopicRa
 	return items, nil
 }
 
+const listWeakCardWords = `-- name: ListWeakCardWords :many
+SELECT l.id AS lexeme_id, l.lemma, l.pos
+FROM cards c
+JOIN lexemes l ON l.id = c.lexeme_id
+WHERE c.user_id = $1::bigint
+  AND (c.state = 3 OR c.lapses > 0)
+  AND l.lemma ~ '^[a-z]+$'
+  AND l.pos IN ('verb', 'adjective')
+ORDER BY c.lapses DESC, c.due ASC, l.id
+LIMIT $2::int
+`
+
+type ListWeakCardWordsParams struct {
+	UserID  int64
+	MaxRows int32
+}
+
+type ListWeakCardWordsRow struct {
+	LexemeID int64
+	Lemma    string
+	Pos      string
+}
+
+// Слова карточек пользователя, с которыми были трудности (переобучение или хотя бы одна ошибка): сначала с
+// наибольшим числом ошибок, затем с ближайшим сроком. Только однословные строчные глаголы и прилагательные:
+// у существительных по правилам всего две формы, упражнение «выбор формы» их не использует.
+func (q *Queries) ListWeakCardWords(ctx context.Context, arg ListWeakCardWordsParams) ([]ListWeakCardWordsRow, error) {
+	rows, err := q.db.Query(ctx, listWeakCardWords, arg.UserID, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListWeakCardWordsRow{}
+	for rows.Next() {
+		var i ListWeakCardWordsRow
+		if err := rows.Scan(&i.LexemeID, &i.Lemma, &i.Pos); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markExerciseAnswered = `-- name: MarkExerciseAnswered :exec
 UPDATE exercises SET answered_at = $1 WHERE id = $2 AND answered_at IS NULL
 `

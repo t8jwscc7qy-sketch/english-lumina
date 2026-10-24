@@ -125,7 +125,9 @@ func TestNextExerciseWeakestFirst(t *testing.T) {
 			token := login(t, e)
 			e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "We live in a small house.")}
 			knownWords(e, "we", "live", "in", "a", "small", "house")
-			e.store.topicRatings = map[topicKey]db.TopicRating{topicKey{1, orderTopic}: rated(orderTopic, 1900, 3)} // порядок слов не мешает
+			e.store.topicRatings = map[topicKey]db.TopicRating{
+				topicKey{1, orderTopic}: rated(orderTopic, 1900, 3), topicKey{1, formTopic}: rated(formTopic, 1900, 3), // порядок слов и выбор формы не мешают
+			}
 			for _, tp := range []string{"grammar:articles", "grammar:prepositions", "grammar:future", "grammar:modals", "grammar:past_simple"} {
 				mu := 1700.0
 				if tp == weak {
@@ -150,7 +152,9 @@ func TestNextExerciseSkipsTopicWithoutCandidates(t *testing.T) {
 	// Слабейшая тема (модальные) в предложении не встречается: берётся следующая по слабости.
 	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I have a dog.")}
 	knownWords(e, "i", "have", "a", "dog")
-	e.store.topicRatings = map[topicKey]db.TopicRating{topicKey{1, orderTopic}: rated(orderTopic, 1900, 3)} // порядок слов не мешает
+	e.store.topicRatings = map[topicKey]db.TopicRating{ // порядок слов и выбор формы не мешают
+		{userID: 1, topic: orderTopic}: rated(orderTopic, 1900, 3), {userID: 1, topic: formTopic}: rated(formTopic, 1900, 3),
+	}
 	for tp, mu := range map[string]float64{"grammar:modals": 1000, "grammar:future": 1100, "grammar:past_simple": 1200,
 		"grammar:prepositions": 1300, "grammar:articles": 1400} {
 		e.store.topicRatings[topicKey{1, tp}] = rated(tp, mu, 3)
@@ -246,7 +250,9 @@ func TestNextExercisePastSimple(t *testing.T) {
 	token := login(t, e)
 	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "We walked home together.")}
 	knownWords(e, "we", "walked", "home", "together", "walk")
-	e.store.topicRatings = map[topicKey]db.TopicRating{topicKey{1, orderTopic}: rated(orderTopic, 1900, 3)} // порядок слов не мешает
+	e.store.topicRatings = map[topicKey]db.TopicRating{ // порядок слов и выбор формы не мешают
+		{userID: 1, topic: orderTopic}: rated(orderTopic, 1900, 3), {userID: 1, topic: formTopic}: rated(formTopic, 1900, 3),
+	}
 	for _, tp := range []string{"grammar:articles", "grammar:prepositions", "grammar:future", "grammar:modals"} {
 		e.store.topicRatings[topicKey{1, tp}] = rated(tp, 1700, 3)
 	}

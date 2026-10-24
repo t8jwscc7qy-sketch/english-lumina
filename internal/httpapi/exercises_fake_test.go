@@ -235,3 +235,9 @@ func (f *fakeStore) ListEnglishAlternatives(_ context.Context, arg db.ListEnglis
 	}
 	return out, nil
 }
+
+// ListWeakCardWords возвращает заданные тестом слова (поле weakWords), не больше MaxRows.
+func (f *fakeStore) ListWeakCardWords(_ context.Context, arg db.ListWeakCardWordsParams) ([]db.ListWeakCardWordsRow, error) {
+	n := min(len(f.weakWords), int(arg.MaxRows))
+	return slices.Clone(f.weakWords[:n]), nil
+}

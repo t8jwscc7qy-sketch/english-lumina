@@ -289,3 +289,127 @@ func (s *authServer) orderCandidate(ctx context.Context, rng *idRange, maxLevel 
 	}
 	return gapCandidate{}, false, nil
 }
+
+const (
+	formWeakWords   = 10 // слабых слов карточек, с которых начинаем
+	formWordTries   = 6  // у скольких слов ищем предложения
+	formMinForms    = 3  // меньше однословных форм — упражнения не будет (у существительных их две)
+	formLexemeBatch = 40 // случайных слов на один уровень
+)
+
+type formPending struct {
+	id          int64
+	translation string
+	tokens      []string
+	gap         exercises.Gap
+}
+
+// formWords — слова для «выбора формы»: сначала слабые слова карточек, затем случайные слова уровня пользователя
+// и следующего за ним (без настроек — A1). Подходят только глаголы и прилагательные, повторы убираются.
+func (s *authServer) formWords(ctx context.Context, userID int64, level string) ([]formInfo, error) {
+	var out []formInfo
+	seen := map[int64]bool{}
+	add := func(id int64, lemma, pos string) {
+		if !seen[id] && (pos == "verb" || pos == "adjective") {
+			seen[id] = true
+			out = append(out, formInfo{lexemeID: id, lemma: lemma, pos: pos})
+		}
+	}
+	weak, err := s.store.ListWeakCardWords(ctx, db.ListWeakCardWordsParams{UserID: userID, MaxRows: formWeakWords})
+	if err != nil {
+		return nil, err
+	}
+	for _, w := range weak {
+		add(w.LexemeID, w.Lemma, w.Pos)
+	}
+	levels := []string{"A1"}
+	if i := slices.Index(allLevels, level); i >= 0 {
+		levels = allLevels[i:min(i+2, len(allLevels))]
+	}
+	for _, lv := range levels {
+		rows, err := s.store.RandomLexemesByLevel(ctx, db.RandomLexemesByLevelParams{Level: lv, MaxRows: formLexemeBatch})
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			add(r.ID, r.Lemma, r.Pos)
+		}
+	}
+	return out, nil
+}
+
+// formCandidate ищет для слова (слабые слова карточек первыми) предложение, в котором ровно одна его форма.
+// level — уровень пользователя; предложение не выше уровня на единицу (без уровня предела нет).
+func (s *authServer) formCandidate(ctx context.Context, _ *idRange, userID int64, level string, used map[int64]bool) (gapCandidate, bool, error) {
+	cands, err := s.formWords(ctx, userID, level)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	maxLevel := orderMaxLevel(level)
+	tries, batches := 0, 0
+	for _, w := range cands {
+		forms := words.SingleWords(words.Forms(w.lemma, w.pos))
+		if len(forms) < formMinForms {
+			continue
+		}
+		if tries++; tries > formWordTries {
+			break
+		}
+		// Правила дают и несуществующие формы (stoped, visitted): в варианты идут только формы из списка частот.
+		freqs, err := s.store.ListWordFrequencies(ctx, db.ListWordFrequenciesParams{SourceName: frequencySource, Words: forms})
+		if err != nil {
+			return gapCandidate{}, false, err
+		}
+		real := make([]string, 0, len(freqs))
+		for _, fr := range freqs {
+			real = append(real, fr.Word)
+		}
+		if len(real) < 2 {
+			continue
+		}
+		rows, err := s.store.ListExamples(ctx, db.ListExamplesParams{Query: words.TSQuery(words.Forms(w.lemma, w.pos)), MaxRows: levelExamples})
+		if err != nil {
+			return gapCandidate{}, false, err
+		}
+		var pending []formPending
+		var lookup []string
+		for _, row := range rows {
+			if used[row.EnID] {
+				continue
+			}
+			seed := s.rnd(1 << 62)
+			// Сначала по всем формам узнаём форму из предложения: она верна, даже если её нет в списке частот.
+			_, answer, ok := exercises.BuildForm(row.EnText, w.pos, forms, seed)
+			if !ok {
+				continue
+			}
+			allowed := append(slices.Clone(real), strings.ToLower(answer))
+			gap, _, ok := exercises.BuildForm(row.EnText, w.pos, allowed, seed)
+			if !ok {
+				continue
+			}
+			tokens := exercises.Tokens(row.EnText)
+			lookup = append(lookup, tokens...)
+			pending = append(pending, formPending{id: row.EnID, translation: row.RuText, tokens: tokens, gap: gap})
+		}
+		if len(pending) == 0 {
+			continue
+		}
+		if batches++; batches > maxLevelBatches {
+			break
+		}
+		known, err := s.levelInfo(ctx, lookup)
+		if err != nil {
+			return gapCandidate{}, false, err
+		}
+		for _, p := range pending {
+			lvl, ok := exercises.SentenceLevel(p.tokens, known)
+			if !ok || (maxLevel != "" && lvl > maxLevel) {
+				continue
+			}
+			info := w
+			return gapCandidate{sentenceID: p.id, translation: p.translation, gap: p.gap, level: lvl, pos: w.pos, form: &info}, true, nil
+		}
+	}
+	return gapCandidate{}, false, nil
+}

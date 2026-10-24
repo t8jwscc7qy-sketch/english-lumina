@@ -33,3 +33,8 @@ skills-lock.json
 !.claude/skills/go-conventions/
 !.claude/skills/new-source/
 .claude/agents/impeccable-*.md
+
+# Посторонние файлы в корне (не часть проекта)
+/next-app/
+/package.json
+/package-lock.json

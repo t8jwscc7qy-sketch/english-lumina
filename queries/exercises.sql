@@ -122,3 +122,17 @@ WHERE p.ru_id = sqlc.arg(ru_id)::bigint
   AND e.word_count BETWEEN 4 AND 10
 ORDER BY e.id
 LIMIT sqlc.arg(max_rows)::int;
+
+-- name: ListWeakCardWords :many
+-- Слова карточек пользователя, с которыми были трудности (переобучение или хотя бы одна ошибка): сначала с
+-- наибольшим числом ошибок, затем с ближайшим сроком. Только однословные строчные глаголы и прилагательные:
+-- у существительных по правилам всего две формы, упражнение «выбор формы» их не использует.
+SELECT l.id AS lexeme_id, l.lemma, l.pos
+FROM cards c
+JOIN lexemes l ON l.id = c.lexeme_id
+WHERE c.user_id = sqlc.arg(user_id)::bigint
+  AND (c.state = 3 OR c.lapses > 0)
+  AND l.lemma ~ '^[a-z]+$'
+  AND l.pos IN ('verb', 'adjective')
+ORDER BY c.lapses DESC, c.due ASC, l.id
+LIMIT sqlc.arg(max_rows)::int;

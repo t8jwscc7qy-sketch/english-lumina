@@ -597,8 +597,10 @@ components:
           format: int64
         kind:
           type: string
-          enum: [gap, order]
-          description: Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток
+          enum: [gap, order, form]
+          description: >
+            Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток,
+            form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
         prompt:
           type: string
           description: >
@@ -619,6 +621,9 @@ components:
           description: >
             Только для order: слова английского предложения в перемешанном порядке (первое слово строчное,
             завершающей точки нет). Верный порядок до ответа клиенту не отдаётся
+        hint:
+          type: string
+          description: Только для form, начальная форма слова, которую нужно изменить
         topic:
           type: string
           description: Основная тема упражнения
@@ -670,6 +675,18 @@ components:
           items:
             $ref: "#/components/schemas/Rating"
           description: Рейтинги затронутых тем после обновления
+        word:
+          type: object
+          required: [lemma, pos, inCards]
+          description: Только для form, слово упражнения (чтобы добавить его в карточки)
+          properties:
+            lemma:
+              type: string
+            pos:
+              type: string
+            inCards:
+              type: boolean
+              description: Слово уже есть в карточках пользователя
     TopicList:
       type: object
       required: [topics]

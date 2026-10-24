@@ -10,6 +10,7 @@ describe('topicName', () => {
     expect(topicName('grammar:future')).toBe('Будущее время')
     expect(topicName('grammar:modals')).toBe('Модальные глаголы')
     expect(topicName('grammar:past_simple')).toBe('Прошедшее простое')
+    expect(topicName('skill:form')).toBe('Выбор формы')
     expect(topicName('level:A1')).toBe('Уровень A1')
     expect(topicName('pos:verb')).toBe('Глаголы')
     expect(topicName('pos:noun')).toBe('Существительные')
