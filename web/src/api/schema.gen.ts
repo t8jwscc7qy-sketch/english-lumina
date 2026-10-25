@@ -524,10 +524,10 @@ export interface components {
             /** Format: int64 */
             id: number;
             /**
-             * @description Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
+             * @description Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
              * @enum {string}
              */
-            kind: "gap" | "order" | "form";
+            kind: "gap" | "order" | "form" | "match";
             /** @description gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles) */
             prompt: string;
             /** @description Перевод-подсказка на русском */
@@ -538,6 +538,10 @@ export interface components {
             tiles?: string[];
             /** @description Только для form, начальная форма слова, которую нужно изменить */
             hint?: string;
+            /** @description Только для match, пять английских слов в фиксированном порядке */
+            words?: string[];
+            /** @description Только для match, пять русских переводов вперемешку (верные пары до ответа клиенту не отдаются) */
+            options?: string[];
             /** @description Основная тема упражнения */
             topic: string;
             /** @description Это повтор ошибки из банка ошибок */
@@ -546,7 +550,7 @@ export interface components {
         AnswerRequest: {
             /** Format: int64 */
             exerciseId: number;
-            /** @description Ответ пользователя; для order — собранное предложение строкой (слова через пробел) */
+            /** @description Ответ пользователя; для order — собранное предложение строкой (слова через пробел), для match — пары строкой «слово=перевод;слово=перевод;…» */
             given: string;
             /** @description Ключ идемпотентности, один на попытку */
             key: string;
@@ -574,6 +578,16 @@ export interface components {
                 inCards: boolean;
             };
             mistake?: components["schemas"]["MistakeResult"];
+            /** @description Только для match, разбор каждой пары (в порядке слов упражнения) */
+            pairs?: components["schemas"]["PairResult"][];
+        };
+        PairResult: {
+            word: string;
+            /** @description Перевод, который выбрал пользователь */
+            given: string;
+            /** @description Верный перевод */
+            answer: string;
+            correct: boolean;
         };
         /** @description Состояние ошибки после ответа (повтор или новый неверный ответ) */
         MistakeResult: {

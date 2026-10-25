@@ -33,6 +33,12 @@ const orderTopic = "skill:order"
 // formTopic — тема «выбора формы»; открывается через exercises.Unlocked.
 const formTopic = "skill:form"
 
+// matchTopic — тема «сопоставления»; открывается через exercises.Unlocked, выдаётся, если набралось пять слов со словарём.
+const matchTopic = "skill:match"
+
+// matchPrompt — задание «сопоставления» (поле prompt).
+const matchPrompt = "Соедини слова с переводами"
+
 var allLevels = []string{"A1", "A2", "B1", "B2", "C1", "C2"}
 
 var grammarTopics = []string{grammar.Articles, grammar.Prepositions, grammar.Future, grammar.Modals, grammar.PastSimple}
@@ -44,7 +50,9 @@ type exercisePayload struct {
 	Choices     []string `json:"choices"`
 	Tiles       []string `json:"tiles,omitempty"` // только для order
 	Topic       string   `json:"topic"`
-	Hint        string   `json:"hint,omitempty"` // только для form: начальная форма слова
+	Hint        string   `json:"hint,omitempty"`    // только для form: начальная форма слова
+	Words       []string `json:"words,omitempty"`   // только для match: английские слова в порядке упражнения
+	Options     []string `json:"options,omitempty"` // только для match: переводы вперемешку
 }
 
 // exerciseAnswer — допустимые ответы; лежит в exercises.answer.
@@ -53,6 +61,8 @@ type exerciseAnswer struct {
 	LexemeID int64    `json:"lexemeId,omitempty"` // только для form: слово упражнения
 	Lemma    string   `json:"lemma,omitempty"`
 	Pos      string   `json:"pos,omitempty"`
+	// Pairs — только для match: верные пары в порядке слов; Answers[0] — они же строкой «слово=перевод;…».
+	Pairs []exercises.MatchPair `json:"pairs,omitempty"`
 }
 
 // formInfo — слово упражнения «выбор формы».
@@ -70,6 +80,7 @@ type gapCandidate struct {
 	pos         string           // часть речи слова (только для level:*)
 	order       *exercises.Order // «порядок слов»: вместо gap
 	form        *formInfo        // «выбор формы»: слово упражнения
+	match       *exercises.Match // «сопоставление»: вместо gap
 }
 
 // GetNextExercise выбирает тему по рейтингам (слабая раньше), собирает пропуск и записывает упражнение.
@@ -123,6 +134,8 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 			cand, found, err = s.orderCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
 		case topic == formTopic:
 			cand, found, err = s.formCandidate(ctx, &rng, user.ID, userLevel, used)
+		case topic == matchTopic:
+			cand, found, err = s.matchCandidate(ctx, user.ID, userLevel)
 		case strings.HasPrefix(topic, "level:"):
 			cand, found, err = s.levelCandidate(ctx, topic, used)
 		default:
@@ -170,12 +183,15 @@ func (s *authServer) failExercises(w http.ResponseWriter, err error) {
 	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
 }
 
-// availableTopics: пять грамматических тем, «порядок слов», «выбор формы» (если открыт), уровень пользователя и следующий за ним.
+// availableTopics: пять грамматических тем, «порядок слов», «выбор формы» и «сопоставление» (если открыты), уровень пользователя и следующий за ним.
 // Без настроек — без level:*. Вторым значением отдаёт текущий уровень пользователя (пусто без настроек).
 func (s *authServer) availableTopics(ctx context.Context, userID int64, ratings []exercises.TopicRating) ([]string, string, error) {
 	out := append(slices.Clone(grammarTopics), orderTopic)
 	if exercises.Unlocked(formTopic, ratings) {
 		out = append(out, formTopic)
+	}
+	if exercises.Unlocked(matchTopic, ratings) {
+		out = append(out, matchTopic)
 	}
 	st, err := s.store.GetSettings(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -235,12 +251,27 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 		kind, prompt, choices, answers, tiles = api.Order, c.translation, []string{}, c.order.Answers, c.order.Tiles
 	}
 	var hint string
+	var words, options []string
+	var sentenceID *int64
+	if c.match == nil {
+		sentenceID = &c.sentenceID
+	}
 	ans := exerciseAnswer{Answers: answers}
+	if c.match != nil {
+		// «Сопоставление»: предложения нет; пользователь видит слова и переводы вперемешку.
+		kind, prompt, choices = api.Match, matchPrompt, []string{}
+		words, options = c.match.Words, c.match.Options
+		pairs := make([]string, len(c.match.Answers))
+		for i, p := range c.match.Answers {
+			pairs[i] = p.Word + "=" + p.Ru
+		}
+		ans = exerciseAnswer{Answers: []string{strings.Join(pairs, ";")}, Pairs: c.match.Answers}
+	}
 	if c.form != nil {
 		kind, hint = api.Form, c.form.lemma
 		ans.LexemeID, ans.Lemma, ans.Pos = c.form.lexemeID, c.form.lemma, c.form.pos
 	}
-	payload, err := json.Marshal(exercisePayload{Prompt: prompt, Translation: c.translation, Choices: choices, Tiles: tiles, Topic: topic, Hint: hint})
+	payload, err := json.Marshal(exercisePayload{Prompt: prompt, Translation: c.translation, Choices: choices, Tiles: tiles, Topic: topic, Hint: hint, Words: words, Options: options})
 	if err != nil {
 		return api.Exercise{}, err
 	}
@@ -249,7 +280,7 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 		return api.Exercise{}, err
 	}
 	id, err := s.store.InsertExercise(ctx, db.InsertExerciseParams{
-		UserID: userID, Kind: string(kind), SentenceID: &c.sentenceID, Topics: topics, Payload: payload, Answer: answer,
+		UserID: userID, Kind: string(kind), SentenceID: sentenceID, Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		return api.Exercise{}, err
@@ -260,6 +291,9 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 	}
 	if hint != "" {
 		ex.Hint = &hint
+	}
+	if c.match != nil {
+		ex.Words, ex.Options = &words, &options
 	}
 	return ex, nil
 }

@@ -99,6 +99,7 @@ func (e ErrorErrorCode) Valid() bool {
 const (
 	Form  ExerciseKind = "form"
 	Gap   ExerciseKind = "gap"
+	Match ExerciseKind = "match"
 	Order ExerciseKind = "order"
 )
 
@@ -108,6 +109,8 @@ func (e ExerciseKind) Valid() bool {
 	case Form:
 		return true
 	case Gap:
+		return true
+	case Match:
 		return true
 	case Order:
 		return true
@@ -195,7 +198,7 @@ type AddCardResponse struct {
 type AnswerRequest struct {
 	ExerciseId int64 `json:"exerciseId"`
 
-	// Given Ответ пользователя; для order — собранное предложение строкой (слова через пробел)
+	// Given Ответ пользователя; для order — собранное предложение строкой (слова через пробел), для match — пары строкой «слово=перевод;слово=перевод;…»
 	Given string `json:"given"`
 
 	// Key Ключ идемпотентности, один на попытку
@@ -210,6 +213,9 @@ type AnswerResult struct {
 
 	// Mistake Состояние ошибки после ответа (повтор или новый неверный ответ)
 	Mistake *MistakeResult `json:"mistake,omitempty"`
+
+	// Pairs Только для match, разбор каждой пары (в порядке слов упражнения)
+	Pairs *[]PairResult `json:"pairs,omitempty"`
 
 	// Ratings Рейтинги затронутых тем после обновления
 	Ratings     []Rating `json:"ratings"`
@@ -308,8 +314,11 @@ type Exercise struct {
 	Hint *string `json:"hint,omitempty"`
 	Id   int64   `json:"id"`
 
-	// Kind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
+	// Kind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
 	Kind ExerciseKind `json:"kind"`
+
+	// Options Только для match, пять русских переводов вперемешку (верные пары до ответа клиенту не отдаются)
+	Options *[]string `json:"options,omitempty"`
 
 	// Prompt gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles)
 	Prompt string `json:"prompt"`
@@ -325,9 +334,12 @@ type Exercise struct {
 
 	// Translation Перевод-подсказка на русском
 	Translation string `json:"translation"`
+
+	// Words Только для match, пять английских слов в фиксированном порядке
+	Words *[]string `json:"words,omitempty"`
 }
 
-// ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
+// ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
 type ExerciseKind string
 
 // Level defines model for Level.
@@ -450,6 +462,17 @@ type MistakeResult struct {
 
 // MistakeResultStatus defines model for MistakeResult.Status.
 type MistakeResultStatus string
+
+// PairResult defines model for PairResult.
+type PairResult struct {
+	// Answer Верный перевод
+	Answer  string `json:"answer"`
+	Correct bool   `json:"correct"`
+
+	// Given Перевод, который выбрал пользователь
+	Given string `json:"given"`
+	Word  string `json:"word"`
+}
 
 // ProgressOverview defines model for ProgressOverview.
 type ProgressOverview struct {
