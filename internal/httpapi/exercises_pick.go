@@ -498,13 +498,30 @@ func (s *authServer) ruRanks(ctx context.Context, cands []exercises.MatchCandida
 	if len(words) == 0 {
 		return nil, nil
 	}
-	rows, err := s.store.ListWordFrequencies(ctx, db.ListWordFrequenciesParams{SourceName: ruFrequencySource, Words: words})
+	// В списке «ё» и «е» стоят отдельными словами, а словарь пишет через «ё»: ищем обе записи, берём лучшее место.
+	query := slices.Clone(words)
+	for _, w := range words {
+		if folded := strings.ReplaceAll(w, "ё", "е"); folded != w && !slices.Contains(query, folded) {
+			query = append(query, folded)
+		}
+	}
+	rows, err := s.store.ListWordFrequencies(ctx, db.ListWordFrequenciesParams{SourceName: ruFrequencySource, Words: query})
 	if err != nil {
 		return nil, err
 	}
-	ranks := make(map[string]int, len(rows))
+	found := make(map[string]int, len(rows))
 	for _, r := range rows {
-		ranks[r.Word] = int(r.Rank)
+		found[r.Word] = int(r.Rank)
+	}
+	ranks := make(map[string]int, len(rows))
+	for _, w := range words {
+		best, ok := found[w]
+		if r, okFolded := found[strings.ReplaceAll(w, "ё", "е")]; okFolded && (!ok || r < best) {
+			best, ok = r, true
+		}
+		if ok {
+			ranks[w] = best
+		}
 	}
 	return ranks, nil
 }

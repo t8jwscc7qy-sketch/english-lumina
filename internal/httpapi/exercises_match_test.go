@@ -363,3 +363,19 @@ func TestMatchKeepsWordWithOnlyRareTranslation(t *testing.T) {
 		t.Fatalf("слово с единственным редким переводом не теряется: %+v", ex.Words)
 	}
 }
+
+// В списке частот «ё» и «е» стоят отдельно («теплый» 16 976, «тёплый» 24 601); место слова с «ё» берётся лучшее.
+func TestMatchRanksFoldYo(t *testing.T) {
+	e, token := matchEnv(t)
+	withSenses(e, "apple", "n", []string{"батюшка", "тёплый"}, []string{"батюшка", "тёплый"})
+	ruRanks(e, otherRanks)
+	ruRanks(e, map[string]int32{"теплый": 16976, "батюшка": 30608})
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	if ex.Options == nil || !slices.Contains(*ex.Options, "тёплый") || slices.Contains(*ex.Options, "батюшка") {
+		t.Fatalf("ждали «тёплый» без «батюшки»: %+v", ex.Options)
+	}
+}

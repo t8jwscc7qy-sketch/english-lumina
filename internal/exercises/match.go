@@ -2,7 +2,6 @@ package exercises
 
 import (
 	"fmt"
-	"math"
 	"math/rand/v2"
 	"regexp"
 	"slices"
@@ -91,7 +90,7 @@ func RuCandidates(senses [][]string) []string {
 // PickTranslation выбирает основной перевод слова среди его значений: вариант, который встречается в наибольшем
 // числе значений. Годятся только однословные переводы. Если ranks не пуст (места слов в списке частот) и у слова
 // есть хотя бы один частый вариант (место не хуже maxRuRank), редкие и безместные отбрасываются; при равенстве
-// выигрывает вариант с лучшим местом (без места — худший), затем стоящий раньше (по значению, затем по месту в значении). Если значений несколько, а ни один
+// выигрывает стоящий раньше (по значению, затем по месту в значении). Если значений несколько, а ни один
 // вариант не повторяется, перевод неоднозначен: false.
 func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 	type stat struct {
@@ -139,14 +138,30 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 	}
 	best, bestStat := "", (*stat)(nil)
 	for ru, st := range stats {
-		if bestStat == nil || better(ru, st.count, st.firstSense, st.firstPos, best, bestStat.count, bestStat.firstSense, bestStat.firstPos, ranks) {
+		if bestStat == nil || better(ru, st.count, st.firstSense, st.firstPos, best, bestStat.count, bestStat.firstSense, bestStat.firstPos) {
 			best, bestStat = ru, st
 		}
 	}
 	if usable > 1 && bestStat.count < 2 {
 		return "", false
 	}
+	if onlyCommon && bestStat.count < 2 && usableSenses(senses) > 1 {
+		// отсев оставил одно значение, но у слова их несколько и консенсуса без отсева нет: частый вариант не доказывает,
+		// что он верный, поэтому решает прежнее правило без частот
+		return PickTranslation(senses, nil)
+	}
 	return best, true
+}
+
+// usableSenses — число значений, где есть хотя бы один годный перевод.
+func usableSenses(senses [][]string) int {
+	n := 0
+	for _, sense := range senses {
+		if len(RuCandidates([][]string{sense})) > 0 {
+			n++
+		}
+	}
+	return n
 }
 
 // isCommonRu: у варианта есть место в списке частот не хуже maxRuRank.
@@ -155,22 +170,10 @@ func isCommonRu(ranks map[string]int, ru string) bool {
 	return ok && r <= maxRuRank
 }
 
-// rankOf — место варианта в списке частот; у слов без места оно хуже любого.
-func rankOf(ranks map[string]int, ru string) int {
-	if r, ok := ranks[ru]; ok {
-		return r
-	}
-	return math.MaxInt
-}
-
-// better: вариант a лучше b — больше значений; при равенстве лучшее место в списке частот (если он есть), затем
-// раньше в словаре, затем по алфавиту.
-func better(a string, aCount, aSense, aPos int, b string, bCount, bSense, bPos int, ranks map[string]int) bool {
+// better: вариант a лучше b — больше значений; при равенстве раньше в словаре, затем по алфавиту.
+func better(a string, aCount, aSense, aPos int, b string, bCount, bSense, bPos int) bool {
 	if aCount != bCount {
 		return aCount > bCount
-	}
-	if ra, rb := rankOf(ranks, a), rankOf(ranks, b); ra != rb {
-		return ra < rb
 	}
 	if aSense != bSense {
 		return aSense < bSense

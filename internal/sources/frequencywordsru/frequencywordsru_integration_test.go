@@ -88,7 +88,7 @@ func TestRunBadRowRollsBackEverything(t *testing.T) {
 	broken := readSample(t) + "ой 5000\n" // счёт больше предыдущего: список перестал убывать
 	_, err := importer.Run(context.Background(), pool, sourceFor(t, broken, sha(broken)), t.TempDir())
 	if err == nil || !strings.Contains(err.Error(), "строка 14") {
-		t.Fatalf("ожидали ошибку про строку 25, получили %v", err)
+		t.Fatalf("ожидали ошибку про строку 14, получили %v", err)
 	}
 	for _, table := range []string{"data_sources", "word_frequencies"} {
 		if n := count(t, pool, "SELECT count(*) FROM "+table); n != 0 {

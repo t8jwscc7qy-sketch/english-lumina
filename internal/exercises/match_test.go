@@ -251,15 +251,6 @@ func TestPickTranslationRankDropsRareVariant(t *testing.T) {
 	}
 }
 
-func TestPickTranslationRankTieBreakInsteadOfDictOrder(t *testing.T) {
-	// при равном числе значений решает место в списке, а не порядок словаря; смысл правило не различает
-	senses := [][]string{{"тонкий", "редкий"}, {"тонкий", "редкий"}}
-	got, ok := PickTranslation(senses, map[string]int{"редкий": 12922, "тонкий": 16560})
-	if !ok || got != "редкий" {
-		t.Fatalf("ждали «редкий» (место выше), получили %q %v", got, ok)
-	}
-}
-
 func TestPickTranslationDropsUnrankedVariant(t *testing.T) {
 	got, ok := PickTranslation([][]string{{"одёжа", "одежда"}}, map[string]int{"одежда": 4303})
 	if !ok || got != "одежда" {
@@ -279,14 +270,6 @@ func TestPickTranslationUnrankedWordKept(t *testing.T) {
 	got, ok := PickTranslation([][]string{{"туризм"}}, map[string]int{"папа": 274})
 	if !ok || got != "туризм" {
 		t.Fatalf("слово без места не теряется: %q %v", got, ok)
-	}
-}
-
-func TestPickTranslationRankedBeatsUnrankedOnTie(t *testing.T) {
-	senses := [][]string{{"ааа", "ббб"}, {"ааа", "ббб"}}
-	got, ok := PickTranslation(senses, map[string]int{"ббб": 40000})
-	if !ok || got != "ббб" {
-		t.Fatalf("при равенстве вариант со местом лучше безместного: %q %v", got, ok)
 	}
 }
 
@@ -332,5 +315,50 @@ func TestBuildMatchUsesRanks(t *testing.T) {
 	}
 	if m.Answers[0].Ru != "папа" {
 		t.Fatalf("ждали «папа», получили %q", m.Answers[0].Ru)
+	}
+}
+
+func TestPickTranslationRareVariantInMoreSensesLoses(t *testing.T) {
+	// «батюшка» в трёх значениях, «папа» в двух: редкий вариант не побеждает числом значений
+	senses := [][]string{{"батюшка", "папа"}, {"батюшка", "папа"}, {"батюшка"}}
+	got, ok := PickTranslation(senses, map[string]int{"папа": 274, "батюшка": 30608})
+	if !ok || got != "папа" {
+		t.Fatalf("ждали «папа», получили %q %v", got, ok)
+	}
+}
+
+func TestPickTranslationRankBoundary(t *testing.T) {
+	senses := [][]string{{"ааа", "ббб"}, {"ааа", "ббб"}}
+	// «ааа» ровно на пороге — частый, «ббб» на одно место дальше — редкий и отбрасывается
+	if got, ok := PickTranslation(senses, map[string]int{"ааа": maxRuRank, "ббб": maxRuRank + 1}); !ok || got != "ааа" {
+		t.Fatalf("на пороге вариант частый: %q %v", got, ok)
+	}
+	// наоборот: порядок слов в словаре («ааа» раньше) не должен спасать вариант за порогом
+	if got, ok := PickTranslation(senses, map[string]int{"ааа": maxRuRank + 1, "ббб": maxRuRank}); !ok || got != "ббб" {
+		t.Fatalf("за порогом вариант редкий: %q %v", got, ok)
+	}
+}
+
+func TestPickTranslationOneCommonVariantInOneSenseKeepsAmbiguity(t *testing.T) {
+	// частый вариант только в одном из значений: после отсева остальные значения пусты, но слово по-прежнему
+	// неоднозначно (раньше такие слова отбрасывались) — принимать случайное значение нельзя
+	senses := [][]string{{"сердечный"}, {"приятный"}, {"тёплый"}}
+	if got, ok := PickTranslation(senses, map[string]int{"тёплый": 100}); ok {
+		t.Fatalf("консенсуса нет, а получили %q", got)
+	}
+	// если неоднозначности не было и без частот, выбор остаётся прежним
+	senses = [][]string{{"сердечный", "тёплый"}, {"тёплый"}}
+	if got, ok := PickTranslation(senses, map[string]int{"тёплый": 100}); !ok || got != "тёплый" {
+		t.Fatalf("%q %v", got, ok)
+	}
+}
+
+func TestPickTranslationRanksDoNotReorderCommonVariants(t *testing.T) {
+	// оба варианта частые и встречаются одинаково часто: место не решает (в субтитрах «оружие» стоит выше «руки»)
+	senses := [][]string{{"оружие", "рука"}, {"оружие", "рука"}}
+	got, ok := PickTranslation(senses, map[string]int{"оружие": 4000, "рука": 651})
+	want, _ := PickTranslation(senses, nil)
+	if !ok || got != want {
+		t.Fatalf("как без частот (%q), получили %q %v", want, got, ok)
 	}
 }
