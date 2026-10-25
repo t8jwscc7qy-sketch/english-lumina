@@ -143,6 +143,24 @@ func (e Level) Valid() bool {
 	}
 }
 
+// Defines values for LevelSuggestionDirection.
+const (
+	Down LevelSuggestionDirection = "down"
+	Up   LevelSuggestionDirection = "up"
+)
+
+// Valid indicates whether the value is a known member of the LevelSuggestionDirection enum.
+func (e LevelSuggestionDirection) Valid() bool {
+	switch e {
+	case Down:
+		return true
+	case Up:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MistakeResultStatus.
 const (
 	Closed MistakeResultStatus = "closed"
@@ -314,6 +332,26 @@ type ExerciseKind string
 
 // Level defines model for Level.
 type Level string
+
+// LevelSuggestion defines model for LevelSuggestion.
+type LevelSuggestion struct {
+	// Correct Верных ответов среди последних `total`
+	Correct   int                      `json:"correct"`
+	Direction LevelSuggestionDirection `json:"direction"`
+	From      Level                    `json:"from"`
+	To        Level                    `json:"to"`
+
+	// Total Сколько последних ответов учтено (30)
+	Total int `json:"total"`
+}
+
+// LevelSuggestionDirection defines model for LevelSuggestion.Direction.
+type LevelSuggestionDirection string
+
+// LevelSuggestionResponse defines model for LevelSuggestionResponse.
+type LevelSuggestionResponse struct {
+	Suggestion *LevelSuggestion `json:"suggestion,omitempty"`
+}
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
@@ -638,6 +676,12 @@ type ServerInterface interface {
 	// ListExerciseTopics Темы с рейтингом
 	// (GET /api/v1/exercises/topics)
 	ListExerciseTopics(w http.ResponseWriter, r *http.Request)
+	// GetLevelSuggestion Предложение сменить уровень
+	// (GET /api/v1/level/suggestion)
+	GetLevelSuggestion(w http.ResponseWriter, r *http.Request)
+	// DismissLevelSuggestion Спрятать предложение сменить уровень на 14 суток
+	// (POST /api/v1/level/suggestion/dismiss)
+	DismissLevelSuggestion(w http.ResponseWriter, r *http.Request)
 	// GetMilestones Вехи
 	// (GET /api/v1/milestones)
 	GetMilestones(w http.ResponseWriter, r *http.Request)
@@ -793,6 +837,34 @@ func (siw *ServerInterfaceWrapper) ListExerciseTopics(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListExerciseTopics(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLevelSuggestion operation middleware
+func (siw *ServerInterfaceWrapper) GetLevelSuggestion(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLevelSuggestion(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DismissLevelSuggestion operation middleware
+func (siw *ServerInterfaceWrapper) DismissLevelSuggestion(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DismissLevelSuggestion(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1063,6 +1135,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/exercises/answer", wrapper.AnswerExercise)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/topics", wrapper.ListExerciseTopics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/mistakes", wrapper.ListMistakes)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/level/suggestion", wrapper.GetLevelSuggestion)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/level/suggestion/dismiss", wrapper.DismissLevelSuggestion)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/today", wrapper.GetProgressToday)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/overview", wrapper.GetProgressOverview)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/milestones", wrapper.GetMilestones)

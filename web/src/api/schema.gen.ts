@@ -270,6 +270,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/level/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Предложение сменить уровень
+         * @description Смотрит на последние 30 ответов (за 60 суток) на упражнения уровня из настроек. 27 верных и больше — предлагает уровень выше, 12 и меньше — ниже. Меньше 30 ответов, край шкалы или недавний отказ (14 суток) — поля `suggestion` нет. Только предлагает: уровень пользователь меняет сам через настройки. Ничего не записывает.
+         */
+        get: operations["getLevelSuggestion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/level/suggestion/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Спрятать предложение сменить уровень на 14 суток
+         * @description Пишет событие `level.suggestion.dismissed` (миграций нет). Повторный вызов только продлевает срок.
+         */
+        post: operations["dismissLevelSuggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/progress/today": {
         parameters: {
             query?: never;
@@ -593,6 +633,19 @@ export interface components {
             cardsReviewed: number;
             mistakesOpened: number;
             mistakesClosed: number;
+        };
+        LevelSuggestion: {
+            /** @enum {string} */
+            direction: "up" | "down";
+            from: components["schemas"]["Level"];
+            to: components["schemas"]["Level"];
+            /** @description Верных ответов среди последних `total` */
+            correct: number;
+            /** @description Сколько последних ответов учтено (30) */
+            total: number;
+        };
+        LevelSuggestionResponse: {
+            suggestion?: components["schemas"]["LevelSuggestion"];
         };
         ProgressToday: {
             /** @description Минут занятий за сегодня (одна десятая) */
@@ -1140,6 +1193,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MistakeList"];
                 };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getLevelSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Предложение или пустой объект */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LevelSuggestionResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    dismissLevelSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Предложение спрятано */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["Unauthorized"];
         };

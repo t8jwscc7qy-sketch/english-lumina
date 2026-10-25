@@ -336,6 +336,34 @@ paths:
                 $ref: "#/components/schemas/MistakeList"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/level/suggestion:
+    get:
+      operationId: getLevelSuggestion
+      summary: Предложение сменить уровень
+      description: >
+        Смотрит на последние 30 ответов (за 60 суток) на упражнения уровня из настроек. 27 верных и больше —
+        предлагает уровень выше, 12 и меньше — ниже. Меньше 30 ответов, край шкалы или недавний отказ
+        (14 суток) — поля `suggestion` нет. Только предлагает: уровень пользователь меняет сам через настройки.
+        Ничего не записывает.
+      responses:
+        "200":
+          description: Предложение или пустой объект
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LevelSuggestionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/level/suggestion/dismiss:
+    post:
+      operationId: dismissLevelSuggestion
+      summary: Спрятать предложение сменить уровень на 14 суток
+      description: Пишет событие `level.suggestion.dismissed` (миграций нет). Повторный вызов только продлевает срок.
+      responses:
+        "204":
+          description: Предложение спрятано
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/v1/progress/today:
     get:
       operationId: getProgressToday
@@ -847,6 +875,28 @@ components:
           type: integer
         mistakesClosed:
           type: integer
+    LevelSuggestion:
+      type: object
+      required: [direction, from, to, correct, total]
+      properties:
+        direction:
+          type: string
+          enum: [up, down]
+        from:
+          $ref: "#/components/schemas/Level"
+        to:
+          $ref: "#/components/schemas/Level"
+        correct:
+          type: integer
+          description: Верных ответов среди последних `total`
+        total:
+          type: integer
+          description: Сколько последних ответов учтено (30)
+    LevelSuggestionResponse:
+      type: object
+      properties:
+        suggestion:
+          $ref: "#/components/schemas/LevelSuggestion"
     ProgressToday:
       type: object
       required: [minutes, minimumDay, goalMinutes, doneToday, streakDays, today]
