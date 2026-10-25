@@ -627,8 +627,11 @@ type Word struct {
 	FrequencyRank *int `json:"frequencyRank,omitempty"`
 
 	// InCards Есть ли у пользователя карточка этого слова
-	InCards bool   `json:"inCards"`
-	Lemma   string `json:"lemma"`
+	InCards bool `json:"inCards"`
+
+	// Ipa Транскрипция (IPA) основного произношения из базы знаний; нет, если базы нет или слова в ней нет
+	Ipa   *string `json:"ipa,omitempty"`
+	Lemma string  `json:"lemma"`
 
 	// Level Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
 	Level CefrLevel `json:"level"`
@@ -636,6 +639,12 @@ type Word struct {
 	// Levels Оценки по источникам
 	Levels []WordLevel `json:"levels"`
 	Pos    string      `json:"pos"`
+
+	// Synonyms Синонимы из базы знаний; нет, если их нет
+	Synonyms *[]string `json:"synonyms,omitempty"`
+
+	// Translations Русские переводы (до двух), основной первым, из базы знаний; нет, если базы нет или перевода нет
+	Translations *[]string `json:"translations,omitempty"`
 }
 
 // WordLevel defines model for WordLevel.

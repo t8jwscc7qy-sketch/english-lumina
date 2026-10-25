@@ -90,6 +90,9 @@ type fakeStore struct {
 	activity         []fakeActivity                   // события занятий для ListActivityEvents (progress_fake_test.go)
 	levelAnswers     []fakeLevelAnswer                // ответы по темам для ListLevelAnswers (level_fake_test.go)
 	translations     []db.ListTranslationsForWordsRow // переводы слов для ListTranslationsForWords (exercises_match_fake_test.go)
+	kbCards          map[int64]json.RawMessage        // карточки слов базы знаний (ListTeachingCards)
+	kbTranslations   map[int64][]string               // выбранные русские переводы слов в базе знаний, основной первым
+	failKb           bool                             // чтение базы знаний падает (например, миграция не применена)
 	translationCalls int
 	failTranslations bool
 }

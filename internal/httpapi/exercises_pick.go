@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -517,8 +518,15 @@ func (s *authServer) matchCandidate(ctx context.Context, userID int64, level str
 		last := len(senses[k]) - 1
 		senses[k][last] = append(senses[k][last], r.Ru)
 	}
+	// Перевод из базы знаний (выбранный сборкой по значениям, пометкам и частоте) важнее старого словаря; нет базы —
+	// прежний путь.
+	kbTr := s.kbTranslations(ctx, ws)
 	cands := make([]exercises.MatchCandidate, 0, len(ws))
 	for _, w := range ws {
+		if tr := kbTr[w.lexemeID]; len(tr) > 0 {
+			cands = append(cands, exercises.MatchCandidate{Word: w.lemma, Senses: [][]string{tr}})
+			continue
+		}
 		if sn := senses[key{w.lemma, dictPos[w.pos]}]; len(sn) > 0 {
 			cands = append(cands, exercises.MatchCandidate{Word: w.lemma, Senses: sn})
 		}
@@ -578,4 +586,23 @@ func (s *authServer) ruRanks(ctx context.Context, cands []exercises.MatchCandida
 		}
 	}
 	return ranks, nil
+}
+
+// kbTranslations читает выбранные русские переводы слов из базы знаний (основной первым). База знаний — дополнение:
+// ошибка чтения (нет таблицы, нет сборки) пишется в журнал и даёт пустой результат, тогда работает старый словарь.
+func (s *authServer) kbTranslations(ctx context.Context, ws []formInfo) map[int64][]string {
+	ids := make([]int64, len(ws))
+	for i, w := range ws {
+		ids[i] = w.lexemeID
+	}
+	rows, err := s.store.KbListChosenTranslations(ctx, db.KbListChosenTranslationsParams{Lang: "ru", LexemeIds: ids})
+	if err != nil {
+		slog.Warn("база знаний недоступна, переводы из старого словаря", "err", err)
+		return nil
+	}
+	out := map[int64][]string{}
+	for _, r := range rows {
+		out[r.LexemeID] = append(out[r.LexemeID], r.Text)
+	}
+	return out
 }

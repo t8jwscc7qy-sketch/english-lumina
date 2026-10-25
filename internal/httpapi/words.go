@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -103,9 +104,22 @@ func (s *authServer) SearchWords(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	cards := s.kbCards(ctx, ids)
 	for i, f := range found {
 		word := api.Word{
 			Lemma: f.Lemma, Pos: f.Pos, Level: api.CefrLevel(f.Level), Levels: append([]api.WordLevel{}, byWord[f.ID]...), InCards: inCards[f.ID],
+		}
+		if c, ok := cards[f.ID]; ok {
+			if c.IPA != "" {
+				ipa := c.IPA
+				word.Ipa = &ipa
+			}
+			if len(c.Translations) > 0 {
+				word.Translations = &c.Translations
+			}
+			if len(c.Synonyms) > 0 {
+				word.Synonyms = &c.Synonyms
+			}
 		}
 		if rank, ok := words.BestRankOf(keysOf[i], ranks); ok {
 			word.FrequencyRank = &rank
@@ -129,4 +143,31 @@ func notesOf(extra json.RawMessage) []string {
 func (s *authServer) failWords(w http.ResponseWriter, err error) {
 	slog.Error("поиск слов", "err", err)
 	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
+}
+
+// kbCard — нужные «Словам» поля карточки слова из базы знаний.
+type kbCard struct {
+	IPA          string   `json:"ipa"`
+	Translations []string `json:"translations"`
+	Synonyms     []string `json:"synonyms"`
+}
+
+// kbCards читает карточки слов из базы знаний. База знаний — дополнение: пока её нет (миграция не применена, сборки
+// не было) или карточка не читается, слова показываются как раньше; причина пишется в журнал, но запрос не падает.
+func (s *authServer) kbCards(ctx context.Context, ids []int64) map[int64]kbCard {
+	rows, err := s.store.KbGetTeachingCards(ctx, ids)
+	if err != nil {
+		slog.Warn("база знаний недоступна, слова без неё", "err", err)
+		return nil
+	}
+	out := make(map[int64]kbCard, len(rows))
+	for _, r := range rows {
+		var c kbCard
+		if err := json.Unmarshal(r.Payload, &c); err != nil {
+			slog.Warn("карточка слова в базе знаний не читается", "lexemeId", r.LexemeID, "err", err)
+			continue
+		}
+		out[r.LexemeID] = c
+	}
+	return out
 }

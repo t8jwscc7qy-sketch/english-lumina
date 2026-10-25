@@ -76,9 +76,25 @@ function WordRow({ word }: { word: Word }) {
         >
           {word.level}
         </span>
+        {word.ipa && (
+          <span lang="en-fonipa" className="text-sm text-muted-foreground">{`/${word.ipa}/`}</span>
+        )}
       </div>
+      {word.translations && word.translations.length > 0 && (
+        <p lang="ru" className="font-semibold break-words">
+          {word.translations.join(', ')}
+        </p>
+      )}
       <p className="text-sm text-muted-foreground">{levels}</p>
       <p className="text-sm text-muted-foreground">{`Частота: ${describeFrequency(word.frequencyRank, word.lemma)}`}</p>
+      {word.synonyms && word.synonyms.length > 0 && (
+        <p className="text-sm text-muted-foreground break-words">
+          {'Синонимы: '}
+          <span lang="en" className="text-foreground">
+            {word.synonyms.join(', ')}
+          </span>
+        </p>
+      )}
       {notes && <p className="text-sm break-words">{notes}</p>}
       <div className="flex flex-col items-start gap-3">
         <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
