@@ -176,6 +176,15 @@ export const EXERCISES: ExerciseFixture[] = [
  * Подменяет API Go-сервера. `settings: null` — онбординг не пройден (GET /settings даёт 404);
  * PUT сохраняет присланное и дальше GET его возвращает. `puts` копит тела принятых PUT.
  */
+export type LevelSuggestionOpts = {
+  /** Предложение на экране; без него отвечает пустым объектом. */
+  suggestion?: { direction: 'up' | 'down'; from: string; to: string; correct: number; total: number }
+  /** POST /level/suggestion/dismiss отвечает 500. */
+  dismissFails?: boolean
+  /** Сюда складываются вызовы отказа. */
+  dismissed?: { count: number }
+}
+
 export type MilestonesOpts = {
   /** id достигнутых вех (streak-3, hours-1, first-card …). */
   reached?: string[]
@@ -207,7 +216,7 @@ export type ProgressOpts = {
 
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -425,6 +434,17 @@ export async function mockApi(
     }
     return route.fulfill({ status: 404 })
   })
+
+  let suggestionVisible = true
+  await page.route('**/api/v1/level/suggestion/dismiss', (route) => {
+    if (opts.level?.dismissFails) return route.fulfill(apiError(500, 'internal', 'Внутренняя ошибка, попробуй ещё раз'))
+    if (opts.level?.dismissed) opts.level.dismissed.count++
+    suggestionVisible = false
+    return route.fulfill({ status: 204 })
+  })
+  await page.route('**/api/v1/level/suggestion', (route) =>
+    route.fulfill({ json: opts.level?.suggestion && suggestionVisible ? { suggestion: opts.level.suggestion } : {} }),
+  )
 
   await page.route('**/api/v1/milestones', (route) => {
     if (opts.milestones?.fail) return route.fulfill(apiError(500, 'internal', 'Внутренняя ошибка, попробуй ещё раз'))

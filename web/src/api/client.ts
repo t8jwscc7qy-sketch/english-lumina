@@ -187,3 +187,17 @@ export async function getMilestones(): Promise<MilestoneList> {
   const res = await request('/api/v1/milestones')
   return (await res.json()) as MilestoneList
 }
+
+export type LevelSuggestion = components['schemas']['LevelSuggestion']
+export type LevelSuggestionResponse = components['schemas']['LevelSuggestionResponse']
+
+/** Предложение сменить уровень: пустой объект, если предлагать нечего. */
+export async function getLevelSuggestion(): Promise<LevelSuggestionResponse> {
+  const res = await request('/api/v1/level/suggestion')
+  return (await res.json()) as LevelSuggestionResponse
+}
+
+/** «Пока нет»: предложение прячется на 14 суток. */
+export async function dismissLevelSuggestion(): Promise<void> {
+  await request('/api/v1/level/suggestion/dismiss', { method: 'POST' })
+}
