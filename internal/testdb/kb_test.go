@@ -28,7 +28,10 @@ func TestKbTables(t *testing.T) {
 	if err := pool.QueryRow(ctx, `INSERT INTO lexemes (lemma, pos, source_id) VALUES ('dad', 'noun', $1) RETURNING id`, src.ID).Scan(&lexID); err != nil {
 		t.Fatal(err)
 	}
-	ins := func(sql string, args ...any) error { _, err := pool.Exec(ctx, sql, append([]any{lexID}, args...)...); return err }
+	ins := func(sql string, args ...any) error {
+		_, err := pool.Exec(ctx, sql, append([]any{lexID}, args...)...)
+		return err
+	}
 	insTr := `INSERT INTO kb_translation (lexeme_id, lang, text, score, rank, chosen, flags, source_ids) VALUES ($1, 'ru', $2, 5.0, $3, $4, '{}', ARRAY[]::bigint[])`
 	if err := ins(insTr, "папа", 1, true); err != nil {
 		t.Fatalf("выбранный перевод: %v", err)

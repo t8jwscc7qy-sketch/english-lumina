@@ -199,3 +199,28 @@ func (q *Queries) KbListChosenTranslations(ctx context.Context, arg KbListChosen
 	}
 	return items, nil
 }
+
+const kbListLemmas = `-- name: KbListLemmas :many
+SELECT DISTINCT lemma FROM lexemes ORDER BY lemma
+`
+
+// Все леммы слов (как в источниках, с вариантами через «/»): по ним отбираются записи Kaikki.
+func (q *Queries) KbListLemmas(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, kbListLemmas)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var lemma string
+		if err := rows.Scan(&lemma); err != nil {
+			return nil, err
+		}
+		items = append(items, lemma)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

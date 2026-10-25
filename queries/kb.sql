@@ -39,3 +39,7 @@ SELECT lexeme_id, payload FROM kb_teaching_card WHERE lexeme_id = ANY(sqlc.arg(l
 SELECT lexeme_id, text, rank, score FROM kb_translation
 WHERE chosen AND lang = sqlc.arg(lang)::text AND lexeme_id = ANY(sqlc.arg(lexeme_ids)::bigint[])
 ORDER BY lexeme_id, rank;
+
+-- name: KbListLemmas :many
+-- Все леммы слов (как в источниках, с вариантами через «/»): по ним отбираются записи Kaikki.
+SELECT DISTINCT lemma FROM lexemes ORDER BY lemma;

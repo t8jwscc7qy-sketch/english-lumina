@@ -161,10 +161,15 @@ var (
 	langCompact = []byte(`"lang_code":"en"`)
 )
 
+// IsEnglishLine — быстрая проверка без разбора: в строке есть пометка английского языка (при любом стиле пробелов).
+func IsEnglishLine(line []byte) bool {
+	return bytes.Contains(line, langSpaced) || bytes.Contains(line, langCompact)
+}
+
 // Wanted — быстрая проверка строки до полного разбора: язык английский (при любом стиле пробелов в JSON) и слово
 // записи есть среди лемм. Битая строка не отбирается.
 func Wanted(line []byte, lemmas map[string]bool) bool {
-	if !bytes.Contains(line, langSpaced) && !bytes.Contains(line, langCompact) {
+	if !IsEnglishLine(line) {
 		return false
 	}
 	var probe struct {
