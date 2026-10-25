@@ -910,7 +910,7 @@ func seedRealExercise(t *testing.T, q *db.Queries, sentenceID int64, topics ...s
 	payload, _ := json.Marshal(exercisePayload{Prompt: "I have _____ big dog.", Translation: "У меня большая собака.", Choices: []string{"a", "an", "the", "-"}, Topic: "grammar:articles"})
 	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"a"}})
 	id, err := q.InsertExercise(context.Background(), db.InsertExerciseParams{
-		UserID: 1, Kind: "gap", SentenceID: sentenceID, Topics: topics, Payload: payload, Answer: answer,
+		UserID: 1, Kind: "gap", SentenceID: &sentenceID, Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		t.Fatal(err)

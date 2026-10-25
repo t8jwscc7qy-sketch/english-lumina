@@ -249,7 +249,7 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 		return api.Exercise{}, err
 	}
 	id, err := s.store.InsertExercise(ctx, db.InsertExerciseParams{
-		UserID: userID, Kind: string(kind), SentenceID: c.sentenceID, Topics: topics, Payload: payload, Answer: answer,
+		UserID: userID, Kind: string(kind), SentenceID: &c.sentenceID, Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		return api.Exercise{}, err

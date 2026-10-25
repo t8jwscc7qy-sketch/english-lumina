@@ -93,7 +93,7 @@ func TestNextExerciseGrammarTopic(t *testing.T) {
 	if !ok {
 		t.Fatalf("записи exercises нет: %+v", e.store.exercises)
 	}
-	if stored.SentenceID != 10 || stored.Kind != "gap" || !slices.Equal(stored.Topics, []string{"grammar:articles", "level:A1"}) {
+	if stored.SentenceID == nil || *stored.SentenceID != 10 || stored.Kind != "gap" || !slices.Equal(stored.Topics, []string{"grammar:articles", "level:A1"}) {
 		t.Fatalf("запись: %+v", stored)
 	}
 	var ans struct{ Answers []string }
@@ -302,7 +302,7 @@ func TestNextExerciseLevelTopic(t *testing.T) {
 		}
 	}
 	stored := e.store.exercises[ex.Id]
-	if stored.SentenceID != 7 || !slices.Equal(stored.Topics, []string{"level:A2", "level:A1", "pos:noun"}) {
+	if stored.SentenceID == nil || *stored.SentenceID != 7 || !slices.Equal(stored.Topics, []string{"level:A2", "level:A1", "pos:noun"}) {
 		t.Fatalf("запись: %+v", stored)
 	}
 }

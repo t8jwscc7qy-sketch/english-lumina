@@ -24,7 +24,7 @@ func seedExercise(t *testing.T, e env, userID int64, level string) int64 {
 	payload, _ := json.Marshal(exercisePayload{Prompt: "I have _____ dog.", Translation: "У меня есть собака.", Choices: []string{"a", "an", "the", "-"}, Topic: "grammar:articles"})
 	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"a"}})
 	id, err := e.store.InsertExercise(t.Context(), db.InsertExerciseParams{
-		UserID: userID, Kind: "gap", SentenceID: 1, Topics: topics, Payload: payload, Answer: answer,
+		UserID: userID, Kind: "gap", SentenceID: i64(1), Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		t.Fatal(err)

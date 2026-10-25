@@ -133,14 +133,14 @@ func TestExerciseQueries(t *testing.T) {
 
 	t.Run("упражнение: вставка, блокировка, ответ, использованные предложения", func(t *testing.T) {
 		id, err := q.InsertExercise(ctx, db.InsertExerciseParams{
-			UserID: u.ID, Kind: "gap", SentenceID: good, Topics: []string{"grammar:articles", "level:A1"},
+			UserID: u.ID, Kind: "gap", SentenceID: &good, Topics: []string{"grammar:articles", "level:A1"},
 			Payload: []byte(`{"p":1}`), Answer: []byte(`{"a":["a"]}`),
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		ex, err := q.GetExerciseForUpdate(ctx, db.GetExerciseForUpdateParams{ID: id, UserID: u.ID})
-		if err != nil || ex.SentenceID != good || ex.AnsweredAt.Valid || !slices.Equal(ex.Topics, []string{"grammar:articles", "level:A1"}) {
+		if err != nil || ex.SentenceID == nil || *ex.SentenceID != good || ex.AnsweredAt.Valid || !slices.Equal(ex.Topics, []string{"grammar:articles", "level:A1"}) {
 			t.Fatalf("упражнение %+v (%v)", ex, err)
 		}
 		if _, err := q.GetExerciseForUpdate(ctx, db.GetExerciseForUpdateParams{ID: id, UserID: other}); !errors.Is(err, pgx.ErrNoRows) {
@@ -193,10 +193,10 @@ func TestExerciseQueries(t *testing.T) {
 			t.Fatalf("чужой пользователь: %v", used)
 		}
 		// Неверный вид упражнения и пустые темы отклоняет база.
-		if _, err := q.InsertExercise(ctx, db.InsertExerciseParams{UserID: u.ID, Kind: "x", SentenceID: good, Topics: []string{"a"}, Payload: []byte(`{}`), Answer: []byte(`{}`)}); err == nil {
+		if _, err := q.InsertExercise(ctx, db.InsertExerciseParams{UserID: u.ID, Kind: "x", SentenceID: &good, Topics: []string{"a"}, Payload: []byte(`{}`), Answer: []byte(`{}`)}); err == nil {
 			t.Fatal("kind=x должен отклоняться")
 		}
-		if _, err := q.InsertExercise(ctx, db.InsertExerciseParams{UserID: u.ID, Kind: "gap", SentenceID: good, Topics: []string{}, Payload: []byte(`{}`), Answer: []byte(`{}`)}); err == nil {
+		if _, err := q.InsertExercise(ctx, db.InsertExerciseParams{UserID: u.ID, Kind: "gap", SentenceID: &good, Topics: []string{}, Payload: []byte(`{}`), Answer: []byte(`{}`)}); err == nil {
 			t.Fatal("пустые темы должны отклоняться")
 		}
 	})
