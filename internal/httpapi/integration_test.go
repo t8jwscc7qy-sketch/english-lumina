@@ -1368,3 +1368,63 @@ func TestMilestonesOnRealDatabase(t *testing.T) {
 		t.Fatalf("сегодня занятий нет: %v", l.NewToday)
 	}
 }
+
+// Предложение сменить уровень на настоящей Postgres: поиск темы в payload.topics, предел 30, свежие первыми, отказ из журнала.
+func TestLevelSuggestionOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.UpsertSettings(ctx, db.UpsertSettingsParams{UserID: 1, CurrentLevel: "B1", TargetLevel: "B2", DailyMinMinutes: 30, Timezone: "UTC"}); err != nil {
+		t.Fatal(err)
+	}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	add := func(at time.Time, correct bool, topics ...string) {
+		payload, _ := json.Marshal(map[string]any{"correct": correct, "topics": topics})
+		if _, err := q.AppendEvent(ctx, db.AppendEventParams{UserID: 1, Type: "exercise.answered", SchemaVersion: 1, OccurredAt: ts(at), Payload: payload}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UTC()
+	for i := 0; i < 20; i++ { // старые неверные на уровне B1 (10 суток назад): вытесняются свежими 30
+		add(now.AddDate(0, 0, -10).Add(time.Duration(i)*time.Minute), false, "level:B1", "grammar:articles")
+	}
+	for i := 0; i < 30; i++ { // свежие верные
+		add(now.Add(-time.Duration(30-i)*time.Minute), i != 3, "level:B1", "pos:verb")
+	}
+	for i := 0; i < 40; i++ { // другой уровень не считается
+		add(now.Add(-time.Duration(i)*time.Second), false, "level:A2")
+	}
+	get := func() api.LevelSuggestionResponse {
+		rec := e.do(http.MethodGet, levelPath, "", withCookie(token))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+		}
+		var out api.LevelSuggestionResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	out := get()
+	if out.Suggestion == nil || out.Suggestion.Direction != api.Up || out.Suggestion.To != api.LevelB2 || out.Suggestion.Correct != 29 || out.Suggestion.Total != 30 {
+		t.Fatalf("ждали повышение до B2, 29 из 30: %+v", out.Suggestion)
+	}
+	if rec := e.do(http.MethodPost, dismissPath, "", withCookie(token)); rec.Code != http.StatusNoContent {
+		t.Fatalf("отказ: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	if out := get(); out.Suggestion != nil {
+		t.Fatalf("после отказа предложения нет: %+v", out.Suggestion)
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM events WHERE user_id = 1 AND type = 'level.suggestion.dismissed'`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("событие отказа: n=%d err=%v", n, err)
+	}
+}
