@@ -290,6 +290,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/progress/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Обзор прогресса
+         * @description Факты для страницы «Прогресс»: с какого дня занимаешься, сколько минут набрано, средний темп за 14 суток и накопленные часы по суткам за последние 90. Прогноз срока считает клиент. Считается из журнала событий (окно 365 суток), сутки в часовом поясе настроек (без настроек UTC). Ничего не записывает.
+         */
+        get: operations["getProgressOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -567,6 +587,27 @@ export interface components {
             /** @description Последний пропуск, прощённый «заморозкой» (YYYY-MM-DD); нет поля, если заморозка не использовалась */
             freezeUsedOn?: string;
             today: components["schemas"]["TodayCounts"];
+        };
+        DailyPoint: {
+            day: string;
+            /** @description Минут занятий за сутки (одна десятая) */
+            minutes: number;
+            /** @description Часов занятий с самого начала до конца этих суток (одна сотая) */
+            cumulativeHours: number;
+        };
+        ProgressOverview: {
+            /** @description Сутки первого занятия в окне (YYYY-MM-DD); нет поля, если занятий не было */
+            startedOn?: string;
+            /** @description Сколько суток прошло с первого занятия, сегодня включительно (0, если занятий не было) */
+            daysSinceStart: number;
+            /** @description Всего минут занятий в окне 365 суток (одна десятая) */
+            studiedMinutes: number;
+            /** @description Средний темп за последние 14 суток, включая пустые (одна десятая) */
+            paceMinutesPerDay: number;
+            /** @description Прошло не меньше 14 суток с первого занятия, темп можно показывать */
+            paceReady: boolean;
+            /** @description Последние 90 суток по порядку, без пропусков */
+            daily: components["schemas"]["DailyPoint"][];
         };
         TopicList: {
             topics: components["schemas"]["Rating"][];
@@ -1076,6 +1117,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressToday"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getProgressOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Обзор прогресса */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressOverview"];
                 };
             };
             401: components["responses"]["Unauthorized"];

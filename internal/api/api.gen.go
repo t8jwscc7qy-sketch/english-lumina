@@ -235,6 +235,16 @@ type CardSentence struct {
 // CefrLevel Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
 type CefrLevel string
 
+// DailyPoint defines model for DailyPoint.
+type DailyPoint struct {
+	// CumulativeHours Часов занятий с самого начала до конца этих суток (одна сотая)
+	CumulativeHours float32 `json:"cumulativeHours"`
+	Day             string  `json:"day"`
+
+	// Minutes Минут занятий за сутки (одна десятая)
+	Minutes float32 `json:"minutes"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Error struct {
@@ -369,6 +379,27 @@ type MistakeResult struct {
 
 // MistakeResultStatus defines model for MistakeResult.Status.
 type MistakeResultStatus string
+
+// ProgressOverview defines model for ProgressOverview.
+type ProgressOverview struct {
+	// Daily Последние 90 суток по порядку, без пропусков
+	Daily []DailyPoint `json:"daily"`
+
+	// DaysSinceStart Сколько суток прошло с первого занятия, сегодня включительно (0, если занятий не было)
+	DaysSinceStart int `json:"daysSinceStart"`
+
+	// PaceMinutesPerDay Средний темп за последние 14 суток, включая пустые (одна десятая)
+	PaceMinutesPerDay float32 `json:"paceMinutesPerDay"`
+
+	// PaceReady Прошло не меньше 14 суток с первого занятия, темп можно показывать
+	PaceReady bool `json:"paceReady"`
+
+	// StartedOn Сутки первого занятия в окне (YYYY-MM-DD); нет поля, если занятий не было
+	StartedOn *string `json:"startedOn,omitempty"`
+
+	// StudiedMinutes Всего минут занятий в окне 365 суток (одна десятая)
+	StudiedMinutes float32 `json:"studiedMinutes"`
+}
 
 // ProgressToday defines model for ProgressToday.
 type ProgressToday struct {
@@ -577,6 +608,9 @@ type ServerInterface interface {
 	// ListMistakes Банк ошибок
 	// (GET /api/v1/mistakes)
 	ListMistakes(w http.ResponseWriter, r *http.Request)
+	// GetProgressOverview Обзор прогресса
+	// (GET /api/v1/progress/overview)
+	GetProgressOverview(w http.ResponseWriter, r *http.Request)
 	// GetProgressToday Прогресс за сегодня
 	// (GET /api/v1/progress/today)
 	GetProgressToday(w http.ResponseWriter, r *http.Request)
@@ -737,6 +771,20 @@ func (siw *ServerInterfaceWrapper) ListMistakes(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListMistakes(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProgressOverview operation middleware
+func (siw *ServerInterfaceWrapper) GetProgressOverview(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProgressOverview(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -966,6 +1014,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/topics", wrapper.ListExerciseTopics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/mistakes", wrapper.ListMistakes)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/today", wrapper.GetProgressToday)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/overview", wrapper.GetProgressOverview)
 
 	return m
 }

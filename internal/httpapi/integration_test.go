@@ -1264,3 +1264,45 @@ func TestProgressOnRealDatabase(t *testing.T) {
 		t.Fatalf("прогресс: %+v (ожидали серию 3, заморозку %s)", p, wantFreeze)
 	}
 }
+
+// Обзор прогресса на настоящей Postgres: события за несколько суток дают старт, темп и накопленные часы.
+func TestOverviewOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	midday := func(back int) time.Time {
+		n := time.Now().UTC().AddDate(0, 0, -back)
+		return time.Date(n.Year(), n.Month(), n.Day(), 10, 0, 0, 0, time.UTC)
+	}
+	for _, back := range []int{1, 5, 20} {
+		for _, r := range minimumDay(midday(back)) {
+			if _, err := q.AppendEvent(ctx, db.AppendEventParams{UserID: 1, Type: r.Type, SchemaVersion: 1, OccurredAt: r.OccurredAt, Payload: []byte(`{"correct":true}`)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	rec := e.do(http.MethodGet, overviewPath, "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	var o api.ProgressOverview
+	if err := json.Unmarshal(rec.Body.Bytes(), &o); err != nil {
+		t.Fatal(err)
+	}
+	wantStart := midday(20).Format("2006-01-02")
+	if o.StartedOn == nil || *o.StartedOn != wantStart || o.DaysSinceStart != 21 || !o.PaceReady || o.StudiedMinutes != 30 || len(o.Daily) != 90 {
+		t.Fatalf("обзор: %+v (ожидали старт %s, 21 сутки, 30 минут)", o, wantStart)
+	}
+	if last := o.Daily[89]; last.CumulativeHours != 0.5 {
+		t.Fatalf("накопленные часы к сегодня: %v, ожидали 0.5", last.CumulativeHours)
+	}
+}
