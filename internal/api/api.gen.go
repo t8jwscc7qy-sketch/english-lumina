@@ -341,7 +341,7 @@ type Exercise struct {
 	// Topic Основная тема упражнения
 	Topic string `json:"topic"`
 
-	// Translation Перевод-подсказка на русском
+	// Translation Перевод-подсказка на русском (для translate всегда пустая строка, русская фраза лежит в prompt)
 	Translation string `json:"translation"`
 
 	// Words Только для match, пять английских слов в фиксированном порядке

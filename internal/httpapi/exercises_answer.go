@@ -312,6 +312,10 @@ const maxAccepted = 3
 // (без основного и без совпавшего; список всегда есть, пусть и пустой).
 func setTranslateResult(result *api.AnswerResult, answers []string, matched, nearMiss string) {
 	accepted := []string{}
+	if len(answers) == 0 {
+		result.Accepted = &accepted
+		return
+	}
 	for _, a := range answers[1:] {
 		if a != matched && len(accepted) < maxAccepted {
 			accepted = append(accepted, a)

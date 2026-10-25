@@ -530,7 +530,7 @@ export interface components {
             kind: "gap" | "order" | "form" | "match" | "translate";
             /** @description gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles); translate — русское предложение, которое нужно перевести вводом */
             prompt: string;
-            /** @description Перевод-подсказка на русском */
+            /** @description Перевод-подсказка на русском (для translate всегда пустая строка, русская фраза лежит в prompt) */
             translation: string;
             /** @description Варианты ответа; пустой список — ответ вводится вручную (для order всегда пустой) */
             choices: string[];

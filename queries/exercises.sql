@@ -125,6 +125,20 @@ WHERE p.ru_id = sqlc.arg(ru_id)::bigint
 ORDER BY e.id
 LIMIT sqlc.arg(max_rows)::int;
 
+-- name: ListTranslateAlternatives :many
+-- Другие английские предложения с тем же показанным русским переводом (ru_id) для упражнения «перевод»: верны
+-- переводы любой длины (4–10 слов), в отличие от «порядка слов», где нужны те же слова. Само предложение не
+-- возвращается.
+SELECT DISTINCT e.id, e.text
+FROM sentence_pairs p
+JOIN sentences e ON e.id = p.en_id
+WHERE p.ru_id = sqlc.arg(ru_id)::bigint
+  AND p.en_id <> sqlc.arg(en_id)::bigint
+  AND e.lang = 'en'
+  AND e.word_count BETWEEN 4 AND 10
+ORDER BY e.id
+LIMIT sqlc.arg(max_rows)::int;
+
 -- name: ListWeakCardWords :many
 -- Слова карточек пользователя, с которыми были трудности (переобучение или хотя бы одна ошибка): сначала с
 -- наибольшим числом ошибок, затем с ближайшим сроком. Только однословные строчные глаголы и прилагательные:

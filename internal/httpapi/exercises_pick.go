@@ -15,9 +15,10 @@ import (
 // на тему, одна проверка уровней на окно кандидатов, у level:* ещё по одному поиску примеров на слово.
 
 const (
-	maxWindowCandidates = 30 // сколько кандидатов окна проверяем по уровням одним запросом
-	maxLevelBatches     = 2  // сколько раз проверяем уровни в level-пути
-	maxAlternatives     = 5  // сколько альтернативных английских предложений берём для «порядка слов»
+	maxWindowCandidates      = 30 // сколько кандидатов окна проверяем по уровням одним запросом
+	maxLevelBatches          = 2  // сколько раз проверяем уровни в level-пути
+	maxAlternatives          = 5  // сколько альтернативных английских предложений берём для «порядка слов»
+	maxTranslateAlternatives = 20 // сколько альтернативных переводов берём для «перевода» (любой длины)
 )
 
 // idRange — границы номеров предложений; читаются из базы лениво и один раз на вызов next.
@@ -326,7 +327,7 @@ func (s *authServer) translateCandidate(ctx context.Context, rng *idRange, maxLe
 		if !ok || (maxLevel != "" && level > maxLevel) {
 			continue
 		}
-		alts, err := s.store.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: p.row.ID, RuID: p.row.RuID, MaxRows: maxAlternatives})
+		alts, err := s.store.ListTranslateAlternatives(ctx, db.ListTranslateAlternativesParams{EnID: p.row.ID, RuID: p.row.RuID, MaxRows: maxTranslateAlternatives})
 		if err != nil {
 			return gapCandidate{}, false, err
 		}

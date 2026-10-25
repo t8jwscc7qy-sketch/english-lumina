@@ -195,6 +195,52 @@ func (q *Queries) ListTopicRatings(ctx context.Context, userID int64) ([]TopicRa
 	return items, nil
 }
 
+const listTranslateAlternatives = `-- name: ListTranslateAlternatives :many
+SELECT DISTINCT e.id, e.text
+FROM sentence_pairs p
+JOIN sentences e ON e.id = p.en_id
+WHERE p.ru_id = $1::bigint
+  AND p.en_id <> $2::bigint
+  AND e.lang = 'en'
+  AND e.word_count BETWEEN 4 AND 10
+ORDER BY e.id
+LIMIT $3::int
+`
+
+type ListTranslateAlternativesParams struct {
+	RuID    int64
+	EnID    int64
+	MaxRows int32
+}
+
+type ListTranslateAlternativesRow struct {
+	ID   int64
+	Text string
+}
+
+// Другие английские предложения с тем же показанным русским переводом (ru_id) для упражнения «перевод»: верны
+// переводы любой длины (4–10 слов), в отличие от «порядка слов», где нужны те же слова. Само предложение не
+// возвращается.
+func (q *Queries) ListTranslateAlternatives(ctx context.Context, arg ListTranslateAlternativesParams) ([]ListTranslateAlternativesRow, error) {
+	rows, err := q.db.Query(ctx, listTranslateAlternatives, arg.RuID, arg.EnID, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTranslateAlternativesRow{}
+	for rows.Next() {
+		var i ListTranslateAlternativesRow
+		if err := rows.Scan(&i.ID, &i.Text); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWeakCardWords = `-- name: ListWeakCardWords :many
 SELECT l.id AS lexeme_id, l.lemma, l.pos
 FROM cards c

@@ -12,6 +12,8 @@ const (
 	translateMaxLen   = 80
 	// typoMinLen — короче нормализованный вариант опечатку не прощает: на коротких фразах одна буква меняет слово (he ↔ we).
 	typoMinLen = 12
+	// typoMinWord — опечатку прощаем только в слове не короче этого числа букв (в коротких меняется само слово).
+	typoMinWord = 4
 )
 
 // Translate — упражнение «перевод»: русское предложение переводят по-английски вводом.
@@ -76,7 +78,7 @@ func CheckTranslate(answers []string, given string) TranslateVerdict {
 	gr := []rune(g)
 	for _, a := range answers {
 		ar := []rune(normTranslate(a))
-		if len(ar) >= typoMinLen && oneEdit(gr, ar) {
+		if len(ar) >= typoMinLen && typoOf(gr, ar) {
 			return TranslateVerdict{Result: TranslateTypo, Matched: a}
 		}
 	}
@@ -91,7 +93,8 @@ func TranslateTopics(level string) []string {
 	return []string{"skill:translate", "level:" + level}
 }
 
-// contractions раскрываются в таком порядке: частные случаи раньше общего «n't». «'s» и «'d» двусмысленны
+// contractions раскрываются слева направо по тексту; «won't», «can't», «cannot», «shan't» стоят отдельно, чтобы не
+// превратиться в «wo not» и «ca not» через общее «n't». «'s» и «'d» двусмысленны
 // (is/has, would/had) и остаются как есть: если нужны оба написания, они приходят альтернативами.
 var contractions = strings.NewReplacer(
 	"won't", "will not", "can't", "can not", "cannot", "can not", "shan't", "shall not",
@@ -124,41 +127,69 @@ func translatable(s string) bool {
 	return n >= TranslateMinWords && n <= TranslateMaxWords
 }
 
-// oneEdit: строки отличаются ровно одной вставкой, удалением, заменой или перестановкой соседних букв.
-func oneEdit(a, b []rune) bool {
-	if len(a) < len(b) {
-		a, b = b, a
+// typoOf: given — опечатка в expected (обе строки нормализованы). Опечатка — одна правка (замена, лишняя или
+// пропущенная буква, перестановка соседних) в слове не короче четырёх букв. Грамматику и смысл опечаткой не считаем:
+// не прощаются правки на пробеле (слияние и разрыв слов), короткие слова (a/an, he/she, now/not) и «s»/«d» в конце
+// слова (число, лицо, прошедшее время).
+func typoOf(given, expected []rune) bool {
+	a, b := given, expected
+	i := 0
+	for i < len(a) && i < len(b) && a[i] == b[i] {
+		i++
 	}
-	switch len(a) - len(b) {
-	case 0:
-		diff := -1
-		n := 0
-		for i := range a {
-			if a[i] != b[i] {
-				if n == 0 {
-					diff = i
-				}
-				n++
-			}
+	switch {
+	case len(a) == len(b):
+		if i == len(a) {
+			return false
 		}
-		switch n {
-		case 1:
-			return true
-		case 2:
-			return diff+1 < len(a) && a[diff] == b[diff+1] && a[diff+1] == b[diff]
+		if equalRunes(a[i+1:], b[i+1:]) { // замена
+			return wordEdit(b, i, a, i) && !spaceOrInflection(a, i) && !spaceOrInflection(b, i)
 		}
-		return false
-	case 1:
-		i := 0
-		for i < len(b) && a[i] == b[i] {
-			i++
+		if i+1 < len(a) && a[i] == b[i+1] && a[i+1] == b[i] && equalRunes(a[i+2:], b[i+2:]) { // перестановка
+			return wordEdit(b, i, a, i) && !spaceOrInflection(a, i) && !spaceOrInflection(a, i+1) &&
+				!spaceOrInflection(b, i) && !spaceOrInflection(b, i+1)
 		}
-		for ; i < len(b); i++ {
-			if a[i+1] != b[i] {
-				return false
-			}
-		}
-		return true
+	case len(a) == len(b)+1: // лишняя буква в ответе
+		return equalRunes(a[i+1:], b[i:]) && wordEdit(b, min(i, len(b)-1), a, i) && !spaceOrInflection(a, i)
+	case len(b) == len(a)+1: // пропущенная буква
+		return equalRunes(a[i:], b[i+1:]) && wordEdit(b, i, a, min(i, len(a)-1)) && !spaceOrInflection(b, i)
 	}
 	return false
+}
+
+func equalRunes(a, b []rune) bool { return string(a) == string(b) }
+
+// wordEdit: правка лежит в слове не короче четырёх букв (смотрим слово ожидаемой фразы и слово ответа).
+func wordEdit(b []rune, bi int, a []rune, ai int) bool {
+	return wordLen(b, bi) >= typoMinWord && wordLen(a, ai) >= typoMinWord-1
+}
+
+// wordLen — длина слова, в котором стоит символ r[i] (если это пробел, то слова слева).
+func wordLen(r []rune, i int) int {
+	if i >= len(r) {
+		i = len(r) - 1
+	}
+	if i > 0 && r[i] == ' ' {
+		i--
+	}
+	start, end := i, i
+	for start > 0 && r[start-1] != ' ' {
+		start--
+	}
+	for end+1 < len(r) && r[end+1] != ' ' {
+		end++
+	}
+	return end - start + 1
+}
+
+// spaceOrInflection: символ r[i] — пробел или «s»/«d» на конце слова.
+func spaceOrInflection(r []rune, i int) bool {
+	if i >= len(r) {
+		return false
+	}
+	if r[i] == ' ' {
+		return true
+	}
+	atEnd := i == len(r)-1 || r[i+1] == ' '
+	return atEnd && (r[i] == 's' || r[i] == 'd')
 }

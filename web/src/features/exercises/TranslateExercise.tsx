@@ -122,7 +122,7 @@ export function TranslateExercise({
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
                 submit()
-              } else if (e.key === 'Escape' && !frozen) {
+              } else if (e.key === 'Escape' && !frozen && !e.nativeEvent.isComposing) {
                 setText('')
               }
             }}
@@ -140,7 +140,8 @@ export function TranslateExercise({
               !answered && '[--frame:var(--input)]',
               answered && right && '[--frame:var(--grass-text)]',
               answered && !right && '[--frame:var(--coral)]',
-              answered && 'pr-12',
+              // после ответа поле только для просмотра: щелчок не должен отбирать клавиши у карточки
+              answered && 'pointer-events-none pr-12',
             )}
           />
           {answered && (
@@ -227,12 +228,9 @@ export function TranslateDetails({
                   >
                     {edit.missing ?? chars.slice(edit.start, edit.end).join('')}
                   </mark>
-                  {edit.missing !== undefined && (
-                    <span className="sr-only" lang="ru">
-                      {' '}
-                      (пропущена буква)
-                    </span>
-                  )}
+                  <span className="sr-only" lang="ru">
+                    {edit.missing !== undefined ? ' (пропущена буква)' : ' (здесь опечатка)'}
+                  </span>
                   {chars.slice(edit.end).join('')}
                 </>
               ) : (

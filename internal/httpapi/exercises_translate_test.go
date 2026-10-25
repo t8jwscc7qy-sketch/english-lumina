@@ -235,3 +235,96 @@ func TestRepeatTranslateMistake(t *testing.T) {
 		t.Fatalf("после первого верного повтора: %+v", res.Mistake)
 	}
 }
+
+// Верны переводы любой длины: «I said I'd try» и «I said I would try» — один смысл (в отличие от «порядка слов»).
+func TestNextTranslateAcceptsAlternativeOfOtherLength(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	translateFirst(e)
+	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I said I'd try.")}
+	e.store.addPair(10, 5010, "I said I'd try.", 4)
+	e.store.addPair(11, 5010, "I said I would try.", 5)
+	knownAll(e, "A1", "i", "said", "d", "i'd", "would", "try")
+
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	if ex.Kind != api.Translate {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+	var ans exerciseAnswer
+	if err := json.Unmarshal(e.store.exercises[ex.Id].Answer, &ans); err != nil || !slices.Equal(ans.Answers, []string{"I said I'd try.", "I said I would try."}) {
+		t.Fatalf("допустимые ответы: %s (%v)", e.store.exercises[ex.Id].Answer, err)
+	}
+	res := answerTranslate(t, e, token, ex.Id, "i said i would try", "k1")
+	if !res.Correct || res.NearMiss != nil {
+		t.Fatalf("перевод другой длины должен быть верным: %+v", res)
+	}
+}
+
+// Повтор по ключу после ответа другим допустимым переводом отдаёт тот же список «Так тоже можно»:
+// совпавший вариант хранится в событии.
+func TestAnswerTranslateReplayKeepsAccepted(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	id := seedTranslate(t, e, 1, translateSentence, "Every morning we eat red apples.", "We have red apples every morning.")
+	first := answerTranslate(t, e, token, id, "Every morning we eat red apples", "k1")
+	again := answerTranslate(t, e, token, id, "Every morning we eat red apples", "k1")
+	if first.Accepted == nil || again.Accepted == nil || !slices.Equal(*first.Accepted, *again.Accepted) {
+		t.Fatalf("список изменился при повторе: %v → %v", first.Accepted, again.Accepted)
+	}
+	if !slices.Equal(*again.Accepted, []string{"We have red apples every morning."}) {
+		t.Fatalf("accepted %v: без основного и без совпавшего", *again.Accepted)
+	}
+}
+
+func TestAnswerTranslateOtherKeyAfterAnswerIsConflict(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	id := seedTranslate(t, e, 1, translateSentence)
+	answerTranslate(t, e, token, id, "we eat red apples every morning", "k1")
+	rec := e.do(http.MethodPost, answerPath, answerBody(id, "they drink tea", "k2"), withCookie(token))
+	if rec.Code != http.StatusConflict || errorCode(t, rec.Body.String()) != api.ErrorErrorCodeAlreadyAnswered {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	if len(answerEvents(e)) != 1 {
+		t.Fatalf("событий %d, ждали 1", len(answerEvents(e)))
+	}
+}
+
+// Опечатка на повторе ошибки засчитывается как верный ответ: серия ошибки двигается.
+func TestRepeatTranslateTypoAdvancesStreak(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	mid := seedMistake(e, 7, time.Now().Add(-time.Minute), 0)
+	m := e.store.mistakes[mid]
+	m.Kind = "translate"
+	m.Topics = []string{translateTopic, "level:A1"}
+	m.Payload, _ = json.Marshal(exercisePayload{Prompt: "Мы едим красные яблоки каждое утро.", Choices: []string{}, Topic: translateTopic})
+	m.Answer, _ = json.Marshal(exerciseAnswer{Answers: []string{translateSentence}})
+	e.store.mistakes[mid] = m
+
+	ex := decodeExercise(t, getNext(t, e, token))
+	if ex.Repeat == nil || !*ex.Repeat {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+	res := answerTranslate(t, e, token, ex.Id, "we eat red aples every morning", "k1")
+	if !res.Correct || res.NearMiss == nil || res.Mistake == nil || res.Mistake.Streak != 1 {
+		t.Fatalf("результат: %+v / %+v", res, res.Mistake)
+	}
+}
+
+// Контроль к TestNextTranslateSkipsUnsuitable: тот же набор данных с подходящим предложением даёт «перевод», поэтому
+// отсутствие «перевода» для плохих предложений — не следствие настройки теста.
+func TestNextTranslateControlSentenceIsServed(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	translateFirst(e)
+	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, translateSentence)}
+	knownAll(e, "A1", translateWords...)
+	if ex := decodeExercise(t, getNext(t, e, token)); ex.Kind != api.Translate {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+}
