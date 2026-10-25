@@ -13,6 +13,7 @@ import { AddToCards } from './AddToCards'
 import { MatchExercise } from './MatchExercise'
 import { lastInput, prefersReducedMotion } from './matchFx'
 import { OrderExercise } from './OrderExercise'
+import { TranslateDetails, TranslateExercise } from './TranslateExercise'
 
 /** Ключ идемпотентности: новый на каждое упражнение. Повтор с тем же ключом сервер не применяет дважды. */
 function newKey(): string {
@@ -82,16 +83,23 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
   const inputRef = useRef<HTMLInputElement>(null)
   const isOrder = exercise.kind === 'order'
   const isMatch = exercise.kind === 'match'
-  // Лисёнок подпрыгивает только при пяти из пяти и только если ответ дан мышью и движение не отключено.
-  const celebrate = useMemo(() => isMatch && !!result?.correct && lastInput() === 'pointer' && !prefersReducedMotion(), [isMatch, result])
-  const manual = !isOrder && !isMatch && exercise.choices.length === 0
+  const isTranslate = exercise.kind === 'translate'
+  // Анимации «перевода» и прыжок лисёнка: только если ответ дан мышью или касанием и движение не отключено.
+  const translateMotion = useMemo(() => isTranslate && !!result && lastInput() === 'pointer' && !prefersReducedMotion(), [isTranslate, result])
+  // Лисёнок подпрыгивает при пяти из пяти в «сопоставлении» и при ответе без опечатки в «переводе» (с тем же условием на ввод).
+  const celebrate = useMemo(
+    () => (isMatch || (isTranslate && !result?.nearMiss)) && !!result?.correct && lastInput() === 'pointer' && !prefersReducedMotion(),
+    [isMatch, isTranslate, result],
+  )
+  const manual = !isOrder && !isMatch && !isTranslate && exercise.choices.length === 0
 
   // Новое упражнение (и результат ответа) забирает фокус: клавиши работают сразу.
   // Фокус остаётся на контейнере и после ответа: тогда 1–4, Пробел и Enter работают без лишних Tab. В ручном вводе до ответа фокус в поле.
   useEffect(() => {
     if (manual && !result) inputRef.current?.focus()
+    else if (isTranslate && !result) return // поле «перевода» забирает фокус само
     else articleRef.current?.focus()
-  }, [exercise.id, result, manual])
+  }, [exercise.id, result, manual, isTranslate])
 
   const unauthorized = answer.error instanceof ApiError && answer.error.code === 'unauthorized'
   // После сбоя без ответа сервера (сеть, 5xx) неизвестно, засчитан ли ответ: менять вариант нельзя, повтор идёт с тем же ключом.
@@ -155,7 +163,7 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
       {exercise.repeat && <p className="text-sm font-semibold text-muted-foreground">Повтор ошибки</p>}
       <p className="text-sm text-muted-foreground">{topicName(exercise.topic)}</p>
 
-      {isOrder || isMatch ? (
+      {isTranslate ? null : isOrder || isMatch ? (
         <p lang="ru" className="break-words text-xl leading-relaxed">
           {exercise.prompt}
         </p>
@@ -182,6 +190,18 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
           correct={result?.correct}
           onSubmit={submit}
           restoreFocus={() => articleRef.current?.focus()}
+        />
+      )}
+
+      {isTranslate && (
+        <TranslateExercise
+          prompt={exercise.prompt}
+          frozen={!!result || answer.isPending || locked !== undefined}
+          pending={answer.isPending}
+          result={result}
+          motion={translateMotion}
+          given={given}
+          onSubmit={submit}
         />
       )}
 
@@ -225,7 +245,7 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
         </form>
       )}
 
-      {!manual && !isOrder && !isMatch && (
+      {!manual && !isOrder && !isMatch && !isTranslate && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {exercise.choices.map((choice, i) => {
             const isRight = !!result && choice === result.answer
@@ -278,7 +298,9 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
               className={celebrate ? 'fox-jump' : undefined}
             />
             {result.correct ? <Check aria-hidden className="size-5 text-grass-text" /> : <X aria-hidden className="size-5" />}
-            {isMatch ? (result.correct ? 'Все пары верны' : 'Есть ошибки в парах') : result.correct ? 'Верно' : 'Неверно'}
+            {isMatch
+              ? result.correct ? 'Все пары верны' : 'Есть ошибки в парах'
+              : result.correct ? (result.nearMiss ? 'Почти верно: опечатка' : 'Верно') : 'Неверно'}
           </p>
           {!result.correct && !isMatch && (
             <p>
@@ -288,7 +310,8 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
               </span>
             </p>
           )}
-          {!isMatch && <p className="text-muted-foreground">{result.translation}</p>}
+          {isTranslate && <TranslateDetails given={given ?? ''} result={result} motion={translateMotion} />}
+          {!isMatch && result.translation && <p className="text-muted-foreground">{result.translation}</p>}
           {result.ratings.length > 0 && (
             <div data-affected className="text-sm text-muted-foreground">
               {'Затронуто: '}
