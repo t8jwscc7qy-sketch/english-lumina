@@ -326,6 +326,39 @@ type Me struct {
 	Login string `json:"login"`
 }
 
+// Milestone defines model for Milestone.
+type Milestone struct {
+	// Id Стабильный ключ (streak-7, hours-10, answers-100, first-card)
+	Id string `json:"id"`
+
+	// Kind streak, hours, answers или first
+	Kind     string            `json:"kind"`
+	Progress MilestoneProgress `json:"progress"`
+
+	// ReachedOn Первые сутки, когда веха достигнута (YYYY-MM-DD); нет поля, если не достигнута
+	ReachedOn *string `json:"reachedOn,omitempty"`
+	Threshold int     `json:"threshold"`
+	Title     string  `json:"title"`
+}
+
+// MilestoneList defines model for MilestoneList.
+type MilestoneList struct {
+	// Milestones Все вехи по порядку линеек и порогов
+	Milestones []Milestone `json:"milestones"`
+
+	// NewToday id вех, достигнутых сегодня; самая крупная первой
+	NewToday []string `json:"newToday"`
+}
+
+// MilestoneProgress defines model for MilestoneProgress.
+type MilestoneProgress struct {
+	// Target Порог вехи
+	Target float32 `json:"target"`
+
+	// Value Текущее значение в единицах порога (дни, часы, ответы), не больше порога
+	Value float32 `json:"value"`
+}
+
 // Mistake defines model for Mistake.
 type Mistake struct {
 	// Answer Верный ответ
@@ -605,6 +638,9 @@ type ServerInterface interface {
 	// ListExerciseTopics Темы с рейтингом
 	// (GET /api/v1/exercises/topics)
 	ListExerciseTopics(w http.ResponseWriter, r *http.Request)
+	// GetMilestones Вехи
+	// (GET /api/v1/milestones)
+	GetMilestones(w http.ResponseWriter, r *http.Request)
 	// ListMistakes Банк ошибок
 	// (GET /api/v1/mistakes)
 	ListMistakes(w http.ResponseWriter, r *http.Request)
@@ -757,6 +793,20 @@ func (siw *ServerInterfaceWrapper) ListExerciseTopics(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListExerciseTopics(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMilestones operation middleware
+func (siw *ServerInterfaceWrapper) GetMilestones(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMilestones(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1015,6 +1065,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/mistakes", wrapper.ListMistakes)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/today", wrapper.GetProgressToday)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/overview", wrapper.GetProgressOverview)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/milestones", wrapper.GetMilestones)
 
 	return m
 }

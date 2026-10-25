@@ -310,6 +310,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Вехи
+         * @description Вехи занятий: серия, часы, ответы, «первое». Считаются из журнала событий (окно 365 суток), сутки в часовом поясе настроек (без настроек UTC). `newToday` — вехи, достигнутые сегодня (для «вспышки успеха» в итоге дня). Ничего не записывает и не хранит.
+         */
+        get: operations["getMilestones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -608,6 +628,29 @@ export interface components {
             paceReady: boolean;
             /** @description Последние 90 суток по порядку, без пропусков */
             daily: components["schemas"]["DailyPoint"][];
+        };
+        MilestoneProgress: {
+            /** @description Текущее значение в единицах порога (дни, часы, ответы), не больше порога */
+            value: number;
+            /** @description Порог вехи */
+            target: number;
+        };
+        Milestone: {
+            /** @description Стабильный ключ (streak-7, hours-10, answers-100, first-card) */
+            id: string;
+            /** @description streak, hours, answers или first */
+            kind: string;
+            title: string;
+            threshold: number;
+            /** @description Первые сутки, когда веха достигнута (YYYY-MM-DD); нет поля, если не достигнута */
+            reachedOn?: string;
+            progress: components["schemas"]["MilestoneProgress"];
+        };
+        MilestoneList: {
+            /** @description Все вехи по порядку линеек и порогов */
+            milestones: components["schemas"]["Milestone"][];
+            /** @description id вех, достигнутых сегодня; самая крупная первой */
+            newToday: string[];
         };
         TopicList: {
             topics: components["schemas"]["Rating"][];
@@ -1138,6 +1181,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressOverview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getMilestones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Вехи */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MilestoneList"];
                 };
             };
             401: components["responses"]["Unauthorized"];

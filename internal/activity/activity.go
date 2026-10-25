@@ -33,6 +33,9 @@ func (d Day) AddDays(n int) Day {
 	return Day{y, int(m), dd}
 }
 
+// Before сообщает, что сутки d раньше o.
+func (d Day) Before(o Day) bool { return d.ordinal() < o.ordinal() }
+
 func (d Day) ordinal() int {
 	return int(time.Date(d.Y, time.Month(d.M), d.D, 12, 0, 0, 0, time.UTC).Unix() / 86400)
 }
