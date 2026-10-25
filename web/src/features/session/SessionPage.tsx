@@ -1,3 +1,4 @@
+import { FoxNote } from '@/components/brand/FoxNote'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -228,8 +229,10 @@ function ExercisesStep({
   if (next.isError && noExercise) {
     return (
       <section className="surface flex flex-col items-start gap-3 p-6">
-        <h2 className="text-title">Подходящих упражнений пока нет</h2>
-        <p className="text-muted-foreground">Попробуй позже или поменяй уровень в настройках.</p>
+        <FoxNote mood="thinking">
+          <h2 className="text-title">Подходящих упражнений пока нет</h2>
+          <p className="text-muted-foreground">Попробуй позже или поменяй уровень в настройках.</p>
+        </FoxNote>
         <div className="flex flex-wrap gap-3">
           <Button asChild>
             <Link to="/">На главную</Link>

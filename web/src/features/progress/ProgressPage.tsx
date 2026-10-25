@@ -1,3 +1,4 @@
+import { FoxNote } from '@/components/brand/FoxNote'
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -158,7 +159,9 @@ function Content({
         {hasData ? (
           <HoursChart points={o.daily} neededMin={needed?.min ?? 0} neededMax={needed?.max ?? 0} />
         ) : (
-          <p className="text-muted-foreground">Начни сессию, и здесь появится линия</p>
+          <FoxNote>
+            <p className="text-muted-foreground">Начни сессию, и здесь появится линия</p>
+          </FoxNote>
         )}
         {needed && (
           <div className="flex flex-col gap-2">
@@ -328,7 +331,9 @@ function TopicMap({
         Карта тем
       </h2>
       {sorted.length === 0 ? (
-        <p className="text-muted-foreground">Пока нет данных — ответь на несколько упражнений.</p>
+        <FoxNote mood="thinking">
+          <p className="text-muted-foreground">Пока нет данных — ответь на несколько упражнений.</p>
+        </FoxNote>
       ) : (
         <ul aria-label="Карта тем" className="flex flex-col divide-y divide-border">
           {sorted.map((t) => (

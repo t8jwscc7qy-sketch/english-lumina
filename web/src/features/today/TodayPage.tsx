@@ -1,6 +1,7 @@
-import { CircleAlert, Layers, Pencil } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { PixelIcon } from '@/components/pixel/PixelIcon'
+import type { IconName } from '@/components/pixel/icons'
 import { XpBar } from '@/components/pixel/XpBar'
 import type { FoxMood } from '@/components/brand/Fox'
 import { Button } from '@/components/ui/button'
@@ -27,7 +28,7 @@ function TaskCard({
   title: string
   value: number | string
   hint: string
-  icon: ReactNode
+  icon: IconName
   tone?: 'default' | 'error'
 }) {
   return (
@@ -38,7 +39,9 @@ function TaskCard({
       {/* div, а не article: у ссылки с article внутри пустое доступное имя (контент article в него не попадает) */}
       <div className="surface flex h-full flex-col gap-2 p-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <span className={tone === 'error' ? 'text-coral-text' : undefined}>{icon}</span>
+          <span className={tone === 'error' ? 'text-coral-text' : undefined}>
+            <PixelIcon name={icon} />
+          </span>
           <h3 className="font-sans text-sm font-semibold">{title}</h3>
         </div>
         <p className="text-display tabular-nums">{value}</p>
@@ -215,14 +218,14 @@ export function TodayPage() {
           title="Карточки к повторению"
           value={cardQueue.data ? cardQueue.data.dueCount : '—'}
           hint="Слова, которые пора вспомнить"
-          icon={<Layers className="size-5" strokeWidth={1.75} aria-hidden />}
+          icon="cards"
         />
         <TaskCard
           to="/exercises"
           title="Упражнения на слабые темы"
           value={d.exercises.count}
           hint={`Тема: ${d.exercises.topic}`}
-          icon={<Pencil className="size-5" strokeWidth={1.75} aria-hidden />}
+          icon="exercises"
         />
         <TaskCard
           to="/mistakes"
@@ -230,7 +233,7 @@ export function TodayPage() {
           value={d.mistakes}
           hint="Вернутся, пока не исчезнут"
           tone="error"
-          icon={<CircleAlert className="size-5" strokeWidth={1.75} aria-hidden />}
+          icon="mistakes"
         />
       </section>
     </div>

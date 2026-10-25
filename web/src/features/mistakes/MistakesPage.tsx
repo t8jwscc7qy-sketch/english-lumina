@@ -1,3 +1,4 @@
+import { FoxNote } from '@/components/brand/FoxNote'
 import { useEffect } from 'react'
 import { Navigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -69,9 +70,13 @@ export function MistakesPage() {
           </dl>
 
           {data.open.length === 0 ? (
-            <p className="surface p-6 text-muted-foreground">
-              Пока ошибок нет. Ошибки из упражнений появятся здесь и вернутся через день
-            </p>
+            <div className="surface p-6">
+              <FoxNote mood="happy">
+                <p className="text-muted-foreground">
+                  Пока ошибок нет. Ошибки из упражнений появятся здесь и вернутся через день
+                </p>
+              </FoxNote>
+            </div>
           ) : (
             groupByTopic(data.open).map(([topic, items]) => (
               <section key={topic} className="surface flex flex-col gap-2 p-6">
