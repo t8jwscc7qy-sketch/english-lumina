@@ -592,7 +592,7 @@ export interface components {
             day: string;
             /** @description Минут занятий за сутки (одна десятая) */
             minutes: number;
-            /** @description Часов занятий с самого начала до конца этих суток (одна сотая) */
+            /** @description Часов занятий с самого начала до конца этих суток (одна тысячная) */
             cumulativeHours: number;
         };
         ProgressOverview: {

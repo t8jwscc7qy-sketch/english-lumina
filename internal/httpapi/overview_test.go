@@ -138,3 +138,12 @@ func TestOverviewEndpointUnauthorized(t *testing.T) {
 		t.Fatalf("статус %d", rec.Code)
 	}
 }
+
+// Накопленные часы округляются до тысячных: до сотых 6,3 минуты превращались в 6,6 («7 мин» вместо «6 мин»).
+func TestBuildOverviewCumulativeHoursKeepsMinutes(t *testing.T) {
+	start := time.Date(2026, 10, 25, 10, 0, 0, 0, time.UTC)
+	o := buildOverview(burst(start, 7, time.Minute), progressNow, "") // 20 + 6×60 = 380 с = 0,10556 ч
+	if got := o.Daily[89].CumulativeHours; got != 0.106 {
+		t.Fatalf("накопленные часы %v, ожидали 0.106", got)
+	}
+}

@@ -237,7 +237,7 @@ type CefrLevel string
 
 // DailyPoint defines model for DailyPoint.
 type DailyPoint struct {
-	// CumulativeHours Часов занятий с самого начала до конца этих суток (одна сотая)
+	// CumulativeHours Часов занятий с самого начала до конца этих суток (одна тысячная)
 	CumulativeHours float32 `json:"cumulativeHours"`
 	Day             string  `json:"day"`
 

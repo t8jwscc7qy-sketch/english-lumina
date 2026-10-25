@@ -53,4 +53,22 @@ describe('HoursChart', () => {
     fireEvent.pointerLeave(surface)
     expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument()
   })
+
+  it('при малых числах ось подписана в минутах, а не «0 ч, 1 ч, 1 ч»', () => {
+    // 6 минут за все 90 суток: шкала не меньше 15 минут (0,25 ч)
+    const pts = points(90, 0).map((p, i) => (i >= 89 ? { ...p, minutes: 6, cumulativeHours: 0.1 } : p))
+    render(<HoursChart points={pts} neededMin={262} neededMax={350} />)
+    expect(screen.getByText('0 мин')).toBeInTheDocument()
+    expect(screen.getByText('8 мин')).toBeInTheDocument()
+    expect(screen.getByText('15 мин')).toBeInTheDocument()
+    expect(screen.getByText('6 мин')).toBeInTheDocument() // подпись последнего значения
+    expect(screen.queryAllByText('1 ч')).toHaveLength(0)
+  })
+
+  it('от часа ось в часах: до 10 с десятыми, дальше целые', () => {
+    const { rerender } = render(<HoursChart points={points(90, 4)} neededMin={262} neededMax={350} />) // итог 6 ч
+    expect(screen.getByText('3,5 ч')).toBeInTheDocument() // середина шкалы 6,9 ч / 2
+    rerender(<HoursChart points={points(90, 60)} neededMin={262} neededMax={350} />) // итог 90 ч
+    expect(screen.getByText('52 ч')).toBeInTheDocument()
+  })
 })

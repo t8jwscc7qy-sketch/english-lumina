@@ -81,7 +81,7 @@ func buildOverview(events []db.ListActivityEventsRow, now time.Time, tz string) 
 	}
 	out.PaceReady = out.DaysSinceStart >= paceDays
 	for _, p := range activity.CumulativeSeries(perDay, today, overviewDailyDays) {
-		out.Daily = append(out.Daily, api.DailyPoint{Day: dayString(p.Day), Minutes: round(p.Minutes.Minutes(), 1), CumulativeHours: round(p.CumulativeHours, 2)})
+		out.Daily = append(out.Daily, api.DailyPoint{Day: dayString(p.Day), Minutes: round(p.Minutes.Minutes(), 1), CumulativeHours: round(p.CumulativeHours, 3)})
 	}
 	return out
 }
