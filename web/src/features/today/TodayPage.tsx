@@ -2,6 +2,7 @@ import { CircleAlert, Layers, Pencil } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { XpBar } from '@/components/pixel/XpBar'
+import { Fox, type FoxMood } from '@/components/brand/Fox'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/auth/auth'
 import { useCardQueue } from '@/features/cards/cards'
@@ -45,6 +46,22 @@ function TaskCard({
   )
 }
 
+/** Настроение лисёнка и его реплика по состоянию дня. Ничего не выдумывает: только факты из прогресса и часа суток. */
+function foxState(
+  p: ReturnType<typeof useProgressToday>['data'],
+  now: Date,
+  minimum: number,
+): { mood: FoxMood; line: string | null } {
+  if (!p) return { mood: 'neutral', line: null }
+  if (p.doneToday) return { mood: 'happy', line: 'Минимум на сегодня выполнен. Дальше по желанию.' }
+  if (now.getHours() < 5) return { mood: 'sleeping', line: 'Уже поздно. Можно чуть позаниматься или лечь спать.' }
+  if (p.minutes === 0 && p.streakDays === 0) {
+    return { mood: 'thinking', line: `Давай начнём с малого: хватит и ${minimum} минут.` }
+  }
+  const left = Math.max(0, minimum - p.minutes)
+  return { mood: 'neutral', line: `До минимума на сегодня ещё ${formatMinutes(left)}\u00a0мин.` }
+}
+
 export function TodayPage() {
   const me = useMe()
   const settings = useSettings()
@@ -66,85 +83,103 @@ export function TodayPage() {
   const streakDays = p?.streakDays ?? 0
   const minutes = p?.minutes ?? 0
   const minimum = p?.minimumDay ?? 10
+  const { mood, line } = foxState(p, now, minimum)
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 p-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:p-8">
-      <header className="flex flex-col gap-2 xl:col-start-1">
-        <h1 className="text-title break-words">Привет, {me.data?.login}</h1>
-        <p className="text-muted-foreground">
-          Цель: {current} → {target} · {dailyMinutes}&nbsp;мин в день
-        </p>
-        <p>
-          {forecast.kind === 'reached' ? (
-            <>
-              Цель достигнута. <Link to="/settings" className="underline underline-offset-4">Выбери цель повыше</Link>
-            </>
-          ) : (
-            <>
-              До {target} примерно{' '}
-              <span className="font-semibold">{describeDuration(forecast.days)}</span>
-            </>
-          )}
-        </p>
-        {/* Честная пометка. Жёлтый в этом мире значит «опыт и главное действие», поэтому рамка пунктирная нейтральная. */}
-        <p
-          role="note"
-          className="mt-1 w-fit rounded-lg border border-dashed border-input bg-card px-3 py-1 text-sm font-semibold"
-        >
-          Демо-данные: путь, опыт уровня и числа в задачах на упражнения и ошибки пока демонстрационные.
-        </p>
-      </header>
-
-      {/* Серия и главное действие. Ниже xl идут сразу под приветствием, на широком экране — правой колонкой. */}
-      <aside
-        aria-label="Серия и сессия"
-        className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3 xl:col-start-2 xl:row-span-3 xl:row-start-1 xl:flex xl:flex-col xl:gap-6"
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 p-6 xl:p-8">
+      <section
+        aria-label="Главное на сегодня"
+        className="surface relative grid grid-cols-[minmax(0,1fr)] items-center gap-6 overflow-hidden p-6 md:grid-cols-[auto_minmax(0,1fr)] xl:grid-cols-[auto_minmax(0,1fr)_19rem] xl:gap-8 xl:p-8"
       >
-        <section className="surface flex flex-col gap-1 p-4">
-          <h2 className="font-sans text-sm font-semibold text-muted-foreground">Серия</h2>
-          <p className="text-title md:text-display">
-            {streakDays} {streakWord(streakDays)}
-          </p>
-          {p?.freezeUsedOn && (
-            <p className="text-sm text-muted-foreground">{`Заморозка спасла ${formatDayRu(p.freezeUsedOn)}`}</p>
-          )}
-        </section>
-
-        <section className="surface flex flex-col gap-3 p-4">
-          <h2 className="font-sans text-sm font-semibold text-muted-foreground">
-            Минимальный день
-          </h2>
-          <XpBar
-            value={minutes}
-            total={minimum}
-            label="Минимальный день"
-            segments={10}
-          />
-          <p className="text-sm tabular-nums">
-            {`${formatMinutes(minutes)}\u00a0из\u00a0${minimum}\u00a0мин`}
-          </p>
-        </section>
-
-        <div className="flex flex-col gap-2">
-          <Button asChild size="lg">
-            <Link to="/session">{sessionButtonLabel(p)}</Link>
-          </Button>
-          {progress.isError && (
-            <div className="flex flex-wrap items-center gap-2">
-              <p role="alert" className="text-sm text-coral-text">
-                {progress.error.message}
-              </p>
-              <Button size="sm" variant="secondary" onClick={() => progress.refetch()}>
-                Повторить
-              </Button>
-            </div>
-          )}
+        {/* Мягкое сияние за лисёнком: цвета токенов, без декоративных фигур. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-10 -top-16 size-72 rounded-full opacity-70 blur-2xl"
+          style={{
+            background:
+              'radial-gradient(closest-side, color-mix(in srgb, var(--sun) 38%, transparent), color-mix(in srgb, var(--sky) 16%, transparent) 60%, transparent)',
+          }}
+        />
+        <div className="relative mx-auto md:mx-0">
+          <Fox mood={mood} size={168} className="max-md:size-32" />
         </div>
-      </aside>
+
+        <header className="relative flex min-w-0 flex-col gap-3">
+          <h1 className="text-title break-words">Привет, {me.data?.login}</h1>
+          {line && (
+            <p className="relative w-fit max-w-prose rounded-2xl rounded-tl-sm bg-secondary px-4 py-2 font-semibold">
+              {line}
+            </p>
+          )}
+          <p className="text-muted-foreground">
+            Цель: {current} → {target} · {dailyMinutes}&nbsp;мин в день
+          </p>
+          <p>
+            {forecast.kind === 'reached' ? (
+              <>
+                Цель достигнута. <Link to="/settings" className="underline underline-offset-4">Выбери цель повыше</Link>
+              </>
+            ) : (
+              <>
+                До {target} примерно{' '}
+                <span className="font-semibold">{describeDuration(forecast.days)}</span>
+              </>
+            )}
+          </p>
+          {/* Честная пометка. Жёлтый в этом мире значит «опыт и главное действие», поэтому рамка пунктирная нейтральная. */}
+          <p
+            role="note"
+            className="w-fit rounded-lg border border-dashed border-input bg-card px-3 py-1 text-sm font-semibold"
+          >
+            Демо-данные: путь, опыт уровня и числа в задачах на упражнения и ошибки пока демонстрационные.
+          </p>
+        </header>
+
+        <aside
+          aria-label="Серия и сессия"
+          className="relative flex flex-col gap-4 md:col-span-2 xl:col-span-1"
+        >
+          <section className="flex flex-col gap-1">
+            <h2 className="font-sans text-sm font-semibold text-muted-foreground">Серия</h2>
+            <p className="text-display">
+              {streakDays} {streakWord(streakDays)}
+            </p>
+            {p?.freezeUsedOn && (
+              <p className="text-sm text-muted-foreground">{`Заморозка спасла ${formatDayRu(p.freezeUsedOn)}`}</p>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-2">
+            <h2 className="font-sans text-sm font-semibold text-muted-foreground">
+              Минимальный день
+            </h2>
+            <XpBar value={minutes} total={minimum} label="Минимальный день" segments={10} />
+            <p className="text-sm tabular-nums">
+              {`${formatMinutes(minutes)}\u00a0из\u00a0${minimum}\u00a0мин`}
+            </p>
+          </section>
+
+          <div className="flex flex-col gap-2">
+            <Button asChild size="lg">
+              <Link to="/session">{sessionButtonLabel(p)}</Link>
+            </Button>
+            {progress.isError && (
+              <div className="flex flex-wrap items-center gap-2">
+                <p role="alert" className="text-sm text-coral-text">
+                  {progress.error.message}
+                </p>
+                <Button size="sm" variant="secondary" onClick={() => progress.refetch()}>
+                  Повторить
+                </Button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </section>
 
       <section
         aria-labelledby="path-title"
-        className="surface flex flex-col gap-6 p-6 xl:col-start-1"
+        className="surface flex flex-col gap-6 p-6 xl:p-8"
       >
         <h2 id="path-title" className="text-title">
           Твой путь
@@ -166,7 +201,7 @@ export function TodayPage() {
         </div>
       </section>
 
-      <section aria-labelledby="tasks-title" className="grid gap-4 md:grid-cols-3 xl:col-start-1">
+      <section aria-labelledby="tasks-title" className="grid gap-4 md:grid-cols-3">
         <h2 id="tasks-title" className="sr-only">
           Задачи на сегодня
         </h2>

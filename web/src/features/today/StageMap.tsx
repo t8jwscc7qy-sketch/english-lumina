@@ -1,5 +1,4 @@
 import { motion } from 'motion/react'
-import { steps } from 'motion'
 import { Mascot } from '@/components/brand/Wordmark'
 import { Dither } from '@/components/pixel/Dither'
 import { PixelArtSvg } from '@/components/pixel/PixelArtSvg'
@@ -45,13 +44,13 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               aria-label={status ? `${level}, ${status}` : level}
               className="flex min-w-0 flex-col items-center"
             >
-              <div className="flex h-24 items-end justify-center">
+              <div className="flex h-28 items-end justify-center">
                 {stage === 'current' ? (
                   <motion.div
                     animate={{ y: [0, -4, 0] }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: steps(2) }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    <Mascot scale={4} className="max-md:h-auto max-md:w-9" />
+                    <Mascot scale={8} className="max-md:size-14" />
                   </motion.div>
                 ) : (
                   <PixelArtSvg

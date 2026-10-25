@@ -193,3 +193,55 @@ describe('плитка «Карточки к повторению»', () => {
     expect(link).not.toHaveTextContent('—')
   })
 })
+
+describe('лисёнок и его реплика', () => {
+  afterEach(() => vi.useRealTimers())
+
+  const withHour = (hour: number) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 25, hour, 0, 0))
+  }
+  const mood = (container: HTMLElement) => ({
+    happy: !!container.querySelector('ellipse[fill="var(--coral-soft)"]'),
+    sleeping: !!container.querySelector('.fox-zzz'),
+    thinking: !!container.querySelector('g[stroke="var(--fox-dark)"] path'),
+  })
+
+  it('минимум выполнен: радуется', async () => {
+    withHour(14)
+    const { container } = renderToday(SETTINGS, undefined, () =>
+      jsonResponse(200, { ...PROGRESS, minutes: 12, doneToday: true }),
+    )
+    expect(await screen.findByText(/минимум на сегодня выполнен/i)).toBeInTheDocument()
+    expect(mood(container).happy).toBe(true)
+  })
+
+  it('ночью спит, если минимум ещё не выполнен', async () => {
+    withHour(3)
+    const { container } = renderToday()
+    expect(await screen.findByText(/уже поздно/i)).toBeInTheDocument()
+    expect(mood(container).sleeping).toBe(true)
+  })
+
+  it('нет серии и минут: думает и зовёт начать с малого', async () => {
+    withHour(14)
+    const { container } = renderToday(SETTINGS, undefined, () =>
+      jsonResponse(200, { ...PROGRESS, minutes: 0, streakDays: 0 }),
+    )
+    expect(await screen.findByText(/начнём с малого/i)).toBeInTheDocument()
+    expect(mood(container).thinking).toBe(true)
+  })
+
+  it('днём в процессе: называет, сколько осталось до минимума', async () => {
+    withHour(14)
+    renderToday()
+    expect(await screen.findByText(/ещё 6\s+мин/)).toBeInTheDocument()
+  })
+
+  it('пока прогресс не загрузился, реплики нет', async () => {
+    withHour(14)
+    renderToday(SETTINGS, undefined, () => new Promise<Response>(() => {}) as unknown as Response)
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.queryByText(/до минимума|начнём с малого|уже поздно/i)).not.toBeInTheDocument()
+  })
+})

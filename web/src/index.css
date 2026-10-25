@@ -54,6 +54,13 @@
   --rail-foreground: #f7f7ff;
   --rail-muted: #a9b0e0;
   --radius: 0.75rem;
+  /* Маскот «Вёрст»: цвета персонажа, одни на обе темы (оранжевый держится и на бумаге, и на ночи). */
+  --fox: #f08a3c;
+  --fox-light: #f9aa62;
+  --fox-dark: #c4601d;
+  --fox-cream: #fff2e0;
+  --fox-ear: #f2a0a0;
+  --sky-deep: #2a9fcb;
 }
 
 .dark {
@@ -225,3 +232,26 @@
   }
 }
 
+
+/* Маскот «Вёрст»: дышит, моргает, виляет хвостом. При «уменьшить движение» глобальное правило оставляет первый кадр. */
+@keyframes fox-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.6px); }
+}
+@keyframes fox-blink {
+  0%, 94%, 100% { transform: scaleY(1); }
+  97% { transform: scaleY(0.1); }
+}
+@keyframes fox-tail {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-5deg); }
+}
+@keyframes fox-zzz {
+  0%, 100% { opacity: 0.35; transform: translateY(2px); }
+  50% { opacity: 1; transform: translateY(-2px); }
+}
+.fox-breathe { animation: fox-breathe 3.4s ease-in-out infinite; }
+.fox-blink { transform-box: fill-box; transform-origin: center; animation: fox-blink 5.5s ease-in-out infinite; }
+.fox-tail { transform-box: fill-box; transform-origin: 0% 100%; animation: fox-tail 3s ease-in-out infinite; }
+.fox-zzz { animation: fox-zzz 2.4s ease-in-out infinite; }
+.fox-zzz-2 { animation-delay: 0.8s; }
