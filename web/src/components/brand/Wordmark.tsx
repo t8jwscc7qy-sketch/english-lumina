@@ -1,5 +1,6 @@
 import { PixelArtSvg } from '@/components/pixel/PixelArtSvg'
-import { mascot, post, wordmarkGround } from './logo-data'
+import { post, wordmarkGround } from './logo-data'
+import { Fox, type FoxMood } from './Fox'
 
 interface BrandProps {
   scale?: number
@@ -11,9 +12,14 @@ export function Wordmark({ scale = 3, className }: BrandProps) {
   return <PixelArtSvg art={wordmarkGround} scale={scale} title="Verst" className={className} />
 }
 
-/** Маскот «Верста»: полосатый столбик-веха с лицом. Декоративный, если не задан title. */
-export function Mascot({ scale = 4, className, title }: BrandProps & { title?: string }) {
-  return <PixelArtSvg art={mascot} scale={scale} title={title} className={className} />
+/** Маскот «Вёрст» (пиксельный лисёнок). `scale` — размер клетки в пикселях, ширина = 28 × scale. Декоративный, если не задан title. */
+export function Mascot({
+  scale = 4,
+  className,
+  title,
+  mood,
+}: BrandProps & { title?: string; mood?: FoxMood }) {
+  return <Fox scale={scale} mood={mood} className={className} title={title} />
 }
 
 /** Столб без лица: для малых размеров (иконка, вкладка). */

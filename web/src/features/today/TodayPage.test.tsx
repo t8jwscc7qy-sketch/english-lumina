@@ -193,3 +193,63 @@ describe('плитка «Карточки к повторению»', () => {
     expect(link).not.toHaveTextContent('—')
   })
 })
+
+describe('лисёнок и его реплика', () => {
+  afterEach(() => vi.useRealTimers())
+
+  const withHour = (hour: number) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 25, hour, 0, 0))
+  }
+  const mood = (container: HTMLElement) => container.querySelector('svg[data-mood]')?.getAttribute('data-mood')
+
+  it('минимум выполнен: радуется', async () => {
+    withHour(14)
+    const { container } = renderToday(SETTINGS, undefined, () =>
+      jsonResponse(200, { ...PROGRESS, minutes: 12, doneToday: true }),
+    )
+    expect(await screen.findByText(/минимум на сегодня выполнен/i)).toBeInTheDocument()
+    expect(mood(container)).toBe('happy')
+  })
+
+  it('ночью спит, если минимум ещё не выполнен', async () => {
+    withHour(3)
+    const { container } = renderToday()
+    expect(await screen.findByText(/уже поздно/i)).toBeInTheDocument()
+    expect(mood(container)).toBe('sleeping')
+  })
+
+  it('нет серии и минут: думает и зовёт начать с малого', async () => {
+    withHour(14)
+    const { container } = renderToday(SETTINGS, undefined, () =>
+      jsonResponse(200, { ...PROGRESS, minutes: 0, streakDays: 0 }),
+    )
+    expect(await screen.findByText(/начнём с малого/i)).toBeInTheDocument()
+    expect(mood(container)).toBe('thinking')
+  })
+
+  it('время суток в сцене следует за часом', async () => {
+    withHour(3)
+    const { container, unmount } = renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    expect(container.querySelector('svg[data-phase]')).toHaveAttribute('data-phase', 'night')
+    unmount()
+    withHour(12)
+    const day = renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    expect(day.container.querySelector('svg[data-phase]')).toHaveAttribute('data-phase', 'day')
+  })
+
+  it('днём в процессе: называет, сколько осталось до минимума', async () => {
+    withHour(14)
+    renderToday()
+    expect(await screen.findByText(/ещё 6\s+мин/)).toBeInTheDocument()
+  })
+
+  it('пока прогресс не загрузился, реплики нет', async () => {
+    withHour(14)
+    renderToday(SETTINGS, undefined, () => new Promise<Response>(() => {}) as unknown as Response)
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.queryByText(/до минимума|начнём с малого|уже поздно/i)).not.toBeInTheDocument()
+  })
+})

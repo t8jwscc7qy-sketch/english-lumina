@@ -1,5 +1,4 @@
 import { motion } from 'motion/react'
-import { steps } from 'motion'
 import { Mascot } from '@/components/brand/Wordmark'
 import { Dither } from '@/components/pixel/Dither'
 import { PixelArtSvg } from '@/components/pixel/PixelArtSvg'
@@ -45,13 +44,13 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               aria-label={status ? `${level}, ${status}` : level}
               className="flex min-w-0 flex-col items-center"
             >
-              <div className="flex h-24 items-end justify-center">
+              <div className="flex h-28 items-end justify-center">
                 {stage === 'current' ? (
                   <motion.div
                     animate={{ y: [0, -4, 0] }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: steps(2) }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    <Mascot scale={4} className="max-md:h-auto max-md:w-9" />
+                    <Mascot scale={3} className="max-md:[&_svg]:h-auto max-md:[&_svg]:w-14" />
                   </motion.div>
                 ) : (
                   <PixelArtSvg
@@ -66,8 +65,8 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               <div
                 className={cn(
                   'relative h-3 w-full overflow-hidden',
-                  i === 0 && 'rounded-l-full',
-                  i === LEVELS.length - 1 && 'rounded-r-full',
+                  
+                  
                   stage === 'done' && 'bg-grass',
                   stage === 'current' && 'bg-sky',
                   (stage === 'bridge' || stage === 'future') && 'bg-muted',
@@ -111,7 +110,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
 
       {forecast === 'collecting' && cur < tgt && (
         <p className="flex items-center gap-3 text-sm">
-          <span className="relative block h-3 w-12 shrink-0 overflow-hidden rounded-full bg-muted">
+          <span className="relative block h-3 w-12 shrink-0 overflow-hidden bg-muted">
             <Dither level={2} color="var(--bridge)" className="absolute inset-0 block" />
           </span>
           <span>

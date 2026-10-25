@@ -13,7 +13,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return (
       <div role="status" className="grid min-h-dvh place-items-center">
         <div className="flex flex-col items-center gap-4">
-          <Mascot scale={4} />
+          <Mascot scale={3} />
           <p className="font-semibold text-base">Проверяем вход…</p>
         </div>
       </div>
@@ -24,7 +24,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return (
       <main className="grid min-h-dvh place-items-center p-6">
         <div className="surface flex max-w-md flex-col items-start gap-4 p-6">
-          <Mascot scale={4} />
+          <Mascot scale={3} />
           <h1 className="text-title">Не получилось подключиться</h1>
           <p role="alert" className="text-muted-foreground">
             {me.error.message}
@@ -54,7 +54,7 @@ export function RequireOnboarded({ children }: { children: ReactNode }) {
     return (
       <div role="status" className="grid min-h-dvh place-items-center">
         <div className="flex flex-col items-center gap-4">
-          <Mascot scale={4} />
+          <Mascot scale={3} />
           <p className="font-semibold text-base">Проверяем настройки…</p>
         </div>
       </div>
@@ -65,7 +65,7 @@ export function RequireOnboarded({ children }: { children: ReactNode }) {
     return (
       <main className="grid min-h-dvh place-items-center p-6">
         <div className="surface flex max-w-md flex-col items-start gap-4 p-6">
-          <Mascot scale={4} />
+          <Mascot scale={3} />
           <h1 className="text-title">Не получилось загрузить настройки</h1>
           <p role="alert" className="text-muted-foreground">
             {settings.error.message}
