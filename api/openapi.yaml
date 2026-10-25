@@ -689,16 +689,18 @@ components:
           format: int64
         kind:
           type: string
-          enum: [gap, order, form, match]
+          enum: [gap, order, form, match, translate]
           description: >
             Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток,
+            translate — перевести русское предложение (prompt) по-английски, ответ вводится вручную
+            (choices пуст, tiles нет),
             form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма),
             match — соединить пять английских слов (words) с пятью русскими переводами (options)
         prompt:
           type: string
           description: >
             gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести
-            (собрать по-английски из tiles)
+            (собрать по-английски из tiles); translate — русское предложение, которое нужно перевести вводом
         translation:
           type: string
           description: Перевод-подсказка на русском
@@ -797,6 +799,17 @@ components:
               description: Слово уже есть в карточках пользователя
         mistake:
           $ref: "#/components/schemas/MistakeResult"
+        nearMiss:
+          type: string
+          description: >
+            Только для translate: ответ принят с опечаткой в одну букву; здесь вариант, с которым он совпал
+            («Правильно: …»)
+        accepted:
+          type: array
+          items:
+            type: string
+          description: >
+            Только для translate — другие допустимые переводы, до трёх (без основного и без совпавшего)
         pairs:
           type: array
           items:
@@ -845,10 +858,10 @@ components:
           description: Основная тема ошибки
         kind:
           type: string
-          description: Вид упражнения (gap, order или form, как у Exercise.kind)
+          description: Вид упражнения (gap, order, form или translate, как у Exercise.kind)
         prompt:
           type: string
-          description: Предложение с пропуском (gap, form) или русский перевод (order)
+          description: Предложение с пропуском (gap, form) или русский перевод (order, translate)
         given:
           type: string
           description: Последний неверный ответ

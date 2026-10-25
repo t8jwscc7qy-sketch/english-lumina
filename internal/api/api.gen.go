@@ -97,10 +97,11 @@ func (e ErrorErrorCode) Valid() bool {
 
 // Defines values for ExerciseKind.
 const (
-	Form  ExerciseKind = "form"
-	Gap   ExerciseKind = "gap"
-	Match ExerciseKind = "match"
-	Order ExerciseKind = "order"
+	Form      ExerciseKind = "form"
+	Gap       ExerciseKind = "gap"
+	Match     ExerciseKind = "match"
+	Order     ExerciseKind = "order"
+	Translate ExerciseKind = "translate"
 )
 
 // Valid indicates whether the value is a known member of the ExerciseKind enum.
@@ -113,6 +114,8 @@ func (e ExerciseKind) Valid() bool {
 	case Match:
 		return true
 	case Order:
+		return true
+	case Translate:
 		return true
 	default:
 		return false
@@ -207,12 +210,18 @@ type AnswerRequest struct {
 
 // AnswerResult defines model for AnswerResult.
 type AnswerResult struct {
+	// Accepted Только для translate — другие допустимые переводы, до трёх (без основного и без совпавшего)
+	Accepted *[]string `json:"accepted,omitempty"`
+
 	// Answer Верный ответ
 	Answer  string `json:"answer"`
 	Correct bool   `json:"correct"`
 
 	// Mistake Состояние ошибки после ответа (повтор или новый неверный ответ)
 	Mistake *MistakeResult `json:"mistake,omitempty"`
+
+	// NearMiss Только для translate: ответ принят с опечаткой в одну букву; здесь вариант, с которым он совпал («Правильно: …»)
+	NearMiss *string `json:"nearMiss,omitempty"`
 
 	// Pairs Только для match, разбор каждой пары (в порядке слов упражнения)
 	Pairs *[]PairResult `json:"pairs,omitempty"`
@@ -314,13 +323,13 @@ type Exercise struct {
 	Hint *string `json:"hint,omitempty"`
 	Id   int64   `json:"id"`
 
-	// Kind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
+	// Kind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, translate — перевести русское предложение (prompt) по-английски, ответ вводится вручную (choices пуст, tiles нет), form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
 	Kind ExerciseKind `json:"kind"`
 
 	// Options Только для match, пять русских переводов вперемешку (верные пары до ответа клиенту не отдаются)
 	Options *[]string `json:"options,omitempty"`
 
-	// Prompt gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles)
+	// Prompt gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles); translate — русское предложение, которое нужно перевести вводом
 	Prompt string `json:"prompt"`
 
 	// Repeat Это повтор ошибки из банка ошибок
@@ -339,7 +348,7 @@ type Exercise struct {
 	Words *[]string `json:"words,omitempty"`
 }
 
-// ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
+// ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, translate — перевести русское предложение (prompt) по-английски, ответ вводится вручную (choices пуст, tiles нет), form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
 type ExerciseKind string
 
 // Level defines model for Level.
@@ -419,11 +428,11 @@ type Mistake struct {
 	Given string `json:"given"`
 	Id    int64  `json:"id"`
 
-	// Kind Вид упражнения (gap, order или form, как у Exercise.kind)
+	// Kind Вид упражнения (gap, order, form или translate, как у Exercise.kind)
 	Kind    string    `json:"kind"`
 	NextDue time.Time `json:"nextDue"`
 
-	// Prompt Предложение с пропуском (gap, form) или русский перевод (order)
+	// Prompt Предложение с пропуском (gap, form) или русский перевод (order, translate)
 	Prompt string `json:"prompt"`
 	Streak int    `json:"streak"`
 
