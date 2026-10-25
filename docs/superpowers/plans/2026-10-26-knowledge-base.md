@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Собрать в схеме PostgreSQL `kb` лучшие переводы, произношение, формы и синонимы из Kaikki (Викисловарь) и уже загруженных источников, отдельно от данных пользователя, и подключить их к «Словам» и «Сопоставлению».
+**Goal:** Собрать в таблицах с префиксом `kb_` лучшие переводы, произношение, формы и синонимы из Kaikki (Викисловарь) и уже загруженных источников, отдельно от данных пользователя, и подключить их к «Словам» и «Сопоставлению».
 
 **Architecture:** Три шага: сырьё (файл в `.cache`), подготовка (`cmd/kb-prepare`: потоковый отбор нужных записей в компактный файл), сборка (`cmd/kb-build`: чистые правила слияния `internal/kb`, запись в `kb` одной транзакцией, отчёт качества с порогами). Потребители читают `kb`, при пустой `kb` работает прежний путь.
 
@@ -12,9 +12,9 @@
 
 ## Global Constraints
 
-- Без новых зависимостей. Схема `kb` создаётся миграцией `00014` (номер сверить с последней в `migrations/` на момент работы); к настоящей базе миграцию **не применять без `pg_dump` и «да» пользователя**; проверка — во временной схеме (`testdb`).
+- Без новых зависимостей. Таблицы `kb_*` создаётся миграцией `00014` (номер сверить с последней в `migrations/` на момент работы); к настоящей базе миграцию **не применять без `pg_dump` и «да» пользователя**; проверка — во временной схеме (`testdb`).
 - SQL только в `queries/` через sqlc; генерированное руками не править; контракт API меняется сначала в `api/openapi.yaml`, потом `go generate ./internal/api` и `npm run gen:api`.
-- Данные пользователя (`cards`, `exercises`, `mistakes`, `events`, `settings`, `word_learning` и т. п.) схема `kb` не трогает; на `kb` ссылаются только по `public.lexemes.id`.
+- Данные пользователя (`cards`, `exercises`, `mistakes`, `events`, `settings`, `word_learning` и т. п.) таблицы `kb_*` не трогает; на `kb` ссылаются только по `public.lexemes.id`.
 - Сборка идёт одной транзакцией через `DELETE` и вставку, **без `TRUNCATE`** (читатели видят прежние данные до фиксации).
 - Логика слияния — чистые функции в `internal/kb` с юнит-тестами; константы оценок в коде.
 - Файл Kaikki: `https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz` (≈ 2,9 ГБ), HTTPS, SHA-256 закрепляется в коде после первой загрузки; изменившийся файл — ошибка суммы, не молчаливое обновление. Кэш `.cache/` вне git.
@@ -32,7 +32,7 @@
 
 ---
 
-### Task 1: Схема `kb` и запросы
+### Task 1: Таблицы `kb_*` и запросы
 
 **Files:**
 - Create: `migrations/00014_kb_schema.sql`, `queries/kb.sql`
@@ -40,11 +40,11 @@
 - Test: `internal/testdb/kb_test.go`
 
 **Interfaces:**
-- Produces: схема `kb` с таблицами `build`, `sense`, `translation`, `pronunciation`, `form`, `relation`, `lexeme_stat`, `teaching_card` (колонки как в спеке, раздел «Схема `kb`»); запросы sqlc `KbDeleteAll :exec` (удаляет строки всех таблиц `kb` кроме `build`), `KbInsertBuild`/`KbFinishBuild`, `KbGetTeachingCards :many` (по массиву `lexeme_id`), `KbListChosenTranslations :many` (по массиву `lexeme_id`, язык), `KbLatestBuild :one`. Пакетные вставки делает сборка через `pgx.CopyFrom` (запросов sqlc на них нет).
+- Produces: таблицы `kb_*` с таблицами `build`, `sense`, `translation`, `pronunciation`, `form`, `relation`, `lexeme_stat`, `teaching_card` (колонки как в спеке, раздел «Таблицы `kb_*`»); запросы sqlc `KbDeleteAll :exec` (удаляет строки всех таблиц `kb` кроме `build`), `KbInsertBuild`/`KbFinishBuild`, `KbGetTeachingCards :many` (по массиву `lexeme_id`), `KbListChosenTranslations :many` (по массиву `lexeme_id`, язык), `KbLatestBuild :one`. Пакетные вставки делает сборка через `pgx.CopyFrom` (запросов sqlc на них нет).
 
-- [ ] **Step 1: Тест (красный)** `TestKbSchema`: после `Pool(t)` существует схема `kb` со всеми таблицами; в `kb.translation` вставка проходит для `lang='ru'`, нарушение `chosen` без `lexeme_id` отклоняется; `Down` схему удаляет (`SELECT to_regnamespace('kb')` пусто), `Up` создаёт заново; данные `public.cards` и `public.lexemes` после `Down` на месте.
+- [ ] **Step 1: Тест (красный)** `TestKbSchema`: после `Pool(t)` существует таблицы `kb_*` со всеми таблицами; в `kb_translation` вставка проходит для `lang='ru'`, нарушение `chosen` без `lexeme_id` отклоняется; `Down` схему удаляет (`SELECT to_regnamespace('kb')` пусто), `Up` создаёт заново; данные `public.cards` и `public.lexemes` после `Down` на месте.
 - [ ] **Step 2:** `go test ./internal/testdb -run Kb` → FAIL (схемы нет).
-- [ ] **Step 3:** Написать миграцию (внешние ключи на `public.lexemes(id) ON DELETE CASCADE`, индексы: `kb.form(form)`, `kb.translation(lexeme_id) WHERE chosen`, `kb.pronunciation(lexeme_id)`, `kb.relation(lexeme_id)`), Down — `DROP SCHEMA kb CASCADE`. Добавить `queries/kb.sql`; `sqlc generate`.
+- [ ] **Step 3:** Написать миграцию (внешние ключи на `public.lexemes(id) ON DELETE CASCADE`, индексы: `kb_form(form)`, `kb_translation(lexeme_id) WHERE chosen`, `kb_pronunciation(lexeme_id)`, `kb_relation(lexeme_id)`), Down — `DROP SCHEMA kb CASCADE`. Добавить `queries/kb.sql`; `sqlc generate`.
 - [ ] **Step 4:** `go test ./internal/testdb/...` → PASS.
 - [ ] **Step 5: Commit** `git add migrations queries internal/db internal/testdb && git commit -m "kb: схема базы знаний и запросы"`.
 
@@ -121,7 +121,7 @@
 
 - [ ] **Step 1: Тесты (красные)** на интеграции (`testdb.Pool`): `TestBuildWritesKb` (малые фикстуры: пять слов в `lexemes` с уровнями, Kaikki-выборка, FreeDict-строки, частоты → в `kb` значения, до двух выбранных переводов на слово, произношения, формы, синонимы, `lexeme_stat`, `teaching_card`; у слов без Kaikki-записи карточка строится из FreeDict), `TestBuildIsIdempotent` (две сборки подряд дают одинаковое число и содержимое строк), `TestBuildRollsBackBelowThreshold` (порог не выполнен → `ErrBelowThreshold`, прежние строки `kb` на месте), `TestBuildReaderSeesOldDataDuringBuild` (читатель в другом соединении до фиксации видит прежние данные), `TestBuildDoesNotTouchUserTables` (`cards`, `exercises`, `events` без изменений), `TestBuildEmptyKaikkiKeepsLegacyTranslations`, `TestReportCoverageByLevel`.
 - [ ] **Step 2:** `go test ./cmd/kb-build/...` → FAIL.
-- [ ] **Step 3:** Реализовать: чтение входов, слияние по леммам (варианты `colour/color` как отдельные поиски), запись через `DELETE` и `CopyFrom` в одной транзакции, отчёт и пороги, запись `kb.build`. Карточка слова (`teaching_card.payload`) — JSON с полями `lemma`, `pos`, `level`, `rank`, `translations` (до двух), `ipa`, `audio`, `forms`, `synonyms`.
+- [ ] **Step 3:** Реализовать: чтение входов, слияние по леммам (варианты `colour/color` как отдельные поиски), запись через `DELETE` и `CopyFrom` в одной транзакции, отчёт и пороги, запись `kb_build`. Карточка слова (`teaching_card.payload`) — JSON с полями `lemma`, `pos`, `level`, `rank`, `translations` (до двух), `ipa`, `audio`, `forms`, `synonyms`.
 - [ ] **Step 4:** `go vet ./... && go test -race ./cmd/kb-build/...` → PASS.
 - [ ] **Step 5: Commit** `git commit -m "kb-build: сборка базы знаний, отчёт качества и пороги"`.
 
@@ -155,7 +155,7 @@
 - [ ] **Step 3: Замеры:** время `kb-prepare` (цель ≤ 20 минут) и `kb-build`, размер `kb` (`pg_total_relation_size`), задержка чтения карточки слова (`EXPLAIN ANALYZE`, цель ≤ 5 мс).
 - [ ] **Step 4: Отчёт качества:** покрытие по уровням (не ниже порогов), контрольный список (≥ 90 %), 50 случайных слов с переводами — показать пользователю глазами; записать расхождения и поправить константы оценок (повторить `kb-build`).
 - [ ] **Step 5: Живая проверка сервера** (песочница или настоящая база по решению пользователя): «Слова» с IPA и переводами, один набор «Сопоставления»; ничего не писать в журнал пользователя.
-- [ ] **Step 6: Документация и проверка:** `CLAUDE.md` (схема `kb`, команды `go run ./cmd/kb-prepare kaikki`, `go run ./cmd/kb-build`, ПОРЯДОК ВНЕДРЕНИЯ: `pg_dump` → `goose up` → `kb-prepare` → `kb-build` → сервер; что проверено и что НЕТ; известные ограничения); `go vet ./... && go test -race ./... && golangci-lint run` и в `web/` `npx vitest run && npx tsc -b && npm run lint`.
+- [ ] **Step 6: Документация и проверка:** `CLAUDE.md` (таблицы `kb_*`, команды `go run ./cmd/kb-prepare kaikki`, `go run ./cmd/kb-build`, ПОРЯДОК ВНЕДРЕНИЯ: `pg_dump` → `goose up` → `kb-prepare` → `kb-build` → сервер; что проверено и что НЕТ; известные ограничения); `go vet ./... && go test -race ./... && golangci-lint run` и в `web/` `npx vitest run && npx tsc -b && npm run lint`.
 - [ ] **Step 7: Commit** `git commit -m "kb: живой прогон, замеры и документация"`.
 
 ---
