@@ -176,6 +176,15 @@ export const EXERCISES: ExerciseFixture[] = [
  * Подменяет API Go-сервера. `settings: null` — онбординг не пройден (GET /settings даёт 404);
  * PUT сохраняет присланное и дальше GET его возвращает. `puts` копит тела принятых PUT.
  */
+export type MilestonesOpts = {
+  /** id достигнутых вех (streak-3, hours-1, first-card …). */
+  reached?: string[]
+  /** id вех, достигнутых сегодня (они считаются достигнутыми). */
+  newToday?: string[]
+  /** GET /milestones отвечает 500. */
+  fail?: boolean
+}
+
 export type OverviewOpts = {
   /** Сколько последних суток подряд были занятия (0 — занятий не было). */
   activeDays?: number
@@ -198,7 +207,7 @@ export type ProgressOpts = {
 
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -415,6 +424,38 @@ export async function mockApi(
       return route.fulfill({ json: result })
     }
     return route.fulfill({ status: 404 })
+  })
+
+  await page.route('**/api/v1/milestones', (route) => {
+    if (opts.milestones?.fail) return route.fulfill(apiError(500, 'internal', 'Внутренняя ошибка, попробуй ещё раз'))
+    const reached = new Set([...(opts.milestones?.reached ?? []), ...(opts.milestones?.newToday ?? [])])
+    const today = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const todayIso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+    const plural = (n: number, a: string, b: string, c: string) => (n % 100 >= 11 && n % 100 <= 14 ? c : n % 10 === 1 ? a : n % 10 >= 2 && n % 10 <= 4 ? b : c)
+    const defs: { id: string; kind: string; title: string; threshold: number }[] = [
+      ...[3, 7, 14, 30, 100, 365].map((t) => ({ id: `streak-${t}`, kind: 'streak', title: `Серия ${t} ${plural(t, 'день', 'дня', 'дней')}`, threshold: t })),
+      ...[1, 5, 10, 25, 50, 100, 250].map((t) => ({ id: `hours-${t}`, kind: 'hours', title: `${t} ${plural(t, 'час', 'часа', 'часов')} занятий`, threshold: t })),
+      ...[100, 500, 1000].map((t) => ({ id: `answers-${t}`, kind: 'answers', title: `${t} ${plural(t, 'ответ', 'ответа', 'ответов')}`, threshold: t })),
+      { id: 'first-card', kind: 'first', title: 'Первая карточка', threshold: 1 },
+      { id: 'first-exercise', kind: 'first', title: 'Первое упражнение', threshold: 1 },
+      { id: 'first-mistake-closed', kind: 'first', title: 'Первая закрытая ошибка', threshold: 1 },
+    ]
+    const milestones = defs.map((d) => {
+      const isReached = reached.has(d.id)
+      const value = isReached ? d.threshold : d.kind === 'first' ? 0 : Math.floor(d.threshold * 0.4)
+      return {
+        ...d,
+        ...(isReached ? { reachedOn: opts.milestones?.newToday?.includes(d.id) ? todayIso : '2026-10-19' } : {}),
+        progress: { value, target: d.threshold },
+      }
+    })
+    const order: Record<string, number> = { streak: 0, hours: 1, answers: 2, first: 3 }
+    const newToday = (opts.milestones?.newToday ?? [])
+      .map((id) => defs.find((d) => d.id === id)!)
+      .sort((a, b) => order[a.kind] - order[b.kind] || b.threshold - a.threshold)
+      .map((d) => d.id)
+    return route.fulfill({ json: { milestones, newToday } })
   })
 
   await page.route('**/api/v1/progress/overview', (route) => {

@@ -6,7 +6,12 @@ import { ProgressPage } from './ProgressPage'
 
 afterEach(() => vi.unstubAllGlobals())
 
-const SETTINGS = { currentLevel: 'B1', targetLevel: 'B2', dailyMinutes: 30, timezone: 'Europe/Moscow' }
+const SETTINGS = {
+  currentLevel: 'B1',
+  targetLevel: 'B2',
+  dailyMinutes: 30,
+  timezone: 'Europe/Moscow',
+}
 
 function overview(over: Record<string, unknown> = {}) {
   const daily = Array.from({ length: 90 }, (_, i) => {
@@ -14,12 +19,41 @@ function overview(over: Record<string, unknown> = {}) {
     const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     return { day, minutes: 0, cumulativeHours: 0 }
   })
-  return { daysSinceStart: 0, studiedMinutes: 0, paceMinutesPerDay: 0, paceReady: false, daily, ...over }
+  return {
+    daysSinceStart: 0,
+    studiedMinutes: 0,
+    paceMinutesPerDay: 0,
+    paceReady: false,
+    daily,
+    ...over,
+  }
 }
 
-const rating = (topic: string, r: number, attempts = 10, deviation = 80) => ({ topic, rating: r, deviation, attempts })
+const rating = (topic: string, r: number, attempts = 10, deviation = 80) => ({
+  topic,
+  rating: r,
+  deviation,
+  attempts,
+})
+
+const MS = (
+  id: string,
+  kind: string,
+  title: string,
+  threshold: number,
+  reachedOn?: string,
+  value = 0,
+) => ({
+  id,
+  kind,
+  title,
+  threshold,
+  ...(reachedOn ? { reachedOn } : {}),
+  progress: { value: Math.min(value, threshold), target: threshold },
+})
 
 type Opts = {
+  milestones?: () => Response
   settings?: Record<string, unknown>
   overview?: () => Response
   topics?: ReturnType<typeof rating>[]
@@ -29,7 +63,12 @@ function renderPage(opts: Opts = {}) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
-      if (url.endsWith('/progress/overview')) return opts.overview ? opts.overview() : jsonResponse(200, overview())
+      if (url.endsWith('/progress/overview'))
+        return opts.overview ? opts.overview() : jsonResponse(200, overview())
+      if (url.endsWith('/milestones'))
+        return opts.milestones
+          ? opts.milestones()
+          : jsonResponse(200, { milestones: [], newToday: [] })
       if (url.endsWith('/exercises/topics')) return jsonResponse(200, { topics: opts.topics ?? [] })
       if (url.endsWith('/settings')) return jsonResponse(200, opts.settings ?? SETTINGS)
       return jsonResponse(200, { login: 'firimon' })
@@ -42,8 +81,20 @@ function renderPage(opts: Opts = {}) {
   ])
 }
 
-const ready = (over: Record<string, unknown> = {}) =>
-  () => jsonResponse(200, overview({ startedOn: '2026-10-05', daysSinceStart: 21, studiedMinutes: 600, paceMinutesPerDay: 30, paceReady: true, ...over }))
+const ready =
+  (over: Record<string, unknown> = {}) =>
+  () =>
+    jsonResponse(
+      200,
+      overview({
+        startedOn: '2026-10-05',
+        daysSinceStart: 21,
+        studiedMinutes: 600,
+        paceMinutesPerDay: 30,
+        paceReady: true,
+        ...over,
+      }),
+    )
 
 describe('ProgressPage: прогноз', () => {
   it('заголовок «Прогресс»', async () => {
@@ -60,7 +111,13 @@ describe('ProgressPage: прогноз', () => {
   })
 
   it('мало суток занятий: «5 из 14 суток»', async () => {
-    renderPage({ overview: () => jsonResponse(200, overview({ startedOn: '2026-10-21', daysSinceStart: 5, studiedMinutes: 95 })) })
+    renderPage({
+      overview: () =>
+        jsonResponse(
+          200,
+          overview({ startedOn: '2026-10-21', daysSinceStart: 5, studiedMinutes: 95 }),
+        ),
+    })
     expect(await screen.findByText(/5 из 14 суток/)).toBeInTheDocument()
     expect(screen.queryByText(/примерно/)).not.toBeInTheDocument()
   })
@@ -68,8 +125,12 @@ describe('ProgressPage: прогноз', () => {
   it('оценка по реальному темпу: срок, даты и «что изменить»', async () => {
     renderPage({ overview: ready() })
     expect(await screen.findByText(/До B2 примерно/)).toBeInTheDocument()
-    expect(screen.getByText(/к \d{1,2} [а-я]+( \d{4})? – \d{1,2} [а-я]+( \d{4})?/)).toBeInTheDocument()
-    expect(screen.getByText(/Что изменить: \+10 минут в день сократят срок примерно на \d+ /)).toBeInTheDocument()
+    expect(
+      screen.getByText(/к \d{1,2} [а-я]+( \d{4})? – \d{1,2} [а-я]+( \d{4})?/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/Что изменить: \+10 минут в день сократят срок примерно на \d+ /),
+    ).toBeInTheDocument()
     expect(screen.getByText(/считаются только минуты в сервисе/i)).toBeInTheDocument()
   })
 
@@ -95,7 +156,10 @@ describe('ProgressPage: прогноз', () => {
   it('цель не выше уровня: «Цель достигнута» и ссылка в настройки', async () => {
     renderPage({ settings: { ...SETTINGS, currentLevel: 'B2' }, overview: ready() })
     expect(await screen.findByText(/цель достигнута/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /выбери цель повыше/i })).toHaveAttribute('href', '/settings')
+    expect(screen.getByRole('link', { name: /выбери цель повыше/i })).toHaveAttribute(
+      'href',
+      '/settings',
+    )
   })
 })
 
@@ -116,36 +180,58 @@ describe('ProgressPage: часы, темп и карта тем', () => {
     expect(screen.getByText(/Занимаешься с 5 октября/)).toBeInTheDocument()
     expect(screen.getByText(/Набрано: 10 ч/)).toBeInTheDocument()
     unmount()
-    renderPage({ overview: () => jsonResponse(200, overview({ startedOn: '2026-10-21', daysSinceStart: 5, studiedMinutes: 95 })) })
+    renderPage({
+      overview: () =>
+        jsonResponse(
+          200,
+          overview({ startedOn: '2026-10-21', daysSinceStart: 5, studiedMinutes: 95 }),
+        ),
+    })
     expect(await screen.findByText(/Темп покажу после 14 суток занятий/)).toBeInTheDocument()
   })
 
   it('карта тем по возрастанию рейтинга; «слабая тема» текстом у пяти самых слабых надёжных', async () => {
     const topics = [
-      rating('grammar:future', 1500), rating('grammar:articles', 1380), rating('pos:verb', 1450), rating('grammar:modals', 1300),
-      rating('level:B1', 1600), rating('grammar:prepositions', 1250), rating('grammar:past_simple', 1420, 2),
+      rating('grammar:future', 1500),
+      rating('grammar:articles', 1380),
+      rating('pos:verb', 1450),
+      rating('grammar:modals', 1300),
+      rating('level:B1', 1600),
+      rating('grammar:prepositions', 1250),
+      rating('grammar:past_simple', 1420, 2),
     ]
     renderPage({ topics })
     const list = await screen.findByRole('list', { name: 'Карта тем' })
-    const names = within(list).getAllByRole('listitem').map((li) => li.textContent)
+    const names = within(list)
+      .getAllByRole('listitem')
+      .map((li) => li.textContent)
     expect(names[0]).toContain('Предлоги')
     expect(names[names.length - 1]).toContain('Уровень B1')
     expect(within(list).getAllByText('слабая тема')).toHaveLength(5)
-    const few = within(list).getAllByRole('listitem').find((li) => li.textContent?.includes('Прошедшее простое'))!
+    const few = within(list)
+      .getAllByRole('listitem')
+      .find((li) => li.textContent?.includes('Прошедшее простое'))!
     expect(few).toHaveTextContent('мало ответов')
     expect(few).not.toHaveTextContent('слабая тема')
   })
 
   it('нет тем: подсказка вместо списка', async () => {
     renderPage({ topics: [] })
-    expect(await screen.findByText(/Пока нет данных — ответь на несколько упражнений/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Пока нет данных — ответь на несколько упражнений/),
+    ).toBeInTheDocument()
   })
 })
 
 describe('ProgressPage: ошибки', () => {
   it('ошибка загрузки: сообщение и «Повторить», который перезапрашивает данные', async () => {
     let calls = 0
-    renderPage({ overview: () => (calls++ === 0 ? errorResponse(500, 'internal', 'Внутренняя ошибка') : jsonResponse(200, overview())) })
+    renderPage({
+      overview: () =>
+        calls++ === 0
+          ? errorResponse(500, 'internal', 'Внутренняя ошибка')
+          : jsonResponse(200, overview()),
+    })
     expect(await screen.findByRole('alert')).toHaveTextContent('Внутренняя ошибка')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Повторить' }))
     expect(await screen.findByText(/собираю данные/i)).toBeInTheDocument()
@@ -155,5 +241,35 @@ describe('ProgressPage: ошибки', () => {
   it('401 ведёт на вход', async () => {
     renderPage({ overview: () => errorResponse(401, 'unauthorized', 'Нужен вход') })
     expect(await screen.findByText('Экран входа')).toBeInTheDocument()
+  })
+})
+
+describe('ProgressPage: вехи', () => {
+  it('блок «Вехи» между часами занятий и темпом: достигнутые с датой и ближайшие', async () => {
+    renderPage({
+      milestones: () =>
+        jsonResponse(200, {
+          milestones: [
+            MS('streak-3', 'streak', 'Серия 3 дня', 3, '2026-10-19', 3),
+            MS('streak-7', 'streak', 'Серия 7 дней', 7, undefined, 5),
+          ],
+          newToday: [],
+        }),
+    })
+    const block = await screen.findByRole('heading', { name: 'Вехи' })
+    expect(screen.getByText('Серия 3 дня · 19 октября')).toBeInTheDocument()
+    expect(screen.getByText('Серия 7 дней: 5 из 7')).toBeInTheDocument()
+    const order = ['Часы занятий', 'Вехи', 'Темп'].map((name) =>
+      screen.getByRole('heading', { name }),
+    )
+    expect(order[0].compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(block.compareDocumentPosition(order[2]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('ошибка загрузки вех не ломает страницу: сообщение и «Повторить» на месте блока', async () => {
+    renderPage({ milestones: () => errorResponse(500, 'internal', 'Внутренняя ошибка') })
+    expect(await screen.findByText(/собираю данные/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Повторить' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Темп' })).toBeInTheDocument()
   })
 })

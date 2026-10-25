@@ -178,3 +178,12 @@ export async function getProgressOverview(): Promise<ProgressOverview> {
   const res = await request('/api/v1/progress/overview')
   return (await res.json()) as ProgressOverview
 }
+
+export type MilestoneList = components['schemas']['MilestoneList']
+export type Milestone = components['schemas']['Milestone']
+
+/** Вехи занятий и те, что достигнуты сегодня. */
+export async function getMilestones(): Promise<MilestoneList> {
+  const res = await request('/api/v1/milestones')
+  return (await res.json()) as MilestoneList
+}

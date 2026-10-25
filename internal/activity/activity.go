@@ -33,6 +33,9 @@ func (d Day) AddDays(n int) Day {
 	return Day{y, int(m), dd}
 }
 
+// Before сообщает, что сутки d раньше o.
+func (d Day) Before(o Day) bool { return d.ordinal() < o.ordinal() }
+
 func (d Day) ordinal() int {
 	return int(time.Date(d.Y, time.Month(d.M), d.D, 12, 0, 0, 0, time.UTC).Unix() / 86400)
 }
@@ -93,6 +96,12 @@ type Streak struct {
 // пока он не выполнен. Пропуск прощается, если ближайший к нему по времени прощённый пропуск дальше шести суток
 // (то есть в любом окне из семи суток прощается не больше одного пропуска). Смотрит на HistoryDays суток назад.
 func ComputeStreak(minutes map[Day]time.Duration, today Day) Streak {
+	return ComputeStreakN(minutes, today, HistoryDays)
+}
+
+// ComputeStreakN — то же, что ComputeStreak, но потолок серии и глубина просмотра — maxDays суток
+// (для вех нужно больше шестидесяти).
+func ComputeStreakN(minutes map[Day]time.Duration, today Day, maxDays int) Streak {
 	isDone := func(d Day) bool { return minutes[d] >= MinimumDayMinutes*time.Minute }
 	var s Streak
 	if isDone(today) {
@@ -100,7 +109,7 @@ func ComputeStreak(minutes map[Day]time.Duration, today Day) Streak {
 	}
 	var forgiven *Day // последний (самый поздний) прощённый пропуск в проходе
 	var pending *Day  // пропуск, прощённый, но ещё не «мостом» к выполненным суткам
-	for i := 1; i <= HistoryDays && s.Days < HistoryDays; i++ {
+	for i := 1; i <= maxDays && s.Days < maxDays; i++ {
 		d := today.AddDays(-i)
 		if isDone(d) {
 			s.Days++

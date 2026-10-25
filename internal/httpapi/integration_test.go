@@ -1306,3 +1306,65 @@ func TestOverviewOnRealDatabase(t *testing.T) {
 		t.Fatalf("накопленные часы к сегодня: %v, ожидали 0.5", last.CumulativeHours)
 	}
 }
+
+// Вехи на настоящей Postgres: события за несколько суток дают часы, ответы и «первое».
+func TestMilestonesOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash}); err != nil {
+		t.Fatal(err)
+	}
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	midday := func(back int) time.Time {
+		n := time.Now().UTC().AddDate(0, 0, -back)
+		return time.Date(n.Year(), n.Month(), n.Day(), 10, 0, 0, 0, time.UTC)
+	}
+	for _, back := range []int{3, 2, 1} {
+		for _, r := range minimumDay(midday(back)) {
+			if _, err := q.AppendEvent(ctx, db.AppendEventParams{UserID: 1, Type: r.Type, SchemaVersion: 1, OccurredAt: r.OccurredAt, Payload: []byte(`{"correct":true}`)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := q.AppendEvent(ctx, db.AppendEventParams{UserID: 1, Type: "mistake.closed", SchemaVersion: 1, OccurredAt: ts(midday(1)), Payload: []byte(`{}`)}); err != nil {
+		t.Fatal(err)
+	}
+	rec := e.do(http.MethodGet, milestonesPath, "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	var l api.MilestoneList
+	if err := json.Unmarshal(rec.Body.Bytes(), &l); err != nil {
+		t.Fatal(err)
+	}
+	get := func(id string) api.Milestone {
+		for _, m := range l.Milestones {
+			if m.Id == id {
+				return m
+			}
+		}
+		t.Fatalf("нет вехи %s", id)
+		return api.Milestone{}
+	}
+	if s3 := get("streak-3"); s3.ReachedOn == nil || *s3.ReachedOn != midday(1).Format("2006-01-02") {
+		t.Fatalf("streak-3 достигнута вчера: %+v", s3)
+	}
+	if h := get("hours-1"); h.ReachedOn != nil {
+		t.Fatalf("30 минут: час ещё не накоплен: %+v", h)
+	}
+	if a := get("answers-100"); a.Progress.Value != 33 {
+		t.Fatalf("ответов 33 (3 суток × 11): %+v", a)
+	}
+	if f := get("first-mistake-closed"); f.ReachedOn == nil || *f.ReachedOn != midday(1).Format("2006-01-02") {
+		t.Fatalf("first-mistake-closed: %+v", f)
+	}
+	if len(l.NewToday) != 0 {
+		t.Fatalf("сегодня занятий нет: %v", l.NewToday)
+	}
+}
