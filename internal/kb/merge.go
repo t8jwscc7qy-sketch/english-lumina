@@ -44,8 +44,9 @@ type Candidate struct {
 // Scored — кандидат с оценкой и пометками (флаги штрафуемых и информационных тегов).
 type Scored struct {
 	Candidate
-	Score float64
-	Flags []string
+	Score       float64
+	Flags       []string
+	KaikkiSense int // номер значения от Kaikki (0 — нет): только он связан с таблицей значений kb_sense
 }
 
 // NormalizeRu приводит русский текст к виду для сравнения и хранения: без знаков ударения, строчными, с одиночными пробелами.
@@ -153,6 +154,7 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 		}
 		slices.Sort(sources)
 
+		kaikkiSense := g.senseNo
 		if g.senseNo == 0 {
 			g.senseNo = g.otherNo
 		}
@@ -191,7 +193,7 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 		}
 		out = append(out, Scored{
 			Candidate: Candidate{Text: g.text, Source: sources[0], SenseNo: g.senseNo, Tags: tags, Sources: sources},
-			Score:     score, Flags: flags,
+			Score:     score, Flags: flags, KaikkiSense: kaikkiSense,
 		})
 	}
 	slices.SortFunc(out, func(a, b Scored) int {

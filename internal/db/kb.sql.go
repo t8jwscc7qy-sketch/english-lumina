@@ -200,6 +200,89 @@ func (q *Queries) KbListChosenTranslations(ctx context.Context, arg KbListChosen
 	return items, nil
 }
 
+const kbListFrequencies = `-- name: KbListFrequencies :many
+SELECT wf.word, wf.rank, wf.count
+FROM word_frequencies wf
+WHERE wf.source_id = (
+        SELECT s.id FROM data_sources s
+        WHERE s.name = $1 AND s.imported_at IS NOT NULL
+        ORDER BY s.imported_at DESC, s.id DESC
+        LIMIT 1
+      )
+`
+
+type KbListFrequenciesRow struct {
+	Word  string
+	Rank  int32
+	Count int64
+}
+
+// Весь список частот последнего завершённого импорта источника с таким именем.
+func (q *Queries) KbListFrequencies(ctx context.Context, sourceName string) ([]KbListFrequenciesRow, error) {
+	rows, err := q.db.Query(ctx, kbListFrequencies, sourceName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []KbListFrequenciesRow{}
+	for rows.Next() {
+		var i KbListFrequenciesRow
+		if err := rows.Scan(&i.Word, &i.Rank, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const kbListLegacyTranslations = `-- name: KbListLegacyTranslations :many
+SELECT wt.lemma, wt.pos, wt.sense_no, wt.ru
+FROM word_translations wt
+WHERE wt.source_id = (
+        SELECT s.id FROM data_sources s
+        WHERE s.name = $1 AND s.imported_at IS NOT NULL
+        ORDER BY s.imported_at DESC, s.id DESC
+        LIMIT 1
+      )
+ORDER BY wt.lemma, wt.pos, wt.sense_no, wt.ru
+`
+
+type KbListLegacyTranslationsRow struct {
+	Lemma   string
+	Pos     string
+	SenseNo int16
+	Ru      string
+}
+
+// Все переводы последнего завершённого импорта словаря.
+func (q *Queries) KbListLegacyTranslations(ctx context.Context, sourceName string) ([]KbListLegacyTranslationsRow, error) {
+	rows, err := q.db.Query(ctx, kbListLegacyTranslations, sourceName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []KbListLegacyTranslationsRow{}
+	for rows.Next() {
+		var i KbListLegacyTranslationsRow
+		if err := rows.Scan(
+			&i.Lemma,
+			&i.Pos,
+			&i.SenseNo,
+			&i.Ru,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const kbListLemmas = `-- name: KbListLemmas :many
 SELECT DISTINCT lemma FROM lexemes ORDER BY lemma
 `
@@ -223,4 +306,57 @@ func (q *Queries) KbListLemmas(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const kbListLexemes = `-- name: KbListLexemes :many
+SELECT l.id, l.lemma, l.pos, COALESCE(min(c.level), '')::text AS level
+FROM lexemes l
+LEFT JOIN lexeme_cefr c ON c.lexeme_id = l.id
+GROUP BY l.id, l.lemma, l.pos
+ORDER BY l.id
+`
+
+type KbListLexemesRow struct {
+	ID    int64
+	Lemma string
+	Pos   string
+	Level string
+}
+
+// Слова с самым низким уровнем CEFR среди источников (пусто, если уровня нет).
+func (q *Queries) KbListLexemes(ctx context.Context) ([]KbListLexemesRow, error) {
+	rows, err := q.db.Query(ctx, kbListLexemes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []KbListLexemesRow{}
+	for rows.Next() {
+		var i KbListLexemesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Lemma,
+			&i.Pos,
+			&i.Level,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const kbSourceID = `-- name: KbSourceID :one
+SELECT id FROM data_sources WHERE name = $1 AND imported_at IS NOT NULL ORDER BY imported_at DESC, id DESC LIMIT 1
+`
+
+// Номер последнего завершённого импорта источника (нет строки — источник не загружен).
+func (q *Queries) KbSourceID(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRow(ctx, kbSourceID, name)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }

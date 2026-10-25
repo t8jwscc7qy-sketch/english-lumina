@@ -257,3 +257,29 @@ func TestKaikkiPosMapping(t *testing.T) {
 		t.Fatal("отображение частей речи старого словаря")
 	}
 }
+
+// Номер значения у перевода сохраняется только от Kaikki: нумерация старого словаря с таблицей значений не связана.
+func TestAssembleTranslationSenseOnlyFromKaikki(t *testing.T) {
+	out, _ := Assemble(fixtureInputs(t))
+	known := map[[2]int64]bool{}
+	for _, s := range out.Senses {
+		known[[2]int64{s.LexemeID, int64(s.SenseNo)}] = true
+	}
+	for _, r := range out.Translations {
+		if r.SenseNo != nil && !known[[2]int64{r.LexemeID, int64(*r.SenseNo)}] {
+			t.Errorf("перевод ссылается на несуществующее значение: %+v", r)
+		}
+		if r.LexemeID == 7 && r.SenseNo != nil {
+			t.Errorf("перевод только из старого словаря не должен иметь номера значения: %+v", r)
+		}
+	}
+	var withSense bool
+	for _, r := range out.Translations {
+		if r.LexemeID == 1 && r.Text == "папа" && r.SenseNo != nil && *r.SenseNo == 1 {
+			withSense = true
+		}
+	}
+	if !withSense {
+		t.Fatal("у «папа» из Kaikki номер значения 1 сохраняется")
+	}
+}

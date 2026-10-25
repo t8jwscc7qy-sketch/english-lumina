@@ -583,8 +583,8 @@ func Assemble(in Inputs) (Output, Report) {
 
 func translationRow(lexID int64, s Scored, rank int, chosen bool, ids map[string]int64) TranslationRow {
 	var sense *int
-	if s.SenseNo > 0 {
-		n := s.SenseNo
+	if s.KaikkiSense > 0 {
+		n := s.KaikkiSense
 		sense = &n
 	}
 	return TranslationRow{

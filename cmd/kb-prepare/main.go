@@ -21,6 +21,7 @@ import (
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/config"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/importer"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/kb"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/kaikki"
 )
 
@@ -59,7 +60,7 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("список слов: %w", err)
 	}
-	set := LemmaSet(lemmas)
+	set := kb.LemmaSet(lemmas)
 
 	// Общий тайм-аут клиента importer.NewHTTPClient (2 минуты) для файла в несколько гигабайт мал:
 	// ограничиваем только установку соединения и ожидание ответа, остальное прерывает контекст.
@@ -105,7 +106,7 @@ func run(ctx context.Context, args []string) error {
 	if err := os.Rename(outPath+".tmp", outPath); err != nil {
 		return err
 	}
-	if err := WriteMeta(outPath+".meta", Meta{FileSHA256: kaikki.FileSHA256, LemmasHash: LemmasHash(lemmas), Selected: st.Selected}); err != nil {
+	if err := kb.WriteMeta(outPath+".meta", kb.Meta{FileSHA256: kaikki.FileSHA256, LemmasHash: kb.LemmasHash(lemmas), Selected: st.Selected}); err != nil {
 		return err
 	}
 
