@@ -53,8 +53,10 @@ func buildMilestones(events []db.ListActivityEventsRow, now time.Time, tz string
 			*cur = &dd
 		}
 	}
+	var first *activity.Day // самое раннее загруженное событие любого типа
 	for _, e := range events {
 		d := activity.DayOf(e.OccurredAt.Time, loc)
+		earliest(&first, d)
 		switch e.Type {
 		case "exercise.answered":
 			times = append(times, e.OccurredAt.Time)
@@ -71,6 +73,10 @@ func buildMilestones(events []db.ListActivityEventsRow, now time.Time, tz string
 	in.Minutes = activity.DayMinutes(times, loc)
 
 	all, newToday := activity.ComputeMilestones(in, today)
+	// История, вероятно, обрезана окном: вехи «до окна» достигаются заново каждый день, вспышку не даём.
+	if first != nil && !today.AddDays(-overviewWindowDays+2).Before(*first) {
+		newToday = []string{}
+	}
 	out := api.MilestoneList{Milestones: make([]api.Milestone, 0, len(all)), NewToday: newToday}
 	for _, m := range all {
 		item := api.Milestone{

@@ -79,4 +79,11 @@ describe('MilestonesBlock', () => {
     render(<MilestonesBlock milestones={all} />)
     expect(screen.queryByRole('list', { name: 'Ближайшие вехи' })).not.toBeInTheDocument()
   })
+
+  it('недостигнутая веха не показывает «5 из 5»: значение округляется вниз до десятых', () => {
+    const almost = [m('hours-5', 'hours', '5 часов занятий', 5, undefined, 4.95)]
+    render(<MilestonesBlock milestones={almost} />)
+    expect(screen.getByText('5 часов занятий: 4,9 из 5')).toBeInTheDocument()
+    expect(screen.queryByText('5 часов занятий: 5 из 5')).not.toBeInTheDocument()
+  })
 })

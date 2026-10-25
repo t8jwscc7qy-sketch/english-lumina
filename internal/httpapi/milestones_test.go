@@ -160,3 +160,24 @@ func TestBuildMilestonesManyEventsIsFast(t *testing.T) {
 		t.Fatalf("365 суток подряд по 20 минут: серия 365 достигнута: %+v", m)
 	}
 }
+
+// Обрезанная история (самое раннее событие на первых сутках окна): вехи до окна «достигаются» заново каждый день,
+// поэтому «новых сегодня» не отдаём — вспышки не будет.
+func TestBuildMilestonesTruncatedHistoryHasNoNewToday(t *testing.T) {
+	day := func(back int) time.Time {
+		d := progressNow.AddDate(0, 0, -back)
+		return time.Date(d.Year(), d.Month(), d.Day(), 9, 0, 0, 0, time.UTC)
+	}
+	today := burst(day(0), 100, time.Second) // сегодня 100 ответов: answers-100 достигается сегодня
+	truncated := append([]db.ListActivityEventsRow{activityRow("exercise.answered", day(365), true)}, today...)
+	l := buildMilestones(truncated, progressNow, "")
+	if len(l.NewToday) != 0 {
+		t.Fatalf("история обрезана: newToday должен быть пустым, получили %v", l.NewToday)
+	}
+	// контроль: то же самое, но история началась 10 суток назад — вехи сегодня новые
+	recent := append([]db.ListActivityEventsRow{activityRow("exercise.answered", day(10), true)}, today...)
+	l = buildMilestones(recent, progressNow, "")
+	if !slices.Contains(l.NewToday, "answers-100") {
+		t.Fatalf("необрезанная история: ждём answers-100 в newToday, получили %v", l.NewToday)
+	}
+}

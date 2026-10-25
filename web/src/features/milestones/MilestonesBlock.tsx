@@ -3,6 +3,8 @@ import { formatDayRu } from '@/features/today/progress'
 import { nextPerKind, type Milestone } from './milestones'
 
 const fmt = (n: number) => n.toLocaleString('ru-RU', { maximumFractionDigits: 1 })
+/** Значение недостигнутой вехи округляем вниз: «5 из 5» при 4 ч 57 мин было бы неправдой. */
+const fmtDown = (n: number) => fmt(Math.floor(n * 10 + 1e-9) / 10)
 
 /** Блок «Вехи» на странице «Прогресс»: достигнутые с датой (новые сверху) и ближайшие с полосой. Без сигнальных цветов. */
 export function MilestonesBlock({ milestones }: { milestones: Milestone[] }) {
@@ -34,7 +36,7 @@ export function MilestonesBlock({ milestones }: { milestones: Milestone[] }) {
                 <p className="text-sm text-muted-foreground">{`${m.title}: ещё впереди`}</p>
               ) : (
                 <>
-                  <p className="text-sm tabular-nums">{`${m.title}: ${fmt(m.progress.value)} из ${fmt(m.progress.target)}`}</p>
+                  <p className="text-sm tabular-nums">{`${m.title}: ${fmtDown(m.progress.value)} из ${fmt(m.progress.target)}`}</p>
                   <XpBar
                     value={m.progress.value}
                     total={m.progress.target}
