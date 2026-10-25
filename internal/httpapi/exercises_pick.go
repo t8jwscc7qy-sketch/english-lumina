@@ -290,6 +290,59 @@ func (s *authServer) orderCandidate(ctx context.Context, rng *idRange, maxLevel 
 	return gapCandidate{}, false, nil
 }
 
+// translateCandidate берёт окно предложений, оставляет те, из которых собирается «перевод», проверяет уровни
+// одним запросом (уровень не выше maxLevel) и для первого подходящего ищет альтернативные английские переводы
+// того же русского предложения: они принимаются как верные. maxLevel пуст — предела нет.
+func (s *authServer) translateCandidate(ctx context.Context, rng *idRange, maxLevel string, used map[int64]bool) (gapCandidate, bool, error) {
+	rows, err := s.sampleWindow(ctx, rng)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	var pending []orderPending
+	var lookup []string
+	for _, row := range rows {
+		if len(pending) >= maxWindowCandidates {
+			break
+		}
+		if used[row.ID] {
+			continue
+		}
+		if _, ok := exercises.BuildTranslate(row.Text, nil); !ok {
+			continue
+		}
+		p := orderPending{row: row, tokens: exercises.Tokens(row.Text)}
+		lookup = append(lookup, p.tokens...)
+		pending = append(pending, p)
+	}
+	if len(pending) == 0 {
+		return gapCandidate{}, false, nil
+	}
+	known, err := s.levelInfo(ctx, lookup)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	for _, p := range pending {
+		level, ok := exercises.SentenceLevel(p.tokens, known)
+		if !ok || (maxLevel != "" && level > maxLevel) {
+			continue
+		}
+		alts, err := s.store.ListEnglishAlternatives(ctx, db.ListEnglishAlternativesParams{EnID: p.row.ID, RuID: p.row.RuID, MaxRows: maxAlternatives})
+		if err != nil {
+			return gapCandidate{}, false, err
+		}
+		texts := make([]string, len(alts))
+		for i, a := range alts {
+			texts[i] = a.Text
+		}
+		tr, ok := exercises.BuildTranslate(p.row.Text, texts)
+		if !ok {
+			continue
+		}
+		return gapCandidate{sentenceID: p.row.ID, translation: p.row.RuText, translate: &tr, level: level}, true, nil
+	}
+	return gapCandidate{}, false, nil
+}
+
 const (
 	formWeakWords   = 10 // слабых слов карточек, с которых начинаем
 	formWordTries   = 6  // у скольких слов ищем предложения

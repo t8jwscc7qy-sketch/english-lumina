@@ -108,8 +108,8 @@ func TestBuildTranslateBounds(t *testing.T) {
 		s  string
 		ok bool
 	}{
-		{"I love you.", true}, // 3 слова
-		{"Go home.", false},   // 2 слова
+		{"I love you.", false},                                      // 3 слова: альтернатив из базы для коротких нет
+		{"I love you so much.", true},                               // 4 слова
 		{"We eat red apples in the big house today.", true},         // 9 слов
 		{"We eat red apples in the big house today now.", false},    // 10 слов
 		{strings.TrimSpace(strings.Repeat("abcdefghi ", 9)), false}, // 9 слов, но длиннее 80 символов
