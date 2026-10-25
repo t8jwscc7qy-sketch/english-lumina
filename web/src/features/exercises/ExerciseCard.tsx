@@ -1,5 +1,5 @@
 import { Fox } from '@/components/brand/Fox'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Navigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { useAnswer, type AnswerResult, type Exercise } from './exercises'
 import { topicName } from './topics'
 import { AddToCards } from './AddToCards'
+import { MatchExercise } from './MatchExercise'
+import { lastInput, prefersReducedMotion } from './matchFx'
 import { OrderExercise } from './OrderExercise'
 
 /** Ключ идемпотентности: новый на каждое упражнение. Повтор с тем же ключом сервер не применяет дважды. */
@@ -55,6 +57,11 @@ function mistakeLine(correct: boolean, m: NonNullable<AnswerResult['mistake']>):
   return m.status === 'closed' ? 'Ошибка закрыта' : 'Ещё один верный ответ, и ошибка закрыта'
 }
 
+/** Сколько пар «сопоставления» верно. */
+function matchRight(r: AnswerResult): number {
+  return r.pairs?.filter((p) => p.correct).length ?? 0
+}
+
 type ExerciseCardProps = {
   exercise: Exercise
   onNext: () => void
@@ -74,7 +81,10 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
   const articleRef = useRef<HTMLElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const isOrder = exercise.kind === 'order'
-  const manual = !isOrder && exercise.choices.length === 0
+  const isMatch = exercise.kind === 'match'
+  // Лисёнок подпрыгивает только при пяти из пяти и только если ответ дан мышью и движение не отключено.
+  const celebrate = useMemo(() => isMatch && !!result?.correct && lastInput() === 'pointer' && !prefersReducedMotion(), [isMatch, result])
+  const manual = !isOrder && !isMatch && exercise.choices.length === 0
 
   // Новое упражнение (и результат ответа) забирает фокус: клавиши работают сразу.
   // Фокус остаётся на контейнере и после ответа: тогда 1–4, Пробел и Enter работают без лишних Tab. В ручном вводе до ответа фокус в поле.
@@ -145,7 +155,7 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
       {exercise.repeat && <p className="text-sm font-semibold text-muted-foreground">Повтор ошибки</p>}
       <p className="text-sm text-muted-foreground">{topicName(exercise.topic)}</p>
 
-      {isOrder ? (
+      {isOrder || isMatch ? (
         <p lang="ru" className="break-words text-xl leading-relaxed">
           {exercise.prompt}
         </p>
@@ -170,6 +180,18 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
           frozen={!!result || answer.isPending || locked !== undefined}
           pending={answer.isPending}
           correct={result?.correct}
+          onSubmit={submit}
+          restoreFocus={() => articleRef.current?.focus()}
+        />
+      )}
+
+      {isMatch && (
+        <MatchExercise
+          words={exercise.words ?? []}
+          options={exercise.options ?? []}
+          frozen={!!result || answer.isPending || locked !== undefined}
+          pending={answer.isPending}
+          result={result}
           onSubmit={submit}
           restoreFocus={() => articleRef.current?.focus()}
         />
@@ -203,7 +225,7 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
         </form>
       )}
 
-      {!manual && !isOrder && (
+      {!manual && !isOrder && !isMatch && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {exercise.choices.map((choice, i) => {
             const isRight = !!result && choice === result.answer
@@ -249,11 +271,16 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
         {result && (
           <>
           <p className={cn('flex items-center gap-2 font-semibold', !result.correct && 'text-coral-text')}>
-            <Fox scale={2} mood={result.correct ? 'happy' : 'thinking'} bob={false} />
+            <Fox
+              scale={2}
+              mood={result.correct || (isMatch && matchRight(result) >= 4) ? 'happy' : 'thinking'}
+              bob={false}
+              className={celebrate ? 'fox-jump' : undefined}
+            />
             {result.correct ? <Check aria-hidden className="size-5 text-grass-text" /> : <X aria-hidden className="size-5" />}
-            {result.correct ? 'Верно' : 'Неверно'}
+            {isMatch ? (result.correct ? 'Все пары верны' : 'Есть ошибки в парах') : result.correct ? 'Верно' : 'Неверно'}
           </p>
-          {!result.correct && (
+          {!result.correct && !isMatch && (
             <p>
               {'Верный ответ: '}
               <span lang="en" className="font-semibold">
@@ -261,7 +288,7 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
               </span>
             </p>
           )}
-          <p className="text-muted-foreground">{result.translation}</p>
+          {!isMatch && <p className="text-muted-foreground">{result.translation}</p>}
           {result.ratings.length > 0 && (
             <div data-affected className="text-sm text-muted-foreground">
               {'Затронуто: '}

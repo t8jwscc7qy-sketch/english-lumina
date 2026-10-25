@@ -92,7 +92,7 @@ RETURNING id
 type InsertExerciseParams struct {
 	UserID     int64
 	Kind       string
-	SentenceID int64
+	SentenceID *int64
 	Topics     []string
 	Payload    json.RawMessage
 	Answer     json.RawMessage
@@ -472,7 +472,7 @@ func (q *Queries) UpsertTopicRating(ctx context.Context, arg UpsertTopicRatingPa
 }
 
 const usedSentences = `-- name: UsedSentences :many
-SELECT DISTINCT sentence_id FROM exercises WHERE user_id = $1 AND answered_at IS NOT NULL AND $2::text = ANY(topics)
+SELECT DISTINCT sentence_id::bigint AS sentence_id FROM exercises WHERE user_id = $1 AND answered_at IS NOT NULL AND sentence_id IS NOT NULL AND $2::text = ANY(topics)
 `
 
 type UsedSentencesParams struct {
@@ -482,6 +482,7 @@ type UsedSentencesParams struct {
 
 // Предложения, на которые пользователь уже ответил в теме (чтобы не повторять). Выданные, но не отвеченные
 // не считаются: обновление страницы не должно сжигать предложения.
+// У «сопоставления» предложения нет (sentence_id пуст): такие упражнения не считаются.
 func (q *Queries) UsedSentences(ctx context.Context, arg UsedSentencesParams) ([]int64, error) {
 	rows, err := q.db.Query(ctx, usedSentences, arg.UserID, arg.Topic)
 	if err != nil {

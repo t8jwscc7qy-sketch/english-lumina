@@ -70,7 +70,7 @@ func TestNextFormTopic(t *testing.T) {
 		}
 	}
 	stored := e.store.exercises[ex.Id]
-	if stored.Kind != "form" || stored.SentenceID != 7 || !slices.Contains(stored.Topics, "skill:form") || !slices.Contains(stored.Topics, "level:A1") {
+	if stored.Kind != "form" || stored.SentenceID == nil || *stored.SentenceID != 7 || !slices.Contains(stored.Topics, "skill:form") || !slices.Contains(stored.Topics, "level:A1") {
 		t.Fatalf("запись: %+v", stored)
 	}
 	a := storedAnswer(t, e, ex.Id)

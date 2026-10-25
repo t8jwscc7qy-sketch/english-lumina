@@ -304,22 +304,23 @@ type formPending struct {
 	gap         exercises.Gap
 }
 
-// formWords — слова для «выбора формы»: сначала слабые слова карточек, затем случайные слова уровня пользователя
-// и следующего за ним (без настроек — A1). Подходят только глаголы и прилагательные, повторы убираются.
-func (s *authServer) formWords(ctx context.Context, userID int64, level string) ([]formInfo, error) {
+// levelWords — слова упражнений по словам: сначала слабые слова карточек (не больше weak), затем случайные слова
+// уровня пользователя и следующего за ним (по batch на уровень; без настроек — A1). Подходят слова, для которых
+// posOK верно; повторы убираются.
+func (s *authServer) levelWords(ctx context.Context, userID int64, level string, posOK func(string) bool, weak, batch int32) ([]formInfo, error) {
 	var out []formInfo
 	seen := map[int64]bool{}
 	add := func(id int64, lemma, pos string) {
-		if !seen[id] && (pos == "verb" || pos == "adjective") {
+		if !seen[id] && posOK(pos) {
 			seen[id] = true
 			out = append(out, formInfo{lexemeID: id, lemma: lemma, pos: pos})
 		}
 	}
-	weak, err := s.store.ListWeakCardWords(ctx, db.ListWeakCardWordsParams{UserID: userID, MaxRows: formWeakWords})
+	weakRows, err := s.store.ListWeakCardWords(ctx, db.ListWeakCardWordsParams{UserID: userID, MaxRows: weak})
 	if err != nil {
 		return nil, err
 	}
-	for _, w := range weak {
+	for _, w := range weakRows {
 		add(w.LexemeID, w.Lemma, w.Pos)
 	}
 	levels := []string{"A1"}
@@ -327,7 +328,7 @@ func (s *authServer) formWords(ctx context.Context, userID int64, level string) 
 		levels = allLevels[i:min(i+2, len(allLevels))]
 	}
 	for _, lv := range levels {
-		rows, err := s.store.RandomLexemesByLevel(ctx, db.RandomLexemesByLevelParams{Level: lv, MaxRows: formLexemeBatch})
+		rows, err := s.store.RandomLexemesByLevel(ctx, db.RandomLexemesByLevelParams{Level: lv, MaxRows: batch})
 		if err != nil {
 			return nil, err
 		}
@@ -336,6 +337,11 @@ func (s *authServer) formWords(ctx context.Context, userID int64, level string) 
 		}
 	}
 	return out, nil
+}
+
+// formWords — слова для «выбора формы»: подходят только глаголы и прилагательные.
+func (s *authServer) formWords(ctx context.Context, userID int64, level string) ([]formInfo, error) {
+	return s.levelWords(ctx, userID, level, func(pos string) bool { return pos == "verb" || pos == "adjective" }, formWeakWords, formLexemeBatch)
 }
 
 // formCandidate ищет для слова (слабые слова карточек первыми) предложение, в котором ровно одна его форма.
@@ -412,4 +418,62 @@ func (s *authServer) formCandidate(ctx context.Context, _ *idRange, userID int64
 		}
 	}
 	return gapCandidate{}, false, nil
+}
+
+const (
+	matchWeakWords   = 10 // слабых слов карточек в набор кандидатов
+	matchLexemeBatch = 30 // случайных слов на уровень
+	dictionarySource = "freedict-eng-rus"
+)
+
+// dictPos — часть речи словаря (n, v, adj, adv) по части речи лексемы; пусто, если слово не годится.
+var dictPos = map[string]string{"noun": "n", "verb": "v", "adjective": "adj", "adverb": "adv"}
+
+// matchCandidate собирает «сопоставление»: слова как у «выбора формы» (слабые карточки, затем слова уровня), переводы
+// из словаря. Меньше пяти подходящих слов — не найдено (вид пропускается, остальные работают).
+func (s *authServer) matchCandidate(ctx context.Context, userID int64, level string) (gapCandidate, bool, error) {
+	ws, err := s.levelWords(ctx, userID, level, func(pos string) bool { return dictPos[pos] != "" }, matchWeakWords, matchLexemeBatch)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	if len(ws) < exercises.MatchPairs {
+		return gapCandidate{}, false, nil
+	}
+	lemmas := make([]string, 0, len(ws))
+	for _, w := range ws {
+		if !slices.Contains(lemmas, w.lemma) {
+			lemmas = append(lemmas, w.lemma)
+		}
+	}
+	rows, err := s.store.ListTranslationsForWords(ctx, db.ListTranslationsForWordsParams{SourceName: dictionarySource, Lemmas: lemmas})
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	type key struct{ lemma, pos string }
+	senses := map[key][][]string{}
+	lastSense := map[key]int16{}
+	for _, r := range rows {
+		k := key{r.Lemma, r.Pos}
+		if n := len(senses[k]); n == 0 || lastSense[k] != r.SenseNo {
+			senses[k] = append(senses[k], nil)
+			lastSense[k] = r.SenseNo
+		}
+		last := len(senses[k]) - 1
+		senses[k][last] = append(senses[k][last], r.Ru)
+	}
+	cands := make([]exercises.MatchCandidate, 0, len(ws))
+	for _, w := range ws {
+		if sn := senses[key{w.lemma, dictPos[w.pos]}]; len(sn) > 0 {
+			cands = append(cands, exercises.MatchCandidate{Word: w.lemma, Senses: sn})
+		}
+	}
+	m, ok := exercises.BuildMatch(cands, s.rnd(1<<62))
+	if !ok {
+		return gapCandidate{}, false, nil
+	}
+	c := gapCandidate{match: &m}
+	if slices.Contains(allLevels, level) {
+		c.level = level
+	}
+	return c, true, nil
 }

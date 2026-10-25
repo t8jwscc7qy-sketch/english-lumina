@@ -15,7 +15,8 @@ UPDATE exercises SET answered_at = sqlc.arg(answered_at) WHERE id = sqlc.arg(id)
 -- name: UsedSentences :many
 -- Предложения, на которые пользователь уже ответил в теме (чтобы не повторять). Выданные, но не отвеченные
 -- не считаются: обновление страницы не должно сжигать предложения.
-SELECT DISTINCT sentence_id FROM exercises WHERE user_id = $1 AND answered_at IS NOT NULL AND sqlc.arg(topic)::text = ANY(topics);
+-- У «сопоставления» предложения нет (sentence_id пуст): такие упражнения не считаются.
+SELECT DISTINCT sentence_id::bigint AS sentence_id FROM exercises WHERE user_id = $1 AND answered_at IS NOT NULL AND sentence_id IS NOT NULL AND sqlc.arg(topic)::text = ANY(topics);
 
 -- name: ListTopicRatings :many
 SELECT * FROM topic_ratings WHERE user_id = $1 ORDER BY topic;

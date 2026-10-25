@@ -689,10 +689,11 @@ components:
           format: int64
         kind:
           type: string
-          enum: [gap, order, form]
+          enum: [gap, order, form, match]
           description: >
             Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток,
-            form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма)
+            form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма),
+            match — соединить пять английских слов (words) с пятью русскими переводами (options)
         prompt:
           type: string
           description: >
@@ -716,6 +717,16 @@ components:
         hint:
           type: string
           description: Только для form, начальная форма слова, которую нужно изменить
+        words:
+          type: array
+          items:
+            type: string
+          description: Только для match, пять английских слов в фиксированном порядке
+        options:
+          type: array
+          items:
+            type: string
+          description: Только для match, пять русских переводов вперемешку (верные пары до ответа клиенту не отдаются)
         topic:
           type: string
           description: Основная тема упражнения
@@ -732,8 +743,10 @@ components:
         given:
           type: string
           minLength: 1
-          maxLength: 200
-          description: Ответ пользователя; для order — собранное предложение строкой (слова через пробел)
+          maxLength: 400
+          description: >
+            Ответ пользователя; для order — собранное предложение строкой (слова через пробел),
+            для match — пары строкой «слово=перевод;слово=перевод;…»
         key:
           type: string
           minLength: 1
@@ -784,6 +797,25 @@ components:
               description: Слово уже есть в карточках пользователя
         mistake:
           $ref: "#/components/schemas/MistakeResult"
+        pairs:
+          type: array
+          items:
+            $ref: "#/components/schemas/PairResult"
+          description: Только для match, разбор каждой пары (в порядке слов упражнения)
+    PairResult:
+      type: object
+      required: [word, given, answer, correct]
+      properties:
+        word:
+          type: string
+        given:
+          type: string
+          description: Перевод, который выбрал пользователь
+        answer:
+          type: string
+          description: Верный перевод
+        correct:
+          type: boolean
     MistakeResult:
       type: object
       required: [status, streak, nextDue]

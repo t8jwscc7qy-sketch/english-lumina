@@ -67,7 +67,7 @@ func TestNextOrderTopic(t *testing.T) {
 		t.Fatalf("в ответе исходное предложение: %s", rec.Body)
 	}
 	stored := e.store.exercises[ex.Id]
-	if stored.Kind != "order" || stored.SentenceID != 10 || !slices.Equal(stored.Topics, []string{"skill:order", "level:A1"}) {
+	if stored.Kind != "order" || stored.SentenceID == nil || *stored.SentenceID != 10 || !slices.Equal(stored.Topics, []string{"skill:order", "level:A1"}) {
 		t.Fatalf("запись: %+v", stored)
 	}
 	var ans exerciseAnswer
@@ -175,7 +175,7 @@ func seedOrderExercise(t *testing.T, e env, userID int64, level string) int64 {
 	payload, _ := json.Marshal(exercisePayload{Prompt: "Мы едим красные яблоки каждое утро.", Translation: "Мы едим красные яблоки каждое утро.", Tiles: tiles, Topic: "skill:order"})
 	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"We eat red apples every morning.", "Every morning we eat red apples."}})
 	id, err := e.store.InsertExercise(t.Context(), db.InsertExerciseParams{
-		UserID: userID, Kind: "order", SentenceID: 1, Topics: topics, Payload: payload, Answer: answer,
+		UserID: userID, Kind: "order", SentenceID: i64(1), Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		t.Fatal(err)

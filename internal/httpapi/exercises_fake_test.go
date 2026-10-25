@@ -146,8 +146,8 @@ func (f *fakeStore) SentenceLevels(_ context.Context, words []string) ([]db.Sent
 func (f *fakeStore) UsedSentences(_ context.Context, arg db.UsedSentencesParams) ([]int64, error) {
 	var out []int64
 	for _, e := range f.exercises {
-		if e.UserID == arg.UserID && e.AnsweredAt.Valid && slices.Contains(e.Topics, arg.Topic) {
-			out = append(out, e.SentenceID)
+		if e.UserID == arg.UserID && e.AnsweredAt.Valid && e.SentenceID != nil && slices.Contains(e.Topics, arg.Topic) {
+			out = append(out, *e.SentenceID)
 		}
 	}
 	slices.Sort(out)
@@ -244,3 +244,6 @@ func (f *fakeStore) ListWeakCardWords(_ context.Context, arg db.ListWeakCardWord
 	n := min(len(f.weakWords), int(arg.MaxRows))
 	return slices.Clone(f.weakWords[:n]), nil
 }
+
+// i64 — указатель на число (SentenceID у упражнения необязателен).
+func i64(v int64) *int64 { return &v }

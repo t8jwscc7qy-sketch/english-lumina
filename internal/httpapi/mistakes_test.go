@@ -195,7 +195,7 @@ func TestNextServesDueRepeat(t *testing.T) {
 				t.Fatalf("упражнение: %+v", ex)
 			}
 			stored := e.store.exercises[ex.Id]
-			if stored.MistakeID == nil || *stored.MistakeID != mid || stored.SentenceID != 7 || stored.Kind != kind {
+			if stored.MistakeID == nil || *stored.MistakeID != mid || stored.SentenceID == nil || *stored.SentenceID != 7 || stored.Kind != kind {
 				t.Fatalf("строка exercises: %+v", stored)
 			}
 			var raw map[string]any
@@ -231,7 +231,7 @@ func answeredExercise(e env, mistakeID *int64, at time.Time) {
 	}
 	e.store.nextExerciseID++
 	e.store.exercises[e.store.nextExerciseID] = db.Exercise{
-		ID: e.store.nextExerciseID, UserID: 1, Kind: "gap", SentenceID: 1, MistakeID: mistakeID, AnsweredAt: ts(at),
+		ID: e.store.nextExerciseID, UserID: 1, Kind: "gap", SentenceID: i64(1), MistakeID: mistakeID, AnsweredAt: ts(at),
 		Topics: []string{"grammar:articles"},
 	}
 }
@@ -529,7 +529,7 @@ func TestAnswerWrongResetReplacesBlank(t *testing.T) {
 	payload, _ := json.Marshal(exercisePayload{Prompt: "I have a big _____.", Translation: "У меня большая собака.", Choices: []string{"dog", "cat", "bird"}, Topic: "level:A1"})
 	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"dog"}})
 	second, err := e.store.InsertExercise(t.Context(), db.InsertExerciseParams{
-		UserID: 1, Kind: "gap", SentenceID: 1, Topics: []string{"level:A1", "pos:noun"}, Payload: payload, Answer: answer,
+		UserID: 1, Kind: "gap", SentenceID: i64(1), Topics: []string{"level:A1", "pos:noun"}, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		t.Fatal(err)

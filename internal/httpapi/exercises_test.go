@@ -93,7 +93,7 @@ func TestNextExerciseGrammarTopic(t *testing.T) {
 	if !ok {
 		t.Fatalf("записи exercises нет: %+v", e.store.exercises)
 	}
-	if stored.SentenceID != 10 || stored.Kind != "gap" || !slices.Equal(stored.Topics, []string{"grammar:articles", "level:A1"}) {
+	if stored.SentenceID == nil || *stored.SentenceID != 10 || stored.Kind != "gap" || !slices.Equal(stored.Topics, []string{"grammar:articles", "level:A1"}) {
 		t.Fatalf("запись: %+v", stored)
 	}
 	var ans struct{ Answers []string }
@@ -152,8 +152,9 @@ func TestNextExerciseSkipsTopicWithoutCandidates(t *testing.T) {
 	// Слабейшая тема (модальные) в предложении не встречается: берётся следующая по слабости.
 	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, "I have a dog.")}
 	knownWords(e, "i", "have", "a", "dog")
-	e.store.topicRatings = map[topicKey]db.TopicRating{ // порядок слов и выбор формы не мешают
+	e.store.topicRatings = map[topicKey]db.TopicRating{ // порядок слов, выбор формы и сопоставление не мешают
 		{userID: 1, topic: orderTopic}: rated(orderTopic, 1900, 3), {userID: 1, topic: formTopic}: rated(formTopic, 1900, 3),
+		{userID: 1, topic: matchTopic}: rated(matchTopic, 1900, 3),
 	}
 	for tp, mu := range map[string]float64{"grammar:modals": 1000, "grammar:future": 1100, "grammar:past_simple": 1200,
 		"grammar:prepositions": 1300, "grammar:articles": 1400} {
@@ -302,7 +303,7 @@ func TestNextExerciseLevelTopic(t *testing.T) {
 		}
 	}
 	stored := e.store.exercises[ex.Id]
-	if stored.SentenceID != 7 || !slices.Equal(stored.Topics, []string{"level:A2", "level:A1", "pos:noun"}) {
+	if stored.SentenceID == nil || *stored.SentenceID != 7 || !slices.Equal(stored.Topics, []string{"level:A2", "level:A1", "pos:noun"}) {
 		t.Fatalf("запись: %+v", stored)
 	}
 }

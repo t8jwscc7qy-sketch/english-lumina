@@ -21,7 +21,7 @@ import (
 
 const (
 	maxAnswerBody = 4 << 10
-	maxGivenLen   = 200
+	maxGivenLen   = 400
 	maxAnswerKey  = 64
 )
 
@@ -51,7 +51,7 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 	}
 	// Пробелы в ответе не обрезаем (их срезает сама проверка), но «только пробелы» — пустой ответ.
 	if req.Given == "" || strings.TrimSpace(req.Given) == "" || !validText(req.Given, maxGivenLen) {
-		writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidAnswer, "Ответ должен быть от 1 до 200 символов")
+		writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidAnswer, "Ответ должен быть от 1 до 400 символов")
 		return
 	}
 
@@ -65,7 +65,10 @@ func (s *authServer) AnswerExercise(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+	var matchErr *exercises.MatchError
 	switch {
+	case errors.As(err, &matchErr):
+		writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidAnswer, matchErr.Message)
 	case errors.Is(err, errExerciseNotFound):
 		writeError(w, http.StatusNotFound, api.ErrorErrorCodeNotFound, "Такого упражнения нет")
 	case errors.Is(err, errAlreadyAnswered):
@@ -153,6 +156,7 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 			var old struct {
 				Correct bool               `json:"correct"`
 				Mistake *api.MistakeResult `json:"mistake"`
+				Pairs   []api.PairResult   `json:"pairs"`
 			}
 			if err := json.Unmarshal(prev.Payload, &old); err != nil {
 				return fmt.Errorf("событие %d: %w", prev.ID, err)
@@ -170,19 +174,37 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 			if result.Word, err = formWord(ctx, tx, user.ID, ex.Kind, answer); err != nil {
 				return err
 			}
+			if ex.Kind == string(api.Match) {
+				result.Pairs = &old.Pairs
+			}
 			return nil
 		}
 
 		// Время берём уже после блокировки строки.
 		now := time.Now()
-		check := exercises.Check
-		if ex.Kind == string(api.Order) {
-			check = exercises.CheckOrder
-		}
-		correct := check(answer.Answers, req.Given)
+		var correct bool
 		score := 0.0
-		if correct {
-			score = 1
+		var pairs []api.PairResult
+		if ex.Kind == string(api.Match) {
+			// Дробный счёт: доля верных пар. Неверный формат — ошибка 400, ничего не записано.
+			res, right, err := exercises.CheckMatch(answer.Pairs, req.Given)
+			if err != nil {
+				return err
+			}
+			correct, score = right == len(res), float64(right)/float64(len(res))
+			pairs = make([]api.PairResult, len(res))
+			for i, r := range res {
+				pairs[i] = api.PairResult{Word: r.Word, Given: r.Given, Answer: r.Answer, Correct: r.Correct}
+			}
+		} else {
+			check := exercises.Check
+			if ex.Kind == string(api.Order) {
+				check = exercises.CheckOrder
+			}
+			correct = check(answer.Answers, req.Given)
+			if correct {
+				score = 1
+			}
 		}
 		opponent := exercises.Opponent(ex.Topics)
 		before := make(map[string]float64, len(ex.Topics))
@@ -222,6 +244,15 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 		if ex.Kind == string(api.Form) {
 			evData["lexemeId"] = answer.LexemeID
 		}
+		if ex.Kind == string(api.Match) {
+			right := 0
+			for _, p := range pairs {
+				if p.Correct {
+					right++
+				}
+			}
+			evData["correctPairs"], evData["pairs"] = right, pairs
+		}
 		if mres != nil {
 			evData["mistake"] = mres // чтобы повтор запроса по ключу отдал то же состояние ошибки
 		}
@@ -241,6 +272,9 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 		}
 		if result.Word, err = formWord(ctx, tx, user.ID, ex.Kind, answer); err != nil {
 			return err
+		}
+		if ex.Kind == string(api.Match) {
+			result.Pairs = &pairs
 		}
 		return nil
 	})

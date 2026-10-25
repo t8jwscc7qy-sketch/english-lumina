@@ -7,10 +7,13 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/auth"
@@ -910,7 +913,7 @@ func seedRealExercise(t *testing.T, q *db.Queries, sentenceID int64, topics ...s
 	payload, _ := json.Marshal(exercisePayload{Prompt: "I have _____ big dog.", Translation: "У меня большая собака.", Choices: []string{"a", "an", "the", "-"}, Topic: "grammar:articles"})
 	answer, _ := json.Marshal(exerciseAnswer{Answers: []string{"a"}})
 	id, err := q.InsertExercise(context.Background(), db.InsertExerciseParams{
-		UserID: 1, Kind: "gap", SentenceID: sentenceID, Topics: topics, Payload: payload, Answer: answer,
+		UserID: 1, Kind: "gap", SentenceID: &sentenceID, Topics: topics, Payload: payload, Answer: answer,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1427,4 +1430,143 @@ func TestLevelSuggestionOnRealDatabase(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM events WHERE user_id = 1 AND type = 'level.suggestion.dismissed'`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("событие отказа: n=%d err=%v", n, err)
 	}
+}
+
+// «Сопоставление» на настоящей Postgres: слова уровня, словарь последнего завершённого импорта, запись без предложения,
+// ответ с частичным счётом, повтор по ключу, параллельные ответы.
+func TestExerciseMatchOnRealDatabase(t *testing.T) {
+	pool := testdb.Pool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	hash, err := auth.HashPassword(testPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := q.CreateUser(ctx, db.CreateUserParams{Login: testLogin, PasswordHash: hash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ds, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "cefrj", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dict, err := q.UpsertDataSource(ctx, db.UpsertDataSourceParams{Name: "freedict-eng-rus", Version: "t", License: "l", Url: "u", Attribution: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	words := []struct{ lemma, pos, dictPos, ru string }{
+		{"apple", "noun", "n", "яблоко"}, {"house", "noun", "n", "дом"}, {"water", "noun", "n", "вода"},
+		{"book", "noun", "n", "книга"}, {"dog", "noun", "n", "собака"}, {"cat", "noun", "n", "кошка"},
+	}
+	for _, w := range words {
+		id, err := q.UpsertLexeme(ctx, db.UpsertLexemeParams{Lemma: w.lemma, Pos: w.pos, SourceID: ds.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertLexemeCefr(ctx, db.UpsertLexemeCefrParams{LexemeID: id, SourceID: ds.ID, Level: "A1", Extra: []byte(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertWordTranslation(ctx, db.UpsertWordTranslationParams{SourceID: dict.ID, Lemma: w.lemma, Pos: w.dictPos, SenseNo: 1, Ru: w.ru}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n := int32(len(words))
+	if err := q.FinishDataSource(ctx, db.FinishDataSourceParams{ID: dict.ID, RowCount: &n}); err != nil {
+		t.Fatal(err)
+	}
+	for _, tp := range append(append([]string{}, grammarTopics...), orderTopic, formTopic) {
+		if err := q.EnsureTopicRating(ctx, db.EnsureTopicRatingParams{UserID: user.ID, Topic: tp}); err != nil {
+			t.Fatal(err)
+		}
+		if err := q.UpsertTopicRating(ctx, db.UpsertTopicRatingParams{UserID: user.ID, Topic: tp, Rating: 1900, Deviation: 80, Volatility: 0.06, AttemptsDelta: 3}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	e := env{h: NewHandler(pool, NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now))}
+	token := login(t, e)
+	rec := getNext(t, e, token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("next: статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	if ex.Kind != api.Match || ex.Topic != "skill:match" || ex.Words == nil || len(*ex.Words) != 5 || len(*ex.Options) != 5 {
+		t.Fatalf("упражнение: %+v", ex)
+	}
+	var kind string
+	var sentence *int64
+	var answerRaw []byte
+	if err := pool.QueryRow(ctx, "SELECT kind, sentence_id, answer FROM exercises WHERE id = $1", ex.Id).Scan(&kind, &sentence, &answerRaw); err != nil || kind != "match" || sentence != nil {
+		t.Fatalf("запись: kind=%q sentence=%v err=%v", kind, sentence, err)
+	}
+	var stored exerciseAnswer
+	if err := json.Unmarshal(answerRaw, &stored); err != nil || len(stored.Pairs) != 5 {
+		t.Fatalf("ответ в записи: %s (%v)", answerRaw, err)
+	}
+
+	swapped := slices.Clone(stored.Pairs)
+	swapped[0].Ru, swapped[1].Ru = swapped[1].Ru, swapped[0].Ru
+	first := e.do(http.MethodPost, answerPath, answerBody(ex.Id, given(swapped), "k1"), withCookie(token))
+	if first.Code != http.StatusOK {
+		t.Fatalf("ответ: статус %d, тело %s", first.Code, first.Body)
+	}
+	res := decodeResult(t, first)
+	if res.Correct || res.Pairs == nil || len(*res.Pairs) != 5 {
+		t.Fatalf("результат: %+v", res)
+	}
+	again := e.do(http.MethodPost, answerPath, answerBody(ex.Id, given(swapped), "k1"), withCookie(token))
+	if again.Code != http.StatusOK || again.Body.String() != first.Body.String() {
+		t.Fatalf("повтор по ключу: статус %d, тело %s, ждали то же, что %s", again.Code, again.Body, first.Body)
+	}
+	if other := e.do(http.MethodPost, answerPath, answerBody(ex.Id, given(swapped), "k2"), withCookie(token)); other.Code != http.StatusConflict {
+		t.Fatalf("другой ключ: статус %d, ждали 409", other.Code)
+	}
+	var attempts int
+	var rating float64
+	if err := pool.QueryRow(ctx, "SELECT attempts, rating FROM topic_ratings WHERE user_id = $1 AND topic = 'skill:match'", user.ID).Scan(&attempts, &rating); err != nil || attempts != 1 {
+		t.Fatalf("рейтинг skill:match: attempts=%d err=%v", attempts, err)
+	}
+	var correctPairs int
+	if err := pool.QueryRow(ctx, "SELECT (payload->>'correctPairs')::int FROM events WHERE type = 'exercise.answered'").Scan(&correctPairs); err != nil || correctPairs != 3 {
+		t.Fatalf("correctPairs в событии: %d (%v)", correctPairs, err)
+	}
+
+	// Параллельные ответы на новое упражнение: засчитывается один, остальные получают повтор или 409.
+	ex2 := decodeExercise(t, getNext(t, e, token))
+	if ex2.Kind != api.Match {
+		t.Fatalf("второе упражнение: %+v", ex2)
+	}
+	pairs2 := storedAnswerFromDB(t, pool, ex2.Id).Pairs
+	var wg sync.WaitGroup
+	codes := make([]int, 6)
+	for i := range codes {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codes[i] = e.do(http.MethodPost, answerPath, answerBody(ex2.Id, given(pairs2), "kk"), withCookie(token)).Code
+		}()
+	}
+	wg.Wait()
+	for _, c := range codes {
+		if c != http.StatusOK {
+			t.Fatalf("параллельные ответы с одним ключом: коды %v", codes)
+		}
+	}
+	if err := pool.QueryRow(ctx, "SELECT attempts FROM topic_ratings WHERE user_id = $1 AND topic = 'skill:match'", user.ID).Scan(&attempts); err != nil || attempts != 2 {
+		t.Fatalf("после параллельных ответов attempts=%d (%v), ждали 2", attempts, err)
+	}
+}
+
+func storedAnswerFromDB(t *testing.T, pool *pgxpool.Pool, id int64) exerciseAnswer {
+	t.Helper()
+	var raw []byte
+	if err := pool.QueryRow(context.Background(), "SELECT answer FROM exercises WHERE id = $1", id).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var a exerciseAnswer
+	if err := json.Unmarshal(raw, &a); err != nil {
+		t.Fatal(err)
+	}
+	return a
 }

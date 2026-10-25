@@ -108,6 +108,9 @@ func isUniqueViolation(err error) bool {
 //
 // nil в результате — банк не затронут (верный обычный ответ или ошибка из упражнения уже удалена).
 func recordMistake(ctx context.Context, tx AuthStore, userID int64, ex db.Exercise, given string, correct bool, now time.Time) (*api.MistakeResult, error) {
+	if ex.SentenceID == nil {
+		return nil, nil // у «сопоставления» предложения нет, банк ошибок ему не нужен
+	}
 	if ex.MistakeID != nil {
 		m, err := tx.GetMistakeForUpdate(ctx, db.GetMistakeForUpdateParams{ID: *ex.MistakeID, UserID: userID})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -143,7 +146,7 @@ func recordMistake(ctx context.Context, tx AuthStore, userID int64, ex db.Exerci
 		return nil, nil
 	}
 	opened := mistakes.Opened(now)
-	m, err := tx.GetOpenMistakeForUpdate(ctx, db.GetOpenMistakeForUpdateParams{UserID: userID, SentenceID: ex.SentenceID, Kind: ex.Kind})
+	m, err := tx.GetOpenMistakeForUpdate(ctx, db.GetOpenMistakeForUpdateParams{UserID: userID, SentenceID: *ex.SentenceID, Kind: ex.Kind})
 	switch {
 	case err == nil:
 		if err := tx.ResetMistake(ctx, db.ResetMistakeParams{
@@ -153,7 +156,7 @@ func recordMistake(ctx context.Context, tx AuthStore, userID int64, ex db.Exerci
 		}
 	case errors.Is(err, pgx.ErrNoRows):
 		id, err := tx.InsertMistake(ctx, db.InsertMistakeParams{
-			UserID: userID, Kind: ex.Kind, SentenceID: ex.SentenceID, Topics: ex.Topics, Payload: ex.Payload, Answer: ex.Answer,
+			UserID: userID, Kind: ex.Kind, SentenceID: *ex.SentenceID, Topics: ex.Topics, Payload: ex.Payload, Answer: ex.Answer,
 			Given: given, NextDue: ts(opened.NextDue), FirstWrongAt: ts(now), SourceExerciseID: &ex.ID,
 		})
 		if err != nil {
@@ -281,7 +284,7 @@ func (s *authServer) repeatFor(ctx context.Context, userID int64, m db.Mistake) 
 		return api.Exercise{}, false, fmt.Errorf("копия ошибки %d: %w", m.ID, err)
 	}
 	id, err := s.store.InsertExercise(ctx, db.InsertExerciseParams{
-		UserID: userID, Kind: m.Kind, SentenceID: m.SentenceID, Topics: slices.Clone(m.Topics),
+		UserID: userID, Kind: m.Kind, SentenceID: &m.SentenceID, Topics: slices.Clone(m.Topics),
 		Payload: payload, Answer: m.Answer, MistakeID: &m.ID,
 	})
 	if err != nil {

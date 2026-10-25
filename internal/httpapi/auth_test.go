@@ -70,25 +70,28 @@ type fakeStore struct {
 	failEvents    bool // AppendEvent возвращает ошибку (проверка отката)
 	upserts       int
 
-	exercises      map[int64]db.Exercise
-	nextExerciseID int64
-	topicRatings   map[topicKey]db.TopicRating
-	sentencePool   []db.SampleSentencesRow         // для SampleSentences, по возрастанию id
-	wordLevels     map[string]db.SentenceLevelsRow // для SentenceLevels
-	rangeCalls     int
-	enText         map[int64]string  // для ListEnglishAlternatives: id английского предложения -> текст
-	enWords        map[int64]int16   // и число слов
-	enRu           map[int64][]int64 // и русские переводы (id)
-	levelCalls     int
-	sampleErr      error
-	rangeOverride  *db.SentenceIDRangeRow
-	levelLexemes   map[string][]db.RandomLexemesByLevelRow // для RandomLexemesByLevel
-	weakWords      []db.ListWeakCardWordsRow               // для ListWeakCardWords
-	mistakes       map[int64]db.Mistake                    // банк ошибок (mistakes_fake_test.go)
-	nextMistakeID  int64
-	missOpenOnce   bool              // GetOpenMistakeForUpdate один раз не находит строку (гонка)
-	activity       []fakeActivity    // события занятий для ListActivityEvents (progress_fake_test.go)
-	levelAnswers   []fakeLevelAnswer // ответы по темам для ListLevelAnswers (level_fake_test.go)
+	exercises        map[int64]db.Exercise
+	nextExerciseID   int64
+	topicRatings     map[topicKey]db.TopicRating
+	sentencePool     []db.SampleSentencesRow         // для SampleSentences, по возрастанию id
+	wordLevels       map[string]db.SentenceLevelsRow // для SentenceLevels
+	rangeCalls       int
+	enText           map[int64]string  // для ListEnglishAlternatives: id английского предложения -> текст
+	enWords          map[int64]int16   // и число слов
+	enRu             map[int64][]int64 // и русские переводы (id)
+	levelCalls       int
+	sampleErr        error
+	rangeOverride    *db.SentenceIDRangeRow
+	levelLexemes     map[string][]db.RandomLexemesByLevelRow // для RandomLexemesByLevel
+	weakWords        []db.ListWeakCardWordsRow               // для ListWeakCardWords
+	mistakes         map[int64]db.Mistake                    // банк ошибок (mistakes_fake_test.go)
+	nextMistakeID    int64
+	missOpenOnce     bool                             // GetOpenMistakeForUpdate один раз не находит строку (гонка)
+	activity         []fakeActivity                   // события занятий для ListActivityEvents (progress_fake_test.go)
+	levelAnswers     []fakeLevelAnswer                // ответы по темам для ListLevelAnswers (level_fake_test.go)
+	translations     []db.ListTranslationsForWordsRow // переводы слов для ListTranslationsForWords (exercises_match_fake_test.go)
+	translationCalls int
+	failTranslations bool
 }
 
 func newFakeStore(t *testing.T) *fakeStore {

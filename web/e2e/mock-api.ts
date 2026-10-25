@@ -104,7 +104,7 @@ export const SETTINGS: Settings = {
 
 export type ExerciseFixture = {
   id: number
-  kind: 'gap' | 'order' | 'form'
+  kind: 'gap' | 'order' | 'form' | 'match'
   prompt: string
   translation: string
   choices: string[]
@@ -122,6 +122,10 @@ export type ExerciseFixture = {
   noExamples?: boolean
   /** Повтор ошибки: ответ двигает ошибку этого упражнения (ошибка создаётся, если её ещё нет). */
   repeat?: boolean
+  /** Только для match: слова, переводы вперемешку и верные пары (до ответа клиенту не отдаются). */
+  words?: string[]
+  options?: string[]
+  pairs?: { word: string; ru: string }[]
 }
 export type MistakeFixture = {
   id: number; exerciseId?: number; topic: string; kind: string; prompt: string
@@ -146,6 +150,14 @@ export const ORDER_EXERCISE: ExerciseFixture = {
   id: 31, kind: 'order', prompt: 'Вчера я пошёл домой.', translation: 'Вчера я пошёл домой.',
   choices: [], tiles: ['home', 'went', 'yesterday', 'I'], topic: 'skill:order',
   answer: 'Yesterday I went home.', accept: ['Yesterday I went home.', 'I went home yesterday.'],
+}
+
+export const MATCH_EXERCISE: ExerciseFixture = {
+  id: 51, kind: 'match', prompt: 'Соедини слова с переводами', translation: '', choices: [], topic: 'skill:match',
+  answer: 'apple=яблоко;house=дом;water=вода;book=книга;dog=собака',
+  words: ['apple', 'house', 'water', 'book', 'dog'],
+  options: ['книга', 'яблоко', 'собака', 'вода', 'дом'],
+  pairs: [{ word: 'apple', ru: 'яблоко' }, { word: 'house', ru: 'дом' }, { word: 'water', ru: 'вода' }, { word: 'book', ru: 'книга' }, { word: 'dog', ru: 'собака' }],
 }
 
 export const FORM_EXERCISE: ExerciseFixture = {
@@ -357,7 +369,7 @@ export async function mockApi(
     ['grammar:articles', { topic: 'grammar:articles', rating: 1500, deviation: 350, attempts: 0 }],
     ['grammar:past_simple', { topic: 'grammar:past_simple', rating: 1500, deviation: 350, attempts: 0 }],
   ])
-  const publicExercise = ({ answer: _a, accept: _c, word: _w, noExamples: _n, repeat, ...rest }: ExerciseFixture) => ({ ...rest, ...(repeat ? { repeat: true } : {}) })
+  const publicExercise = ({ answer: _a, accept: _c, word: _w, noExamples: _n, pairs: _p, repeat, ...rest }: ExerciseFixture) => ({ ...rest, ...(repeat ? { repeat: true } : {}) })
 
   // Банк ошибок в памяти: неверный ответ открывает ошибку, верный повтор двигает её, второй верный закрывает.
   const inDays = (d: number) => new Date(Date.now() + d * DAY_MS).toISOString()
@@ -416,19 +428,28 @@ export async function mockApi(
       const norm = (t: string) => t.trim().replace(/\s+/g, ' ').replace(/[.!?]$/, '').toLowerCase()
       const correct =
         fx.kind === 'order' ? (fx.accept ?? [fx.answer]).some((a) => norm(a) === norm(body.given)) : body.given.trim().toLowerCase() === fx.answer.toLowerCase()
+      // «Сопоставление»: разбор по парам, счёт дробный (доля верных).
+      let pairResults: { word: string; given: string; answer: string; correct: boolean }[] | undefined
+      let share = correct ? 1 : 0
+      if (fx.kind === 'match' && fx.pairs) {
+        const got = new Map(body.given.split(';').map((p) => p.split('=') as [string, string]))
+        pairResults = fx.pairs.map((p) => ({ word: p.word, given: got.get(p.word) ?? '', answer: p.ru, correct: got.get(p.word) === p.ru }))
+        share = pairResults.filter((p) => p.correct).length / pairResults.length
+      }
+      const matchCorrect = pairResults ? pairResults.every((p) => p.correct) : correct
       const r = ratings.get(fx.topic) ?? { topic: fx.topic, rating: 1500, deviation: 350, attempts: 0 }
-      r.rating += correct ? 40 : -40
+      r.rating += pairResults ? Math.round(80 * share - 40) : correct ? 40 : -40
       r.deviation -= 20
       r.attempts += 1
       ratings.set(fx.topic, r)
       exQueue.splice(exQueue.indexOf(fx), 1)
-      const mistake = touchMistake(fx, body.given, correct)
+      const mistake = fx.kind === 'match' ? undefined : touchMistake(fx, body.given, correct)
       prog.answers += 1
-      prog.correct += correct ? 1 : 0
+      prog.correct += matchCorrect ? 1 : 0
       prog.minutes += prog.step
-      if (mistake && !correct) prog.opened += 1
+      if (mistake && !matchCorrect) prog.opened += 1
       if (mistake?.status === 'closed') prog.closed += 1
-      const result = { correct, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}), ...(mistake ? { mistake } : {}) }
+      const result = { correct: matchCorrect, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}), ...(mistake ? { mistake } : {}), ...(pairResults ? { pairs: pairResults } : {}) }
       results.set(body.key, result)
       return route.fulfill({ json: result })
     }

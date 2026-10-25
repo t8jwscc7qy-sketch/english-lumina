@@ -55,7 +55,7 @@ type Exercise struct {
 	ID         int64
 	UserID     int64
 	Kind       string
-	SentenceID int64
+	SentenceID *int64
 	Topics     []string
 	Payload    json.RawMessage
 	Answer     json.RawMessage

@@ -197,7 +197,7 @@ func TestMistakesQueries(t *testing.T) {
 		m2 := add(me.ID, sent(11), "gap", now)
 		ex := func(user int64, mistake *int64, answered *time.Time) int64 {
 			id, err := q.InsertExercise(ctx, db.InsertExerciseParams{
-				UserID: user, Kind: "gap", SentenceID: s1, Topics: []string{"grammar:articles"},
+				UserID: user, Kind: "gap", SentenceID: &s1, Topics: []string{"grammar:articles"},
 				Payload: []byte(`{}`), Answer: []byte(`{}`), MistakeID: mistake,
 			})
 			if err != nil {
