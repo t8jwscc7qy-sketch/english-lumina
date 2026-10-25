@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE TEI SYSTEM "freedict-P5.dtd">
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader xml:lang="en"><fileDesc><titleStmt><title>sample</title></titleStmt></fileDesc></teiHeader>
+  <text>
+    <body xml:lang="en">
+      <entry>
+        <form><orth>apple</orth><pron>/ˈapəl/</pron></form>
+        <gramGrp><pos>n</pos></gramGrp>
+        <sense>
+          <cit type="trans" xml:lang="ru"><quote>яблоко</quote><quote>я́блоко</quote></cit>
+          <sense><def>A tree of the genus Malus.</def></sense>
+        </sense>
+      </entry>
+      <entry>
+        <form><orth>run</orth></form>
+        <gramGrp><pos>n</pos></gramGrp>
+        <sense>
+          <cit type="trans" xml:lang="ru"><quote>бег</quote><quote>пробе́жка</quote></cit>
+          <sense><def>Act of running.</def></sense>
+        </sense>
+        <sense>
+          <cit type="trans" xml:lang="ru"><quote>стре́лка</quote></cit>
+          <sense><def>A line of unravelled stitches.</def></sense>
+        </sense>
+      </entry>
+      <entry>
+        <form><orth>run</orth></form>
+        <gramGrp><pos>v</pos></gramGrp>
+        <sense>
+          <cit type="trans" xml:lang="ru"><quote>бежа́ть</quote><quote>бе́гать</quote></cit>
+          <sense><def>To move quickly on foot.</def></sense>
+        </sense>
+      </entry>
+      <entry>
+        <form><orth>Paris</orth></form>
+        <gramGrp><pos>pn</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>Париж</quote></cit><sense><def>The capital of France.</def></sense></sense>
+      </entry>
+      <entry>
+        <form><orth>ice cream</orth></form>
+        <gramGrp><pos>n</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>мороженое</quote></cit><sense><def>A frozen dessert.</def></sense></sense>
+      </entry>
+      <entry>
+        <form><orth>in a nutshell</orth></form>
+        <gramGrp><pos>phraseologicalUnit</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>в двух словах</quote></cit></sense>
+      </entry>
+      <entry>
+        <form><orth>beautiful</orth></form>
+        <gramGrp><pos>adj</pos></gramGrp>
+        <sense>
+          <cit type="trans" xml:lang="ru"><quote>краси́вый</quote><quote>прекра́сный</quote></cit>
+          <sense><def>Possessing beauty.</def></sense>
+        </sense>
+        <sense>
+          <cit type="trans" xml:lang="ru"><quote></quote><quote>ok</quote></cit>
+          <sense><def>Sense without usable translation.</def></sense>
+        </sense>
+      </entry>
+      <entry>
+        <form><orth>quickly</orth></form>
+        <gramGrp><pos>adv</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>бы́стро</quote></cit><sense><def>Rapidly.</def></sense></sense>
+      </entry>
+      <entry>
+        <form><orth>bank</orth></form>
+        <gramGrp><pos>n</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>банк</quote></cit><sense><def>A financial institution.</def></sense></sense>
+      </entry>
+      <entry>
+        <form><orth>bank</orth></form>
+        <gramGrp><pos>n</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>бе́рег</quote></cit><sense><def>The edge of a river.</def></sense></sense>
+      </entry>
+      <entry>
+        <form><orth>salt</orth></form>
+        <gramGrp><pos>n</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>соль</quote></cit><sense><def>Salt &amp; pepper, a seasoning.</def></sense></sense>
+      </entry>
+      <entry>
+        <form><orth>x1</orth></form>
+        <gramGrp><pos>n</pos></gramGrp>
+        <sense><cit type="trans" xml:lang="ru"><quote>икс</quote></cit></sense>
+      </entry>
+    </body>
+  </text>
+</TEI>
