@@ -98,7 +98,7 @@ func toTranslations(in []rawTranslation) []Translation {
 		if t.Word == "" {
 			continue // у записи может быть только пояснение без слова
 		}
-		out = append(out, Translation{Code: t.Code, Word: t.Word, Sense: t.Sense, Tags: t.Tags})
+		out = append(out, Translation(t))
 	}
 	return out
 }
@@ -133,10 +133,10 @@ func ParseEntry(line []byte) (Entry, error) {
 		e.Antonyms = appendLinks(e.Antonyms, s.Antonyms)
 	}
 	for _, s := range r.Sounds {
-		e.Sounds = append(e.Sounds, Sound{IPA: s.IPA, Audio: s.Audio, Tags: s.Tags})
+		e.Sounds = append(e.Sounds, Sound(s))
 	}
 	for _, f := range r.Forms {
-		e.Forms = append(e.Forms, Form{Form: f.Form, Tags: f.Tags})
+		e.Forms = append(e.Forms, Form(f))
 	}
 	e.Translations = toTranslations(r.Translations)
 	e.Synonyms = dedupe(appendLinks(e.Synonyms, r.Synonyms))
