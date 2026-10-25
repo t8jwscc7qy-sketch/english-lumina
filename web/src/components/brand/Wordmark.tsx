@@ -12,14 +12,14 @@ export function Wordmark({ scale = 3, className }: BrandProps) {
   return <PixelArtSvg art={wordmarkGround} scale={scale} title="Verst" className={className} />
 }
 
-/** Маскот «Вёрст» (лисёнок-путник). `scale` сохранён от пиксельного маскота: ширина = 12 × scale px. Декоративный, если не задан title. */
+/** Маскот «Вёрст» (пиксельный лисёнок). `scale` — размер клетки в пикселях, ширина = 28 × scale. Декоративный, если не задан title. */
 export function Mascot({
   scale = 4,
   className,
   title,
   mood,
 }: BrandProps & { title?: string; mood?: FoxMood }) {
-  return <Fox size={12 * scale} mood={mood} className={className} title={title} />
+  return <Fox scale={scale} mood={mood} className={className} title={title} />
 }
 
 /** Столб без лица: для малых размеров (иконка, вкладка). */

@@ -50,7 +50,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
                     animate={{ y: [0, -4, 0] }}
                     transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    <Mascot scale={8} className="max-md:size-14" />
+                    <Mascot scale={3} className="max-md:[&_svg]:h-auto max-md:[&_svg]:w-14" />
                   </motion.div>
                 ) : (
                   <PixelArtSvg
@@ -65,8 +65,8 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
               <div
                 className={cn(
                   'relative h-3 w-full overflow-hidden',
-                  i === 0 && 'rounded-l-full',
-                  i === LEVELS.length - 1 && 'rounded-r-full',
+                  
+                  
                   stage === 'done' && 'bg-grass',
                   stage === 'current' && 'bg-sky',
                   (stage === 'bridge' || stage === 'future') && 'bg-muted',
@@ -110,7 +110,7 @@ export function StageMap({ current, target, forecast }: StageMapProps) {
 
       {forecast === 'collecting' && cur < tgt && (
         <p className="flex items-center gap-3 text-sm">
-          <span className="relative block h-3 w-12 shrink-0 overflow-hidden rounded-full bg-muted">
+          <span className="relative block h-3 w-12 shrink-0 overflow-hidden bg-muted">
             <Dither level={2} color="var(--bridge)" className="absolute inset-0 block" />
           </span>
           <span>

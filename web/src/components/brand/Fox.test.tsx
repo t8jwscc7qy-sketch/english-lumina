@@ -1,13 +1,12 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Fox } from './Fox'
+import { foxArt } from './foxSprite'
 
 describe('Fox', () => {
   it('без title декоративный: скрыт от скринридеров', () => {
     const { container } = render(<Fox />)
-    const svg = container.querySelector('svg')!
-    expect(svg).toHaveAttribute('aria-hidden', 'true')
-    expect(svg).not.toHaveAttribute('role')
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('с title читается как картинка', () => {
@@ -15,37 +14,31 @@ describe('Fox', () => {
     expect(getByRole('img', { name: 'Вёрст' })).toBeInTheDocument()
   })
 
-  it('размер задаёт ширину и высоту', () => {
-    const { container } = render(<Fox size={96} />)
+  it('размер клетки задаёт размер: 28 × 25 клеток', () => {
+    const { container } = render(<Fox scale={5} />)
     const svg = container.querySelector('svg')!
-    expect(svg).toHaveAttribute('width', '96')
-    expect(svg).toHaveAttribute('height', '96')
+    expect(svg).toHaveAttribute('width', '140')
+    expect(svg).toHaveAttribute('height', '125')
   })
 
-  it('у каждого настроения свои признаки: улыбка, сон, брови', () => {
-    const marks = (mood: 'neutral' | 'happy' | 'thinking' | 'sleeping') => {
-      const { container } = render(<Fox mood={mood} />)
-      return {
-        blink: container.querySelectorAll('.fox-blink').length,
-        zzz: container.querySelectorAll('.fox-zzz').length,
-        tongue: container.querySelectorAll('ellipse[fill="var(--coral-soft)"]').length,
-        brows: container.querySelectorAll('g[stroke="var(--fox-dark)"] path').length,
-      }
+  it('все настроения одной сетки 28×25 и различаются лицом', () => {
+    const moods = ['neutral', 'happy', 'thinking', 'sleeping'] as const
+    const rows = moods.map((m) => foxArt(m).rows)
+    for (const r of rows) {
+      expect(r).toHaveLength(25)
+      for (const line of r) expect(line).toHaveLength(28)
     }
-    expect(marks('neutral')).toMatchObject({ blink: 1, zzz: 0, tongue: 0, brows: 0 })
-    expect(marks('happy')).toMatchObject({ blink: 0, tongue: 1 })
-    expect(marks('thinking')).toMatchObject({ blink: 1, brows: 2 })
-    expect(marks('sleeping')).toMatchObject({ blink: 0, zzz: 2 })
+    expect(new Set(rows.map((r) => r.join('|'))).size).toBe(4)
   })
 
-  it('две лисы на странице не делят id градиентов', () => {
-    const { container } = render(
-      <>
-        <Fox />
-        <Fox />
-      </>,
-    )
-    const ids = Array.from(container.querySelectorAll('[id]')).map((e) => e.id)
-    expect(new Set(ids).size).toBe(ids.length)
+  it('сон рисует букву Z, остальные настроения нет', () => {
+    const hasZ = (m: 'neutral' | 'sleeping') => foxArt(m).rows.slice(1, 6).some((r) => r.slice(22).includes('B'))
+    expect(hasZ('sleeping')).toBe(true)
+    expect(hasZ('neutral')).toBe(false)
+  })
+
+  it('покачивание можно выключить', () => {
+    const { container } = render(<Fox bob={false} />)
+    expect(container.firstElementChild).not.toHaveClass('fox-bob')
   })
 })

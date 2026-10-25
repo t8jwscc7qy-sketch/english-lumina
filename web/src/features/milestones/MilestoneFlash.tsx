@@ -14,7 +14,7 @@ export function MilestoneFlash({ milestones, ids }: { milestones: Milestone[]; i
       aria-live="polite"
       className="surface flex items-center gap-4 border-sun p-6 motion-safe:animate-[flash-in_600ms_cubic-bezier(0.23,1,0.32,1)_backwards]"
     >
-      <Mascot scale={3} className="shrink-0" />
+      <Mascot scale={2} className="shrink-0" />
       <div className="flex min-w-0 flex-col gap-1">
         <p className="text-sm font-semibold text-muted-foreground">Новая веха</p>
         <ul className="flex flex-col gap-0.5">

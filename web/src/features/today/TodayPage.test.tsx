@@ -201,11 +201,7 @@ describe('лисёнок и его реплика', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 9, 25, hour, 0, 0))
   }
-  const mood = (container: HTMLElement) => ({
-    happy: !!container.querySelector('ellipse[fill="var(--coral-soft)"]'),
-    sleeping: !!container.querySelector('.fox-zzz'),
-    thinking: !!container.querySelector('g[stroke="var(--fox-dark)"] path'),
-  })
+  const mood = (container: HTMLElement) => container.querySelector('svg[data-mood]')?.getAttribute('data-mood')
 
   it('минимум выполнен: радуется', async () => {
     withHour(14)
@@ -213,14 +209,14 @@ describe('лисёнок и его реплика', () => {
       jsonResponse(200, { ...PROGRESS, minutes: 12, doneToday: true }),
     )
     expect(await screen.findByText(/минимум на сегодня выполнен/i)).toBeInTheDocument()
-    expect(mood(container).happy).toBe(true)
+    expect(mood(container)).toBe('happy')
   })
 
   it('ночью спит, если минимум ещё не выполнен', async () => {
     withHour(3)
     const { container } = renderToday()
     expect(await screen.findByText(/уже поздно/i)).toBeInTheDocument()
-    expect(mood(container).sleeping).toBe(true)
+    expect(mood(container)).toBe('sleeping')
   })
 
   it('нет серии и минут: думает и зовёт начать с малого', async () => {
@@ -229,7 +225,19 @@ describe('лисёнок и его реплика', () => {
       jsonResponse(200, { ...PROGRESS, minutes: 0, streakDays: 0 }),
     )
     expect(await screen.findByText(/начнём с малого/i)).toBeInTheDocument()
-    expect(mood(container).thinking).toBe(true)
+    expect(mood(container)).toBe('thinking')
+  })
+
+  it('время суток в сцене следует за часом', async () => {
+    withHour(3)
+    const { container, unmount } = renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    expect(container.querySelector('svg[data-phase]')).toHaveAttribute('data-phase', 'night')
+    unmount()
+    withHour(12)
+    const day = renderToday()
+    await screen.findByRole('heading', { level: 1 })
+    expect(day.container.querySelector('svg[data-phase]')).toHaveAttribute('data-phase', 'day')
   })
 
   it('днём в процессе: называет, сколько осталось до минимума', async () => {
