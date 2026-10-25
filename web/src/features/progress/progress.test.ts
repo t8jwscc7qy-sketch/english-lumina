@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatHoursMinutes, formatRange } from './progress'
+import { formatFinishDate, formatHoursMinutes, formatRange, formatShortDay } from './progress'
 
 describe('formatHoursMinutes', () => {
   it('минуты и часы по-русски', () => {
@@ -21,5 +21,20 @@ describe('formatRange', () => {
   })
   it('границы совпали после округления — одно число', () => {
     expect(formatRange(100.2, 100.4)).toBe('100 ч')
+  })
+})
+
+describe('formatFinishDate', () => {
+  it('год только если он другой', () => {
+    expect(formatFinishDate(new Date(2026, 2, 12), new Date(2026, 9, 25))).toBe('12 марта')
+    expect(formatFinishDate(new Date(2027, 2, 12), new Date(2026, 9, 25))).toBe('12 марта 2027')
+  })
+})
+
+describe('formatShortDay', () => {
+  it('сокращённый месяц, неверная строка как есть', () => {
+    expect(formatShortDay('2026-07-28')).toBe('28 июл')
+    expect(formatShortDay('2026-10-05')).toBe('5 окт')
+    expect(formatShortDay('nope')).toBe('nope')
   })
 })
