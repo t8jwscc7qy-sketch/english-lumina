@@ -1,3 +1,4 @@
+import { FoxNote } from '@/components/brand/FoxNote'
 import { useEffect } from 'react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -36,8 +37,10 @@ export function CardsPage() {
 
       {queue.data && !card && (
         <section className="surface flex flex-col items-start gap-3 p-6">
-          <h2 className="text-title">На сегодня всё</h2>
-          <p className="text-muted-foreground">{`Всего карточек: ${queue.data.totalCount}. Новые слова добавляются со страницы «Слова».`}</p>
+          <FoxNote mood="happy">
+            <h2 className="text-title">На сегодня всё</h2>
+            <p className="text-muted-foreground">{`Всего карточек: ${queue.data.totalCount}. Новые слова добавляются со страницы «Слова».`}</p>
+          </FoxNote>
           <Button asChild variant="secondary">
             <Link to="/words">Добавить слова</Link>
           </Button>

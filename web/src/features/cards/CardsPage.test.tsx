@@ -116,6 +116,7 @@ describe('CardsPage', () => {
     stubApi({ queue: () => jsonResponse(200, queue(0)) })
     renderPage()
     expect(await screen.findByText('На сегодня всё')).toBeInTheDocument()
+    expect(document.querySelector('[data-mood]')).toHaveAttribute('data-mood', 'happy')
     expect(screen.getByText(/всего карточек: 3/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /слова/i })).toHaveAttribute('href', '/words')
   })

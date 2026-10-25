@@ -100,6 +100,7 @@ describe('MistakesPage', () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(200, { open: [], counts: { open: 0, dueNow: 0, closedThisWeek: 0 } })))
     renderPage()
     expect(await screen.findByText('Пока ошибок нет. Ошибки из упражнений появятся здесь и вернутся через день')).toBeInTheDocument()
+    expect(document.querySelector('[data-mood]')).toHaveAttribute('data-mood', 'happy')
     expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
   })
 

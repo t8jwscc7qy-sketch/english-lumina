@@ -1,3 +1,4 @@
+import { Fox } from '@/components/brand/Fox'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Navigate } from 'react-router'
@@ -215,12 +216,12 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
                 onClick={() => submit(choice)}
                 aria-keyshortcuts={String(i + 1)}
                 className={cn(
-                  'flex min-h-12 items-center gap-3 rounded-xl border bg-card px-4 py-2 text-left font-semibold transition-colors',
-                  'hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-default',
-                  !result && 'border-input',
-                  isRight && 'border-grass-text bg-muted',
-                  isWrong && 'border-coral bg-muted text-coral-text',
-                  result && !isRight && !isWrong && 'border-border opacity-60',
+                  'pixel-frame pixel-press flex min-h-12 items-center gap-3 bg-card px-4 py-2 text-left font-semibold transition-colors',
+                  'hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring disabled:cursor-default',
+                  !result && '[--frame:var(--input)]',
+                  isRight && '[--frame:var(--grass-text)] bg-muted',
+                  isWrong && '[--frame:var(--coral)] bg-muted text-coral-text',
+                  result && !isRight && !isWrong && '[--frame:var(--border)] opacity-60',
                 )}
               >
                 <kbd aria-hidden className="grid size-6 shrink-0 place-items-center rounded-md border border-border font-sans text-xs">{i + 1}</kbd>{' '}
@@ -248,6 +249,7 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
         {result && (
           <>
           <p className={cn('flex items-center gap-2 font-semibold', !result.correct && 'text-coral-text')}>
+            <Fox scale={2} mood={result.correct ? 'happy' : 'thinking'} bob={false} />
             {result.correct ? <Check aria-hidden className="size-5 text-grass-text" /> : <X aria-hidden className="size-5" />}
             {result.correct ? 'Верно' : 'Неверно'}
           </p>

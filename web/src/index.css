@@ -205,6 +205,23 @@
 }
 
 @layer components {
+  /* Пиксельная рамка 2px со срезанными углами (через box-shadow) и необязательная тень-ступенька --drop. Цвет рамки --frame. */
+  .pixel-frame {
+    box-shadow:
+      0 -2px 0 0 var(--frame, var(--pixel-ink)),
+      0 2px 0 0 var(--frame, var(--pixel-ink)),
+      -2px 0 0 0 var(--frame, var(--pixel-ink)),
+      2px 0 0 0 var(--frame, var(--pixel-ink)),
+      var(--drop, 0 0 0 0 transparent);
+  }
+  /* Нажимаемое: тень-ступенька 4px, при нажатии кнопка вдавливается и тень пропадает. */
+  .pixel-press {
+    --drop: 4px 4px 0 0 var(--pixel-shadow);
+  }
+  .pixel-press:active:not(:disabled) {
+    --drop: 0 0 0 0 transparent;
+    translate: 2px 2px;
+  }
   /* Поверхность: прямоугольное «пиксельное» окно: рамка 2px со срезанными углами и тень-ступенька (всё в --shadow-card). */
   .surface {
     border: 0;

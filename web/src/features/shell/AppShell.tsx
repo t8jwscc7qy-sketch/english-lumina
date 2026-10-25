@@ -1,31 +1,22 @@
-import {
-  BookOpen,
-  CircleAlert,
-  Layers,
-  LogOut,
-  Pencil,
-  Scale,
-  Settings,
-  Sun,
-  TrendingUp,
-  type LucideIcon,
-} from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { Post, Wordmark } from '@/components/brand/Wordmark'
+import { PixelIcon } from '@/components/pixel/PixelIcon'
+import type { IconName } from '@/components/pixel/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useLogout, useMe } from '@/features/auth/auth'
 import { ThemeToggle } from './ThemeToggle'
 
-const NAV: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
-  { to: '/', label: 'Сегодня', icon: Sun, end: true },
-  { to: '/cards', label: 'Карточки', icon: Layers },
-  { to: '/exercises', label: 'Упражнения', icon: Pencil },
-  { to: '/words', label: 'Слова', icon: BookOpen },
-  { to: '/mistakes', label: 'Ошибки', icon: CircleAlert },
-  { to: '/progress', label: 'Прогресс', icon: TrendingUp },
-  { to: '/settings', label: 'Настройки', icon: Settings },
-  { to: '/sources', label: 'Источники', icon: Scale },
+const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
+  { to: '/', label: 'Сегодня', icon: 'today', end: true },
+  { to: '/cards', label: 'Карточки', icon: 'cards' },
+  { to: '/exercises', label: 'Упражнения', icon: 'exercises' },
+  { to: '/words', label: 'Слова', icon: 'words' },
+  { to: '/mistakes', label: 'Ошибки', icon: 'mistakes' },
+  { to: '/progress', label: 'Прогресс', icon: 'progress' },
+  { to: '/settings', label: 'Настройки', icon: 'settings' },
+  { to: '/sources', label: 'Источники', icon: 'sources' },
 ]
 
 /** Оболочка приложения: слева тёмная панель, справа рабочая область. На узких окнах панель сжимается до иконок. */
@@ -60,7 +51,7 @@ export function AppShell() {
           </div>
 
           <nav aria-label="Разделы" className="flex flex-1 flex-col gap-1">
-            {NAV.map(({ to, label, icon: Icon, end }) => (
+            {NAV.map(({ to, label, icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -69,12 +60,12 @@ export function AppShell() {
                   cn(
                     'flex h-11 items-center gap-3 rounded-lg px-3 text-base font-semibold transition-colors max-lg:justify-center max-lg:px-0',
                     isActive
-                      ? 'bg-white/12 text-rail-foreground'
+                      ? 'bg-white/12 text-sun'
                       : 'text-rail-muted hover:bg-white/6 hover:text-rail-foreground',
                   )
                 }
               >
-                <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
+                <PixelIcon name={icon} className="shrink-0" />
                 <span className="max-lg:sr-only">{label}</span>
               </NavLink>
             ))}
