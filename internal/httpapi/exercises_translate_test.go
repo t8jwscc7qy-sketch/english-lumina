@@ -74,7 +74,7 @@ func TestNextTranslateTopic(t *testing.T) {
 		t.Fatalf("в ответе английское предложение: %s", rec.Body)
 	}
 	stored := e.store.exercises[ex.Id]
-	if stored.Kind != "translate" || stored.SentenceID == nil || *stored.SentenceID != 10 || !slices.Equal(stored.Topics, []string{translateTopic, "level:A1"}) {
+	if stored.Kind != "translate" || stored.SentenceID == nil || *stored.SentenceID != 10 || !slices.Equal(stored.Topics, []string{translateTopic}) {
 		t.Fatalf("запись: %+v", stored)
 	}
 	var ans exerciseAnswer
@@ -326,5 +326,52 @@ func TestNextTranslateControlSentenceIsServed(t *testing.T) {
 	knownAll(e, "A1", translateWords...)
 	if ex := decodeExercise(t, getNext(t, e, token)); ex.Kind != api.Translate {
 		t.Fatalf("упражнение: %+v", ex)
+	}
+}
+
+// Уровень предложения в темы «перевода» не кладём: ввод труднее выбора, и точность предложения сменить уровень
+// (ответы по теме level:<уровень>) от него занижалась бы.
+func TestTranslateAnswersDoNotTouchLevelTopic(t *testing.T) {
+	e := newExerciseEnv(t)
+	token := login(t, e)
+	translateFirst(e)
+	e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, translateSentence)}
+	knownAll(e, "A1", translateWords...)
+	ex := decodeExercise(t, getNext(t, e, token))
+	res := answerTranslate(t, e, token, ex.Id, "they drink green tea", "k1")
+	for _, r := range res.Ratings {
+		if strings.HasPrefix(r.Topic, "level:") {
+			t.Fatalf("ответ на translate затронул тему уровня: %+v", res.Ratings)
+		}
+	}
+}
+
+// Предложение, на которое пользователь уже ответил «порядком слов» (или наоборот), для «перевода» не выдаётся:
+// собрав плитки, он видел английский ответ.
+func TestTranslateAndOrderDoNotShareSentences(t *testing.T) {
+	for _, seen := range []string{orderTopic, translateTopic} {
+		e := newExerciseEnv(t)
+		token := login(t, e)
+		e.store.sentencePool = []db.SampleSentencesRow{poolSentence(10, translateSentence)}
+		knownAll(e, "A1", translateWords...)
+		e.store.exercises = map[int64]db.Exercise{1: {ID: 1, UserID: 1, Kind: "order", SentenceID: i64(10), Topics: []string{seen}, AnsweredAt: ts(time.Now())}}
+		e.store.nextExerciseID = 1
+		other := translateTopic
+		if seen == translateTopic {
+			other = orderTopic
+		}
+		// парк остальных тем: выбирается только «другая» тема
+		e.store.topicRatings = map[topicKey]db.TopicRating{}
+		for _, tp := range append(append([]string{}, grammarTopics...), formTopic, matchTopic) {
+			e.store.topicRatings[topicKey{1, tp}] = rated(tp, 1900, 5)
+		}
+		e.store.topicRatings[topicKey{1, seen}] = rated(seen, 1900, 5)
+		e.store.topicRatings[topicKey{1, other}] = rated(other, 100, 5)
+		rec := getNext(t, e, token)
+		if rec.Code == http.StatusOK {
+			if ex := decodeExercise(t, rec); ex.Topic == other {
+				t.Fatalf("предложение, виденное в %s, выдано в %s: %+v", seen, other, ex)
+			}
+		}
 	}
 }

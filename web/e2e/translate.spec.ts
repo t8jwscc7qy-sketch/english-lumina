@@ -50,6 +50,7 @@ test.describe('упражнение «перевод»', () => {
   test('Esc очищает, пустой ответ не отправляется, Shift+Enter переносит', async ({ page }) => {
     const { answers } = await mockApi(page, { loggedIn: true, exercises: { queue: [TRANSLATE_EXERCISE] } })
     await page.goto('/exercises')
+    await expect(field(page)).toBeFocused()
     await page.keyboard.press('Enter')
     expect(answers).toHaveLength(0)
     await page.keyboard.type('we eat')

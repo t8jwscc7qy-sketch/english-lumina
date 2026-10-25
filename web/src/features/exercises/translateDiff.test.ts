@@ -30,8 +30,25 @@ describe('diffOneEdit', () => {
 })
 
 describe('lightNorm', () => {
-  it('нижний регистр, апостроф, без знаков и лишних пробелов', () => {
+  it('нижний регистр, без знаков и лишних пробелов', () => {
     expect(lightNorm('  We EAT,  red apples! ')).toBe('we eat red apples')
-    expect(lightNorm('I don’t know.')).toBe("i don't know")
+  })
+  it('как на сервере: однозначные сокращения раскрываются, остальные нет', () => {
+    expect(lightNorm('I don’t know.')).toBe('i do not know')
+    expect(lightNorm("I'm sure they're here, we'll go")).toBe('i am sure they are here we will go')
+    expect(lightNorm("He won't go and can't stay, cannot wait, shan't")).toBe('he will not go and can not stay can not wait shall not')
+    expect(lightNorm("It's his and he'd go")).toBe("it's his and he'd go")
+  })
+  it('дефис как пробел, разные апострофы', () => {
+    expect(lightNorm('A well-known fact')).toBe('a well known fact')
+    expect(lightNorm('I don`t, I donʼt, I don´t')).toBe('i do not i do not i do not')
+  })
+})
+
+describe('подсветка при сокращениях', () => {
+  it("«I'm» в ответе и «I am» в эталоне с опечаткой: место найдено", () => {
+    const given = lightNorm("I'm tired of aples")
+    const expected = lightNorm('I am tired of apples')
+    expect(diffOneEdit(given, expected)).toEqual({ start: 16, end: 16, missing: 'p' })
   })
 })

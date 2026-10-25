@@ -323,8 +323,7 @@ func (s *authServer) translateCandidate(ctx context.Context, rng *idRange, maxLe
 		return gapCandidate{}, false, err
 	}
 	for _, p := range pending {
-		level, ok := exercises.SentenceLevel(p.tokens, known)
-		if !ok || (maxLevel != "" && level > maxLevel) {
+		if level, ok := exercises.SentenceLevel(p.tokens, known); !ok || (maxLevel != "" && level > maxLevel) {
 			continue
 		}
 		alts, err := s.store.ListTranslateAlternatives(ctx, db.ListTranslateAlternativesParams{EnID: p.row.ID, RuID: p.row.RuID, MaxRows: maxTranslateAlternatives})
@@ -339,7 +338,8 @@ func (s *authServer) translateCandidate(ctx context.Context, rng *idRange, maxLe
 		if !ok {
 			continue
 		}
-		return gapCandidate{sentenceID: p.row.ID, translation: p.row.RuText, translate: &tr, level: level}, true, nil
+		// Уровень предложения в темы не кладём: ввод труднее выбора и занижал бы точность предложения сменить уровень.
+		return gapCandidate{sentenceID: p.row.ID, translation: p.row.RuText, translate: &tr}, true, nil
 	}
 	return gapCandidate{}, false, nil
 }

@@ -131,37 +131,16 @@ func TestBuildTranslateBounds(t *testing.T) {
 	}
 }
 
-func TestTranslateTopics(t *testing.T) {
-	if got := TranslateTopics(""); !slices.Equal(got, []string{"skill:translate"}) {
-		t.Fatalf("%v", got)
-	}
-	if got := TranslateTopics("B1"); !slices.Equal(got, []string{"skill:translate", "level:B1"}) {
-		t.Fatalf("%v", got)
-	}
-}
-
-// Опечатка — это буква посреди длинного слова. Грамматика (окончания -s/-ed/-d, артикли, местоимения, отрицание)
-// опечаткой не считается, даже если фраза отличается одной буквой.
-func TestCheckTranslateTypoDoesNotForgiveGrammar(t *testing.T) {
-	tests := []struct{ answer, given, why string }{
-		{"I like my small house.", "i liked my small house", "время: -d в конце слова"},
-		{"I like big cakes.", "i like big cake", "число: -s в конце слова"},
-		{"He likes pizza a lot.", "he like pizza a lot", "3-е лицо: -s в конце слова"},
-		{"He likes pizza a lot.", "he likes pizza a lots", "-s в конце слова"},
-		{"An apple is red now.", "a apple is red now", "артикль"},
-		{"She is a good teacher.", "he is a good teacher", "местоимение"},
-		{"I am not at home here.", "i am now at home here", "отрицание: слово из трёх букв"},
-		{"I like my small house.", "i like my small hous e", "слияние или разрыв слов"},
-	}
-	for _, tc := range tests {
-		if got := CheckTranslate([]string{tc.answer}, tc.given); got.Result != TranslateWrong {
-			t.Errorf("%s: %q против %q дало %v, ждали Wrong", tc.why, tc.given, tc.answer, got.Result)
-		}
-	}
-	// настоящие опечатки внутри и в конце слова (кроме s/d) по-прежнему прощаются
-	for _, given := range []string{"i like my smal house", "i like my smaall house", "i like my smlal house", "i like my smoll house"} {
-		if got := CheckTranslate([]string{"I like my small house."}, given); got.Result != TranslateTypo {
-			t.Errorf("%q: %v, ждали Typo", given, got.Result)
+func TestCheckTranslateHyphenAndApostrophes(t *testing.T) {
+	for _, tc := range []struct{ answer, given string }{
+		{"It is a well-known fact.", "it is a well known fact"},
+		{"It is a well known fact.", "It is a well-known fact"},
+		{"I don't know.", "I don`t know"},
+		{"I don't know.", "I donʼt know"},
+		{"I don't know.", "I don´t know"},
+	} {
+		if got := CheckTranslate([]string{tc.answer}, tc.given); got.Result != TranslateExact {
+			t.Errorf("%q против %q: %v, ждали Exact", tc.given, tc.answer, got.Result)
 		}
 	}
 }

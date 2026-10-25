@@ -7,11 +7,27 @@ export type Edit = {
   missing?: string
 }
 
-/** Лёгкая нормализация для показа: как на сервере (регистр, апостроф, знаки `, . ! ?`, пробелы), без раскрытия сокращений. */
+const CONTRACTIONS: Record<string, string> = {
+  "won't": 'will not',
+  "can't": 'can not',
+  cannot: 'can not',
+  "shan't": 'shall not',
+  "n't": ' not',
+  "'m": ' am',
+  "'re": ' are',
+  "'ve": ' have',
+  "'ll": ' will',
+}
+// Порядок как в Go (`strings.NewReplacer`): на каждой позиции берётся первое совпавшее; «'s» и «'d» двусмысленны и не раскрываются.
+const CONTRACTION_RE = /won't|can't|cannot|shan't|n't|'m|'re|'ve|'ll/g
+
+/** Нормализация как на сервере (`normTranslate`): регистр, апостроф, однозначные сокращения, дефис как пробел, без `, . ! ?`. */
 export function lightNorm(s: string): string {
   return s
     .toLowerCase()
-    .replace(/[’‘]/g, "'")
+    .replace(/[’‘ʼ`´]/g, "'")
+    .replace(/-/g, ' ')
+    .replace(CONTRACTION_RE, (m) => CONTRACTIONS[m])
     .replace(/[,.!?]/g, '')
     .split(/\s+/)
     .filter(Boolean)

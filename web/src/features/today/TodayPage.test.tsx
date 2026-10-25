@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { errorResponse, jsonResponse, renderAt } from '@/test/render'
 import { TodayPage } from './TodayPage'
 
@@ -266,6 +266,13 @@ describe('лисёнок и его реплика', () => {
 })
 
 describe('сцена показывает данные', () => {
+  // Реплика лисёнка зависит от часа суток (до 5 утра «Уже поздно»): время фиксируем, иначе тест падает по ночам.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 25, 14, 0, 0))
+  })
+  afterEach(() => vi.useRealTimers())
+
   afterEach(() => vi.useRealTimers())
   const scene = (container: HTMLElement) => container.querySelector('svg[data-fire]')
 

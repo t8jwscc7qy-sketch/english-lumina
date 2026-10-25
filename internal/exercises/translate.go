@@ -85,14 +85,6 @@ func CheckTranslate(answers []string, given string) TranslateVerdict {
 	return TranslateVerdict{}
 }
 
-// TranslateTopics — ключи тем упражнения «перевод»: навык и уровень предложения (если он известен).
-func TranslateTopics(level string) []string {
-	if level == "" {
-		return []string{"skill:translate"}
-	}
-	return []string{"skill:translate", "level:" + level}
-}
-
 // contractions раскрываются слева направо по тексту; «won't», «can't», «cannot», «shan't» стоят отдельно, чтобы не
 // превратиться в «wo not» и «ca not» через общее «n't». «'s» и «'d» двусмысленны
 // (is/has, would/had) и остаются как есть: если нужны оба написания, они приходят альтернативами.
@@ -101,11 +93,12 @@ var contractions = strings.NewReplacer(
 	"n't", " not", "'m", " am", "'re", " are", "'ve", " have", "'ll", " will",
 )
 
-// normTranslate приводит предложение к виду для сравнения: нижний регистр, один вид апострофа, раскрытые
+// normTranslate приводит предложение к виду для сравнения: нижний регистр, один вид апострофа, дефис как пробел
+// (well-known = well known), раскрытые
 // однозначные сокращения, без знаков , . ! ?, одиночные пробелы.
 func normTranslate(s string) string {
 	s = strings.ToLower(s)
-	s = strings.NewReplacer("’", "'", "‘", "'").Replace(s)
+	s = strings.NewReplacer("’", "'", "‘", "'", "ʼ", "'", "`", "'", "´", "'", "-", " ").Replace(s)
 	s = contractions.Replace(s)
 	s = strings.NewReplacer(",", "", ".", "", "!", "", "?", "").Replace(s)
 	return strings.Join(strings.Fields(s), " ")

@@ -126,7 +126,7 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		available = slices.DeleteFunc(available, func(t string) bool { return t == topic })
-		used, err := s.usedSentences(ctx, user.ID, topic)
+		used, err := s.usedSentencesFor(ctx, user.ID, topic)
 		if err != nil {
 			s.failExercises(w, err)
 			return
@@ -225,6 +225,32 @@ func orderMaxLevel(userLevel string) string {
 		return ""
 	}
 	return allLevels[min(i+1, len(allLevels)-1)]
+}
+
+// usedSentencesFor: предложения, которые тема уже использовала. «Порядок слов» и «перевод» делят предложения: собрав
+// плитки, пользователь видел английский ответ, и печатать его по памяти уже не упражнение.
+func (s *authServer) usedSentencesFor(ctx context.Context, userID int64, topic string) (map[int64]bool, error) {
+	used, err := s.usedSentences(ctx, userID, topic)
+	if err != nil {
+		return nil, err
+	}
+	var twin string
+	switch topic {
+	case translateTopic:
+		twin = orderTopic
+	case orderTopic:
+		twin = translateTopic
+	default:
+		return used, nil
+	}
+	more, err := s.usedSentences(ctx, userID, twin)
+	if err != nil {
+		return nil, err
+	}
+	for id := range more {
+		used[id] = true
+	}
+	return used, nil
 }
 
 func (s *authServer) usedSentences(ctx context.Context, userID int64, topic string) (map[int64]bool, error) {
