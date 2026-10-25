@@ -57,6 +57,16 @@ func TestPickTranslationSkipsPhrasesAndLong(t *testing.T) {
 	}
 }
 
+func TestPickTranslationSkipsTooShort(t *testing.T) {
+	// «ма», «па»: сокращения из словаря для плитки не годятся; нужно не меньше трёх букв
+	if got, ok := PickTranslation([][]string{{"ма"}}); ok {
+		t.Fatalf("двухбуквенный перевод не годится: %q", got)
+	}
+	if got, ok := PickTranslation([][]string{{"дом"}}); !ok || got != "дом" {
+		t.Fatalf("трёхбуквенный годится: %q %v", got, ok)
+	}
+}
+
 func TestPickTranslationEmpty(t *testing.T) {
 	for _, in := range [][][]string{nil, {}, {{}}, {{""}, {"  "}}, {{"hello"}}} {
 		if got, ok := PickTranslation(in); ok {

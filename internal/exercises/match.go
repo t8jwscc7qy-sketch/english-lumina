@@ -14,6 +14,7 @@ const MatchPairs = 5
 
 const (
 	matchMaxRuLen = 24 // перевод длиннее для плитки не годится
+	matchMinRuLen = 3  // двухбуквенные сокращения словаря («ма») не годятся
 )
 
 var matchWordRe = regexp.MustCompile(`^[A-Za-z]{2,20}$`)
@@ -61,7 +62,7 @@ func normalizeRu(s string) string {
 
 // validRu — перевод одним словом до matchMaxRuLen символов, с кириллицей, без разделителей пар.
 func validRu(s string) bool {
-	if s == "" || utf8.RuneCountInString(s) > matchMaxRuLen || strings.ContainsAny(s, " ;=") {
+	if n := utf8.RuneCountInString(s); n < matchMinRuLen || n > matchMaxRuLen || strings.ContainsAny(s, " ;=") {
 		return false
 	}
 	return strings.IndexFunc(s, func(r rune) bool { return unicode.Is(unicode.Cyrillic, r) }) >= 0
