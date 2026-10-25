@@ -79,6 +79,13 @@ describe('ProgressPage: прогноз', () => {
     expect(screen.queryByText(/примерно/)).not.toBeInTheDocument()
   })
 
+  it('очень низкий темп: «срок больше 10 лет», даты и подсказки нет', async () => {
+    renderPage({ overview: ready({ paceMinutesPerDay: 0.1, studiedMinutes: 20 }) })
+    expect(await screen.findByText(/срок больше 10 лет/i)).toBeInTheDocument()
+    expect(screen.queryByText(/примерно/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Что изменить/)).not.toBeInTheDocument()
+  })
+
   it('набрано больше нужных часов: без даты', async () => {
     renderPage({ overview: ready({ studiedMinutes: 25000 }) })
     expect(await screen.findByText(/Набрано больше нужных часов/)).toBeInTheDocument()

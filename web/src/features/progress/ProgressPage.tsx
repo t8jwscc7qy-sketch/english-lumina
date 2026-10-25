@@ -182,6 +182,16 @@ function ForecastBody({ forecast, target, today }: { forecast: PaceForecast; tar
           </Button>
         </div>
       )
+    case 'distant':
+      return (
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-title">При таком темпе срок больше 10 лет</p>
+          <p>Дату назвать нельзя: за последние {PACE_DAYS} суток минут набралось слишком мало. Добавь занятий, и прогноз станет ближе.</p>
+          <Button asChild>
+            <Link to="/session">Начать сессию</Link>
+          </Button>
+        </div>
+      )
     case 'estimate': {
       const when = `${formatFinishDate(forecast.finishBy.earliest, today)} – ${formatFinishDate(forecast.finishBy.latest, today)}`
       return (

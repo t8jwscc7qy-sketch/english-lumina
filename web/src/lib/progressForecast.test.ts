@@ -67,4 +67,15 @@ describe('forecastFromPace', () => {
     expect(f.unrealistic).toBe(true)
     expect(f.saveWithTenMore).toBeUndefined()
   })
+
+  it('очень низкий темп: «срок слишком далёк» вместо абсурдных тысяч месяцев', () => {
+    expect(forecastFromPace('B1', 'B2', 0, 0.1, true, 20, today)).toEqual({ kind: 'distant' })
+    // 350 ч при 5,5 мин в день: около 10,5 лет — уже за границей
+    expect(forecastFromPace('B1', 'B2', 0, 5.5, true, 20, today)).toEqual({ kind: 'distant' })
+  })
+
+  it('граница «слишком далёк»: чуть меньше десяти лет ещё оценка', () => {
+    const f = forecastFromPace('B1', 'B2', 0, 6.5, true, 20, today) // 350 ч при 6,5 мин: около 9 лет
+    expect(f.kind).toBe('estimate')
+  })
 })

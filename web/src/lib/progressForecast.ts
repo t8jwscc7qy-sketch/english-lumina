@@ -6,6 +6,7 @@ export type PaceForecast =
   | { kind: 'enough' }
   | { kind: 'collecting'; daysSinceStart: number }
   | { kind: 'idle' }
+  | { kind: 'distant' }
   | {
       kind: 'estimate'
       needed: Range
@@ -18,6 +19,8 @@ export type PaceForecast =
     }
 
 const EXTRA_MINUTES = 10
+/** Дальше десяти лет дату не называем: при таком темпе цифра ничего не говорит (сотни месяцев). */
+const MAX_FORECAST_DAYS = 3650
 const DAYS_PER_WEEK = 7
 
 /**
@@ -44,6 +47,7 @@ export function forecastFromPace(
   const remaining = { min: Math.max(0, needed.min - studied), max: needed.max - studied }
   const daysAt = (pace: number): Range => ({ min: (remaining.min * 60) / pace, max: (remaining.max * 60) / pace })
   const days = daysAt(paceMinutesPerDay)
+  if (days.max > MAX_FORECAST_DAYS) return { kind: 'distant' }
   const unrealistic = paceMinutesPerDay > MAX_MINUTES_PER_DAY
 
   let saveWithTenMore: { weeks: number } | undefined
