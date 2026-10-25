@@ -196,7 +196,7 @@ func TestAnswerInvalidBody(t *testing.T) {
 	cases := map[string]string{
 		"пустой given":         answerBody(id, "", "k"),
 		"только пробелы":       answerBody(id, "   ", "k"),
-		"201 символ":           answerBody(id, strings.Repeat("я", 201), "k"),
+		"401 символ":           answerBody(id, strings.Repeat("я", 401), "k"),
 		"нулевой байт":         `{"exerciseId":1,"given":"a\u0000b","key":"k"}`,
 		"пустой key":           answerBody(id, "a", ""),
 		"key длиннее 64":       answerBody(id, "a", strings.Repeat("k", 65)),
@@ -215,9 +215,9 @@ func TestAnswerInvalidBody(t *testing.T) {
 			}
 		})
 	}
-	// Ровно 200 символов проходит.
-	if rec := e.do(http.MethodPost, answerPath, answerBody(id, strings.Repeat("я", 200), "k"), withCookie(token)); rec.Code != http.StatusOK {
-		t.Fatalf("200 символов: статус %d, тело %s", rec.Code, rec.Body)
+	// Ровно 400 символов проходит.
+	if rec := e.do(http.MethodPost, answerPath, answerBody(id, strings.Repeat("я", 400), "k"), withCookie(token)); rec.Code != http.StatusOK {
+		t.Fatalf("400 символов: статус %d, тело %s", rec.Code, rec.Body)
 	}
 }
 
