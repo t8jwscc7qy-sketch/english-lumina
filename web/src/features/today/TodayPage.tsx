@@ -6,6 +6,7 @@ import type { FoxMood } from '@/components/brand/Fox'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/auth/auth'
 import { useCardQueue } from '@/features/cards/cards'
+import { useMilestones } from '@/features/milestones/milestones'
 import { useSettings } from '@/features/settings/settings'
 import { describeDuration, forecastForward } from '@/lib/forecast'
 import { DEMO_TODAY } from './demo'
@@ -68,6 +69,7 @@ export function TodayPage() {
   const settings = useSettings()
   const cardQueue = useCardQueue()
   const progress = useProgressToday()
+  const milestones = useMilestones()
   const [now] = useState(() => new Date())
   const d = DEMO_TODAY
 
@@ -85,13 +87,27 @@ export function TodayPage() {
   const minutes = p?.minutes ?? 0
   const minimum = p?.minimumDay ?? 10
   const { mood, line } = foxState(p, now, minimum)
+  const allMilestones = milestones.data?.milestones ?? []
+  const reachedCount = allMilestones.filter((m) => m.reachedOn).length
+  const hasNext = allMilestones.some((m) => !m.reachedOn)
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6 p-6 xl:p-8">
       <section aria-label="Главное на сегодня" className="surface overflow-hidden">
         {/* Сцена: небо по времени суток, лагерь у дороги, лисёнок у костра. Реплика — окошко в углу. */}
         <div className="relative h-56 md:h-64 xl:h-72">
-          <CampScene hour={now.getHours()} mood={mood} className="absolute inset-0 size-full" />
+          <CampScene
+            hour={now.getHours()}
+            mood={mood}
+            streakDays={streakDays}
+            doneToday={p?.doneToday ?? false}
+            milestonesReached={reachedCount}
+            hasNextMilestone={hasNext}
+            className="absolute inset-0 size-full"
+          />
+          <p className="sr-only">
+            {`Костёр и поленница отражают серию, столбики на дороге — вехи. Вех достигнуто: ${reachedCount}.`}
+          </p>
           {line && (
             <p className="surface absolute left-4 top-4 max-w-[min(26rem,calc(100%-2rem))] px-4 py-2 font-semibold">
               {line}

@@ -16,16 +16,27 @@ const PROGRESS = {
   today: { answers: 5, correct: 4, cardsReviewed: 2, mistakesOpened: 1, mistakesClosed: 0 },
 }
 
+const MILESTONES = {
+  milestones: [
+    { id: 'streak-3', kind: 'streak', title: 'Серия 3 дня', threshold: 3, reachedOn: '2026-10-24', progress: { value: 3, target: 3 } },
+    { id: 'first-card', kind: 'first', title: 'Первая карточка', threshold: 1, reachedOn: '2026-10-22', progress: { value: 1, target: 1 } },
+    { id: 'streak-7', kind: 'streak', title: 'Серия 7 дней', threshold: 7, progress: { value: 3, target: 7 } },
+  ],
+  newToday: [],
+}
+
 function renderToday(
   settings: Record<string, unknown> = SETTINGS,
   queue: () => Response = () => jsonResponse(200, { dueCount: 7, totalCount: 12 }),
   progress: () => Response = () => jsonResponse(200, PROGRESS),
+  milestones: () => Response = () => jsonResponse(200, MILESTONES),
 ) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
       if (url.endsWith('/cards/queue')) return queue()
       if (url.endsWith('/progress/today')) return progress()
+      if (url.endsWith('/milestones')) return milestones()
       return jsonResponse(200, url.endsWith('/settings') ? settings : { login: 'firimon' })
     }),
   )
@@ -251,5 +262,37 @@ describe('лисёнок и его реплика', () => {
     renderToday(SETTINGS, undefined, () => new Promise<Response>(() => {}) as unknown as Response)
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByText(/до минимума|начнём с малого|уже поздно/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('сцена показывает данные', () => {
+  afterEach(() => vi.useRealTimers())
+  const scene = (container: HTMLElement) => container.querySelector('svg[data-fire]')
+
+  it('костёр по серии: 3 дня — ступень 2; выполненный минимум — на ступень выше', async () => {
+    const { container, unmount } = renderToday()
+    await screen.findByText('3 дня')
+    expect(scene(container)).toHaveAttribute('data-fire', '2')
+    unmount()
+    const done = renderToday(SETTINGS, undefined, () => jsonResponse(200, { ...PROGRESS, minutes: 12, doneToday: true }))
+    await screen.findByText(/минимум на сегодня выполнен/i)
+    expect(scene(done.container)).toHaveAttribute('data-fire', '3')
+  })
+
+  it('нет серии — угли', async () => {
+    const { container } = renderToday(SETTINGS, undefined, () => jsonResponse(200, { ...PROGRESS, streakDays: 0, minutes: 0 }))
+    await screen.findByText(/начнём с малого/i)
+    expect(scene(container)).toHaveAttribute('data-fire', '0')
+  })
+
+  it('для читалки поясняет сцену и называет число вех', async () => {
+    renderToday()
+    expect(await screen.findByText(/Костёр и поленница отражают серию.*Вех достигнуто: 2\./)).toBeInTheDocument()
+  })
+
+  it('если вехи не загрузились, страница работает, вех достигнуто 0', async () => {
+    renderToday(SETTINGS, undefined, undefined, () => errorResponse(500, 'internal', 'Внутренняя ошибка'))
+    expect(await screen.findByText(/Вех достигнуто: 0/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 })

@@ -1,3 +1,5 @@
+import type { PixelArt } from '@/lib/pixel'
+
 /** Пиксельная сцена «лагерь у дороги»: чистая сборка клеток по времени суток (без DOM, чтобы тестировать). */
 
 export type Phase = 'morning' | 'day' | 'dusk' | 'night'
@@ -6,7 +8,9 @@ export const SCENE_W = 210
 export const SCENE_H = 51
 /** Где в клетках сцены стоят лисёнок (левый верхний угол) и костёр. */
 export const FOX_AT = { x: 78, y: 25 }
-export const FIRE_AT = { x: 118, y: 40 }
+/** Костёр: середина по x и нижняя граница (клетка под поленьями), спрайты разной высоты стоят на ней. */
+export const FIRE_CX = 121
+export const FIRE_BASE_Y = 48
 
 export interface SceneRect {
   x: number
@@ -67,12 +71,75 @@ const SUN_ROWS = [3, 5, 7, 7, 7, 5, 3]
 const CLOUD = ['..XXX...', '.XXXXXX.', 'XXXXXXXX']
 const PINE = ['...T...', '..TTT..', '..TTT..', '.TTTTT.', '.TTTTT.', 'TTTTTTT', '...N...', '...N...']
 
-export const FIRE_FRAMES: string[][] = [
-  ['...Y...', '..YOY..', '..YOO..', '.YOOOY.', '.YORRO.', '..ORRO.', 'LLLLLLL', '.LLLLL.'],
-  ['....Y..', '..YOY..', '.YOOY..', '.YOOOY.', '.OORRY.', '..ORRO.', 'LLLLLLL', '.LLLLL.'],
-]
 export const FIRE_PALETTE: Record<string, string> = {
-  Y: '#ffd23f', O: '#f08a3c', R: '#e8553a', L: '#7a4a2a',
+  Y: '#ffd23f', O: '#f08a3c', R: '#e8553a', L: '#7a4a2a', S: '#fff3b0',
+}
+
+export type FireLevel = 0 | 1 | 2 | 3 | 4
+
+/** Ступень костра: по серии (угли, малый, средний, большой, с искрами); выполненный минимум дня даёт ещё ступень, если серия есть. */
+export function fireLevel(streakDays: number, doneToday: boolean): FireLevel {
+  const d = Number.isFinite(streakDays) ? Math.floor(streakDays) : 0
+  if (d <= 0) return 0
+  const base = d >= 14 ? 4 : d >= 7 ? 3 : d >= 3 ? 2 : 1
+  return Math.min(4, base + (doneToday ? 1 : 0)) as FireLevel
+}
+
+/** Поленьев в поленнице: по одному на день серии, не больше 10. */
+export function logCount(streakDays: number): number {
+  const d = Number.isFinite(streakDays) ? Math.floor(streakDays) : 0
+  return Math.min(10, Math.max(0, d))
+}
+
+const FIRE: Record<FireLevel, [string[], string[]]> = {
+  0: [
+    ['.......', '..R.R..', 'LLLLLLL', '.LLLLL.'],
+    ['.......', '.R...R.', 'LLLLLLL', '.LLLLL.'],
+  ],
+  1: [
+    ['...Y...', '..YOY..', '..ORO..', 'LLLLLLL', '.LLLLL.'],
+    ['..Y....', '..YOY..', '..ORO..', 'LLLLLLL', '.LLLLL.'],
+  ],
+  2: [
+    ['...Y...', '..YOY..', '..YOO..', '.YOOOY.', '.YORRO.', '..ORRO.', 'LLLLLLL', '.LLLLL.'],
+    ['....Y..', '..YOY..', '.YOOY..', '.YOOOY.', '.OORRY.', '..ORRO.', 'LLLLLLL', '.LLLLL.'],
+  ],
+  3: [
+    ['....Y....', '...YOY...', '...YOO...', '..YOOOY..', '.YOOOOOY.', '.YOORROY.', '..OORROO.', '..ORRRO..', 'LLLLLLLLL', '.LLLLLLL.'],
+    ['.....Y...', '...YOY...', '..YOOY...', '..YOOOY..', '.YOOOOOY.', '.OOORROY.', '..OORROO.', '..ORRRO..', 'LLLLLLLLL', '.LLLLLLL.'],
+  ],
+  4: [
+    ['.S.....S.', '....S....', '....Y....', '...YOY...', '...YOO...', '..YOOOY..', '.YOOOOOY.', '.YOORROY.', '..OORROO.', '..ORRRO..', 'LLLLLLLLL', '.LLLLLLL.'],
+    ['.....S...', 'S.......S', '....Y....', '...YOY...', '..YOOY...', '..YOOOY..', '.YOOOOOY.', '.OOORROY.', '..OORROO.', '..ORRRO..', 'LLLLLLLLL', '.LLLLLLL.'],
+  ],
+}
+
+/** Два кадра пламени ступени. */
+export function fireFrames(level: FireLevel): [PixelArt, PixelArt] {
+  const [a, b] = FIRE[level]
+  return [
+    { palette: FIRE_PALETTE, rows: a },
+    { palette: FIRE_PALETTE, rows: b },
+  ]
+}
+
+const GLOW: Record<FireLevel, [number, number][]> = {
+  0: [],
+  1: [[5, 0.12]],
+  2: [[8, 0.1], [5, 0.16]],
+  3: [[10, 0.1], [7, 0.14], [4, 0.2]],
+  4: [[12, 0.1], [9, 0.14], [6, 0.18], [3, 0.22]],
+}
+
+/** Что показывает сцена о занятиях пользователя. Всё необязательно: без данных рисуется спокойный пейзаж. */
+export interface SceneExtras {
+  fireLevel?: FireLevel
+  /** Поленьев в поленнице (0…10). */
+  logs?: number
+  /** Достигнутых вех вдоль дороги (рисуются последние 7). */
+  posts?: number
+  /** Есть ли ещё недостигнутая веха: она стоит вдали серой. */
+  nextPost?: boolean
 }
 
 /** Псевдослучайные звёзды: одно зерно, всегда одни и те же места. */
@@ -90,8 +157,10 @@ function stars(count: number, maxY: number): [number, number][] {
 }
 
 const GROUND_Y = 42
+const ROAD_MID_TOP = 188
 
-export function buildScene(phase: Phase): SceneRect[] {
+export function buildScene(phase: Phase, extras: SceneExtras = {}): SceneRect[] {
+  const { fireLevel: fire = 2, logs = 0, posts = 0, nextPost = false } = extras
   const look = LOOK[phase]
   const grid: (string | null)[][] = Array.from({ length: SCENE_H }, () => Array<string | null>(SCENE_W).fill(null))
   const put = (x: number, y: number, c: string) => {
@@ -148,7 +217,7 @@ export function buildScene(phase: Phase): SceneRect[] {
   // Дорога уходит к холму: трапеция со смещением влево к низу.
   for (let y = GROUND_Y - 4; y < SCENE_H; y++) {
     const t = (y - (GROUND_Y - 4)) / (SCENE_H - 1 - (GROUND_Y - 4))
-    const mid = Math.round(176 - 26 * t)
+    const mid = Math.round(ROAD_MID_TOP - 24 * t)
     const half = Math.round(2 + 17 * t)
     for (let x = mid - half; x <= mid + half; x++) {
       put(x, y, x === mid - half || x === mid + half ? look.roadEdge : look.road)
@@ -164,6 +233,33 @@ export function buildScene(phase: Phase): SceneRect[] {
       }),
     )
   }
+
+  // Поленница справа от костра: брёвна пирамидой 4-3-2-1, по одному на день серии.
+  const LOG_SPOTS: [number, number][] = [
+    [126, 46], [130, 46], [134, 46], [138, 46],
+    [128, 44], [132, 44], [136, 44],
+    [130, 42], [134, 42],
+    [132, 40],
+  ]
+  LOG_SPOTS.slice(0, logCount(logs)).forEach(([lx, ly]) => {
+    put(lx, ly, '#8f5a35'); put(lx + 1, ly, '#8f5a35'); put(lx + 2, ly, '#c48a52')
+    put(lx, ly + 1, '#7a4a2a'); put(lx + 1, ly + 1, '#7a4a2a'); put(lx + 2, ly + 1, '#c48a52')
+  })
+
+  // Вехи стоят рядком на дороге впереди: старые ближе к лагерю, новые дальше по пути, серая (ещё не достигнутая) последней.
+  const ink = phase === 'night' ? '#6e78b8' : '#1e2347'
+  const post = (slot: number, stripe: [string, string], cap: string) => {
+    const rows = ['C', 'A', 'B', 'A', 'B', 'A', 'K']
+    const px = 144 + slot * 6
+    rows.forEach((kind, i) => {
+      const y = SCENE_H - rows.length + i
+      const mid = kind === 'C' ? cap : kind === 'A' ? stripe[0] : kind === 'B' ? stripe[1] : ink
+      put(px, y, ink); put(px + 1, y, mid); put(px + 2, y, mid); put(px + 3, y, ink)
+    })
+  }
+  const shown = Math.min(7, Math.max(0, Number.isFinite(posts) ? Math.floor(posts) : 0))
+  for (let i = 0; i < shown; i++) post(i, ['#ffd23f', '#f7f7ff'], '#4cc9f0')
+  if (nextPost) post(shown, ['#9aa3c7', '#9aa3c7'], '#9aa3c7')
 
   // Клетки → прямоугольники по горизонтальным сериям одного цвета.
   const rects: SceneRect[] = []
@@ -182,15 +278,15 @@ export function buildScene(phase: Phase): SceneRect[] {
     }
   })
 
-  // Свет костра ступенчатым ромбом поверх сцены (вечером, ночью, утром).
+  // Свет костра ступенчатым ромбом поверх сцены (вечером, ночью, утром); сильнее у большого огня.
   if (look.glow) {
-    const gx = FIRE_AT.x + 3
-    const gy = FIRE_AT.y + 4
-    for (const [r, opacity] of [[8, 0.1], [5, 0.16]] as const) {
+    const gx = FIRE_CX
+    const gy = FIRE_BASE_Y - 4
+    for (const [r, opacity] of GLOW[fire]) {
       for (let dy = -r; dy <= r; dy++) {
         const hw = (r - Math.abs(dy)) * 2
         const y = gy + dy
-        if (y >= 0 && y < SCENE_H) rects.push({ x: gx - hw, y, w: hw * 2 + 1, h: 1, fill: '#ffb347', opacity })
+        if (y >= 0 && y < SCENE_H) rects.push({ x: Math.max(0, gx - hw), y, w: Math.min(SCENE_W, gx + hw + 1) - Math.max(0, gx - hw), h: 1, fill: '#ffb347', opacity })
       }
     }
   }
