@@ -17,6 +17,7 @@ import (
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/config"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/importer"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/cefrj"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/freedict"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/frequencywords"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/octanove"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/tatoeba"
@@ -36,6 +37,7 @@ func main() {
 	reg := importer.NewRegistry()
 	reg.Register(cefrj.New()) // новый источник подключается одной такой строкой
 	reg.Register(frequencywords.New())
+	reg.Register(freedict.New())
 	reg.Register(octanove.New())
 	reg.Register(tatoeba.New())
 

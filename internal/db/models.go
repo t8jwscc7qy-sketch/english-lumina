@@ -162,3 +162,12 @@ type WordFrequency struct {
 	Count    int64
 	Rank     int32
 }
+
+type WordTranslation struct {
+	SourceID   int64
+	Lemma      string
+	Pos        string
+	SenseNo    int16
+	Ru         string
+	Definition *string
+}
