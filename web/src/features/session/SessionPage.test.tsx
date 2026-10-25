@@ -12,16 +12,30 @@ const SENTENCE = {
   gap: { start: 10, end: 13 },
 }
 const card = (id: number) => ({
-  cardId: id, lemma: 'run', pos: 'verb', level: 'B2', state: 0,
-  intervals: { again: 60, hard: 360, good: 600, easy: 345_600 }, sentence: SENTENCE,
+  cardId: id,
+  lemma: 'run',
+  pos: 'verb',
+  level: 'B2',
+  state: 0,
+  intervals: { again: 60, hard: 360, good: 600, easy: 345_600 },
+  sentence: SENTENCE,
 })
 const exercise = (id: number) => ({
-  id, kind: 'gap', prompt: 'She is _____ engineer.', translation: 'Она инженер.',
-  choices: ['a', 'an', 'the', 'no article'], topic: 'grammar:articles',
+  id,
+  kind: 'gap',
+  prompt: 'She is _____ engineer.',
+  translation: 'Она инженер.',
+  choices: ['a', 'an', 'the', 'no article'],
+  topic: 'grammar:articles',
 })
 const progress = (minutes: number, extra: Record<string, unknown> = {}) => ({
-  minutes, minimumDay: 10, goalMinutes: 15, doneToday: minutes >= 10, streakDays: 3,
-  today: { answers: 5, correct: 4, cardsReviewed: 2, mistakesOpened: 1, mistakesClosed: 2 }, ...extra,
+  minutes,
+  minimumDay: 10,
+  goalMinutes: 15,
+  doneToday: minutes >= 10,
+  streakDays: 3,
+  today: { answers: 5, correct: 4, cardsReviewed: 2, mistakesOpened: 1, mistakesClosed: 2 },
+  ...extra,
 })
 
 type World = {
@@ -32,6 +46,9 @@ type World = {
   noExercise?: boolean
   /** после ответа на упражнение в очереди снова появляется готовая карточка (шаг обучения FSRS, «Добавить в карточки») */
   cardAfterAnswer?: boolean
+  /** вехи, достигнутые сегодня (id) */
+  newToday?: string[]
+  milestonesStatus?: number
   progressStatus?: number
   extra?: Record<string, unknown>
 }
@@ -39,7 +56,12 @@ type World = {
 function stubApi(w: World) {
   const calls = { reviews: 0, answers: 0, nexts: 0 }
   let nextId = 100
-  const queue = () => jsonResponse(200, { dueCount: w.due, totalCount: w.due + 3, ...(w.due > 0 ? { card: card(1000 + calls.reviews) } : {}) })
+  const queue = () =>
+    jsonResponse(200, {
+      dueCount: w.due,
+      totalCount: w.due + 3,
+      ...(w.due > 0 ? { card: card(1000 + calls.reviews) } : {}),
+    })
   const fn = vi.fn(async (url: string) => {
     if (url.endsWith('/cards/queue')) return queue()
     if (url.endsWith('/cards/review')) {
@@ -49,7 +71,12 @@ function stubApi(w: World) {
       return queue()
     }
     if (url.endsWith('/progress/today')) {
-      if (w.progressStatus) return errorResponse(w.progressStatus, w.progressStatus === 401 ? 'unauthorized' : 'internal', 'Внутренняя ошибка')
+      if (w.progressStatus)
+        return errorResponse(
+          w.progressStatus,
+          w.progressStatus === 401 ? 'unauthorized' : 'internal',
+          'Внутренняя ошибка',
+        )
       return jsonResponse(200, progress(w.minutes, w.extra))
     }
     if (url.endsWith('/exercises/next')) {
@@ -61,9 +88,33 @@ function stubApi(w: World) {
       calls.answers++
       w.minutes += w.step
       if (w.cardAfterAnswer) w.due = 1
-      return jsonResponse(200, { correct: true, answer: 'an', translation: 'Она инженер.', ratings: [] })
+      return jsonResponse(200, {
+        correct: true,
+        answer: 'an',
+        translation: 'Она инженер.',
+        ratings: [],
+      })
     }
     if (url.endsWith('/exercises/topics')) return jsonResponse(200, { topics: [] })
+    if (url.endsWith('/milestones')) {
+      if (w.milestonesStatus)
+        return errorResponse(w.milestonesStatus, 'internal', 'Внутренняя ошибка')
+      const ms = (id: string, kind: string, title: string, threshold: number) => ({
+        id,
+        kind,
+        title,
+        threshold,
+        reachedOn: '2026-10-25',
+        progress: { value: threshold, target: threshold },
+      })
+      return jsonResponse(200, {
+        milestones: [
+          ms('hours-5', 'hours', '5 часов занятий', 5),
+          ms('streak-7', 'streak', 'Серия 7 дней', 7),
+        ],
+        newToday: w.newToday ?? [],
+      })
+    }
     throw new Error(`неожиданный запрос ${url}`)
   })
   vi.stubGlobal('fetch', fn)
@@ -127,7 +178,12 @@ describe('SessionPage: шаги', () => {
     expect(bar).toHaveAttribute('aria-valuenow', '2')
     await user.keyboard('2')
     await screen.findByText('Верно')
-    await waitFor(() => expect(screen.getByRole('progressbar', { name: 'Минимальный день' })).toHaveAttribute('aria-valuenow', '5'))
+    await waitFor(() =>
+      expect(screen.getByRole('progressbar', { name: 'Минимальный день' })).toHaveAttribute(
+        'aria-valuenow',
+        '5',
+      ),
+    )
   })
 })
 
@@ -139,9 +195,13 @@ describe('SessionPage: минимум и итог', () => {
     await waitForExercise()
     await user.keyboard('2')
     await screen.findByText('Верно') // результат остаётся на экране, пока пользователь не нажмёт «Дальше»
-    expect(screen.queryByRole('heading', { name: 'Минимум на сегодня выполнен' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Минимум на сегодня выполнен' }),
+    ).not.toBeInTheDocument()
     await user.keyboard(' ')
-    expect(await screen.findByRole('heading', { name: 'Минимум на сегодня выполнен' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Минимум на сегодня выполнен' }),
+    ).toBeInTheDocument()
   })
 
   it('«Ещё немного» возвращает к упражнениям и экран минимума больше не появляется', async () => {
@@ -158,7 +218,9 @@ describe('SessionPage: минимум и итог', () => {
     await screen.findByText('Верно')
     await user.keyboard(' ')
     await waitForExercise() // снова упражнение, а не экран минимума
-    expect(screen.queryByRole('heading', { name: 'Минимум на сегодня выполнен' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Минимум на сегодня выполнен' }),
+    ).not.toBeInTheDocument()
     expect(calls.answers).toBe(2)
   })
 
@@ -218,7 +280,9 @@ describe('SessionPage: состояния', () => {
   it('упражнений нет вообще: сообщение, «На главную» и «Закончить», без зацикливания', async () => {
     const calls = stubApi({ due: 0, minutes: 0, step: 1, noExercise: true })
     renderSession()
-    expect(await screen.findByRole('heading', { name: 'Подходящих упражнений пока нет' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Подходящих упражнений пока нет' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/')
     await new Promise((r) => setTimeout(r, 300))
     expect(calls.nexts).toBe(1) // запрос один, а не цикл
@@ -265,7 +329,43 @@ describe('SessionPage: устойчивость шага упражнений', 
     await screen.findByText('Верно')
     await user.keyboard(' ')
     await waitForExercise()
-    expect(screen.queryByRole('heading', { name: 'Минимум на сегодня выполнен' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Минимум на сегодня выполнен' }),
+    ).not.toBeInTheDocument()
   })
 })
 
+describe('SessionPage: вехи в итоге дня', () => {
+  it('новая веха: «вспышка» над итогом дня', async () => {
+    stubApi({ due: 0, minutes: 3, step: 1, newToday: ['streak-7', 'hours-5'] })
+    renderSession()
+    const user = userEvent.setup()
+    await waitForExercise()
+    await user.click(screen.getByRole('button', { name: 'Закончить' }))
+    expect(await screen.findByText('Новая веха')).toBeInTheDocument()
+    const items = screen.getAllByRole('listitem').map((li) => li.textContent)
+    expect(items).toContain('Серия 7 дней')
+    expect(items).toContain('5 часов занятий')
+    expect(screen.getByRole('heading', { name: 'Итог дня' })).toBeInTheDocument()
+  })
+
+  it('без новых вех вспышки нет', async () => {
+    stubApi({ due: 0, minutes: 3, step: 1, newToday: [] })
+    renderSession()
+    const user = userEvent.setup()
+    await waitForExercise()
+    await user.click(screen.getByRole('button', { name: 'Закончить' }))
+    await screen.findByRole('heading', { name: 'Итог дня' })
+    await waitFor(() => expect(screen.queryByText('Новая веха')).not.toBeInTheDocument())
+  })
+
+  it('ошибка загрузки вех не ломает итог дня', async () => {
+    stubApi({ due: 0, minutes: 3, step: 1, milestonesStatus: 500 })
+    renderSession()
+    const user = userEvent.setup()
+    await waitForExercise()
+    await user.click(screen.getByRole('button', { name: 'Закончить' }))
+    expect(await screen.findByRole('heading', { name: 'Итог дня' })).toBeInTheDocument()
+    expect(screen.queryByText('Новая веха')).not.toBeInTheDocument()
+  })
+})

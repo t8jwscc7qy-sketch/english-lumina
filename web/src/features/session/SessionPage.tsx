@@ -6,10 +6,19 @@ import { XpBar } from '@/components/pixel/XpBar'
 import { Button } from '@/components/ui/button'
 import { meKey } from '@/features/auth/auth'
 import { useCardQueue } from '@/features/cards/cards'
+import { MilestoneFlash } from '@/features/milestones/MilestoneFlash'
+import { useMilestones } from '@/features/milestones/milestones'
 import { ReviewCard } from '@/features/cards/ReviewCard'
 import { ExerciseCard } from '@/features/exercises/ExerciseCard'
 import { useNextExercise } from '@/features/exercises/exercises'
-import { formatDayRu, formatMinutes, progressKey, streakWord, useProgressToday, type ProgressToday } from '@/features/today/progress'
+import {
+  formatDayRu,
+  formatMinutes,
+  progressKey,
+  streakWord,
+  useProgressToday,
+  type ProgressToday,
+} from '@/features/today/progress'
 
 /** Не больше стольких карточек за сессию: очередь в сотню карточек не должна съедать весь день. */
 export const MAX_CARDS_PER_SESSION = 10
@@ -60,9 +69,18 @@ export function SessionPage() {
     if (unauthorized) qc.setQueryData(meKey, null)
   }, [unauthorized, qc])
 
-  if (!cardsOver && phase === 'run' && queue.data && (!queue.data.card || cardsDone >= MAX_CARDS_PER_SESSION)) setCardsOver(true)
+  if (
+    !cardsOver &&
+    phase === 'run' &&
+    queue.data &&
+    (!queue.data.card || cardsDone >= MAX_CARDS_PER_SESSION)
+  )
+    setCardsOver(true)
 
-  const refreshProgress = useCallback(() => void qc.invalidateQueries({ queryKey: progressKey }), [qc])
+  const refreshProgress = useCallback(
+    () => void qc.invalidateQueries({ queryKey: progressKey }),
+    [qc],
+  )
   const onRated = useCallback(() => {
     setCardsDone((n) => n + 1)
     refreshProgress()
@@ -123,7 +141,10 @@ export function SessionPage() {
 
       {cardsStep && card && (
         <>
-          <p aria-live="polite" className="text-sm font-semibold tabular-nums">{`Карточка ${cardsDone + 1} из ${cardsTotal}`}</p>
+          <p
+            aria-live="polite"
+            className="text-sm font-semibold tabular-nums"
+          >{`Карточка ${cardsDone + 1} из ${cardsTotal}`}</p>
           <ReviewCard key={card.cardId} card={card} onRated={onRated} />
         </>
       )}
@@ -143,7 +164,9 @@ export function SessionPage() {
           <h2 ref={headingRef} tabIndex={-1} className="text-title outline-none">
             Минимум на сегодня выполнен
           </h2>
-          <p className="text-muted-foreground">Можно закончить или позаниматься ещё: серия уже засчитана.</p>
+          <p className="text-muted-foreground">
+            Можно закончить или позаниматься ещё: серия уже засчитана.
+          </p>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" onClick={() => setPhase('summary')}>
               Закончить
@@ -251,35 +274,45 @@ function Summary({
   onResume: () => void
 }) {
   const t = progress?.today
+  const milestones = useMilestones() // ошибка загрузки вех не мешает итогу: вспышки просто не будет
   return (
-    <section aria-labelledby="summary-title" className="surface flex flex-col gap-4 p-6">
-      <h2 id="summary-title" ref={headingRef} tabIndex={-1} className="text-title outline-none">
-        Итог дня
-      </h2>
-      {progress ? (
-        <ul className="flex flex-col gap-2">
-          <li>{`Минут сегодня: ${formatMinutes(progress.minutes)} из ${progress.minimumDay}`}</li>
-          {t && t.answers > 0 && (
-            <li>{`${t.answers} ${plural(t.answers, 'ответ', 'ответа', 'ответов')}, ${t.correct} ${plural(t.correct, 'верный', 'верных', 'верных')}`}</li>
-          )}
-          {t && t.cardsReviewed > 0 && <li>{`Карточек повторено: ${t.cardsReviewed}`}</li>}
-          {t && (t.mistakesOpened > 0 || t.mistakesClosed > 0) && (
-            <li>{`Ошибки: открыто ${t.mistakesOpened}, закрыто ${t.mistakesClosed}`}</li>
-          )}
-          <li>{`Серия: ${progress.streakDays} ${streakWord(progress.streakDays)}`}</li>
-          {progress.freezeUsedOn && <li className="text-sm text-muted-foreground">{`Заморозка спасла ${formatDayRu(progress.freezeUsedOn)}`}</li>}
-        </ul>
-      ) : (
-        <p className="text-muted-foreground">Прогресс за сегодня не загрузился, но все ответы сохранены.</p>
+    <>
+      {milestones.data && (
+        <MilestoneFlash milestones={milestones.data.milestones} ids={milestones.data.newToday} />
       )}
-      <div className="flex flex-wrap gap-3">
-        <Button asChild size="lg">
-          <Link to="/">На главную</Link>
-        </Button>
-        <Button size="lg" variant="secondary" onClick={onResume}>
-          Ещё немного
-        </Button>
-      </div>
-    </section>
+      <section aria-labelledby="summary-title" className="surface flex flex-col gap-4 p-6">
+        <h2 id="summary-title" ref={headingRef} tabIndex={-1} className="text-title outline-none">
+          Итог дня
+        </h2>
+        {progress ? (
+          <ul className="flex flex-col gap-2">
+            <li>{`Минут сегодня: ${formatMinutes(progress.minutes)} из ${progress.minimumDay}`}</li>
+            {t && t.answers > 0 && (
+              <li>{`${t.answers} ${plural(t.answers, 'ответ', 'ответа', 'ответов')}, ${t.correct} ${plural(t.correct, 'верный', 'верных', 'верных')}`}</li>
+            )}
+            {t && t.cardsReviewed > 0 && <li>{`Карточек повторено: ${t.cardsReviewed}`}</li>}
+            {t && (t.mistakesOpened > 0 || t.mistakesClosed > 0) && (
+              <li>{`Ошибки: открыто ${t.mistakesOpened}, закрыто ${t.mistakesClosed}`}</li>
+            )}
+            <li>{`Серия: ${progress.streakDays} ${streakWord(progress.streakDays)}`}</li>
+            {progress.freezeUsedOn && (
+              <li className="text-sm text-muted-foreground">{`Заморозка спасла ${formatDayRu(progress.freezeUsedOn)}`}</li>
+            )}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">
+            Прогресс за сегодня не загрузился, но все ответы сохранены.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <Button asChild size="lg">
+            <Link to="/">На главную</Link>
+          </Button>
+          <Button size="lg" variant="secondary" onClick={onResume}>
+            Ещё немного
+          </Button>
+        </div>
+      </section>
+    </>
   )
 }

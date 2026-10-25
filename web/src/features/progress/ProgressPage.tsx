@@ -11,8 +11,17 @@ import { useSettings } from '@/features/settings/settings'
 import { formatDayRu } from '@/features/today/progress'
 import { describeDuration, neededHours } from '@/lib/forecast'
 import { forecastFromPace, type PaceForecast } from '@/lib/progressForecast'
+import { MilestonesBlock } from '@/features/milestones/MilestonesBlock'
+import { useMilestones } from '@/features/milestones/milestones'
 import { HoursChart } from './HoursChart'
-import { formatFinishDate, formatHoursMinutes, formatRange, formatShortDay, useProgressOverview, type ProgressOverview } from './progress'
+import {
+  formatFinishDate,
+  formatHoursMinutes,
+  formatRange,
+  formatShortDay,
+  useProgressOverview,
+  type ProgressOverview,
+} from './progress'
 
 /** Меньше стольких ответов по теме — оценка ещё грубая. */
 const FEW_ANSWERS = 5
@@ -32,6 +41,7 @@ export function ProgressPage() {
   const overview = useProgressOverview()
   const settings = useSettings()
   const topics = useTopics()
+  const milestones = useMilestones()
   const qc = useQueryClient()
   const [today] = useState(() => new Date())
 
@@ -51,7 +61,9 @@ export function ProgressPage() {
         <h1 className="text-title">Прогресс</h1>
       </header>
 
-      {(overview.isPending || !settings.data) && !overview.isError && <p role="status">Считаем прогресс…</p>}
+      {(overview.isPending || !settings.data) && !overview.isError && (
+        <p role="status">Считаем прогресс…</p>
+      )}
 
       {overview.isError && (
         <div className="surface flex flex-col items-start gap-4 p-6">
@@ -68,6 +80,29 @@ export function ProgressPage() {
           current={settings.data.currentLevel}
           target={settings.data.targetLevel}
           today={today}
+          milestonesSlot={
+            milestones.data ? (
+              <MilestonesBlock milestones={milestones.data.milestones} />
+            ) : milestones.isError ? (
+              <section
+                aria-labelledby="milestones-error"
+                className="surface flex flex-col items-start gap-3 p-6"
+              >
+                <h2
+                  id="milestones-error"
+                  className="font-sans text-sm font-semibold text-muted-foreground"
+                >
+                  Вехи
+                </h2>
+                <p role="alert" className="text-sm text-muted-foreground">
+                  {milestones.error.message}
+                </p>
+                <Button variant="secondary" size="sm" onClick={() => milestones.refetch()}>
+                  Повторить
+                </Button>
+              </section>
+            ) : null
+          }
         />
       )}
 
@@ -76,8 +111,28 @@ export function ProgressPage() {
   )
 }
 
-function Content({ o, current, target, today }: { o: ProgressOverview; current: Parameters<typeof forecastFromPace>[0]; target: Parameters<typeof forecastFromPace>[1]; today: Date }) {
-  const forecast = forecastFromPace(current, target, o.studiedMinutes, o.paceMinutesPerDay, o.paceReady, o.daysSinceStart, today)
+function Content({
+  o,
+  current,
+  target,
+  today,
+  milestonesSlot,
+}: {
+  o: ProgressOverview
+  current: Parameters<typeof forecastFromPace>[0]
+  target: Parameters<typeof forecastFromPace>[1]
+  today: Date
+  milestonesSlot: React.ReactNode
+}) {
+  const forecast = forecastFromPace(
+    current,
+    target,
+    o.studiedMinutes,
+    o.paceMinutesPerDay,
+    o.paceReady,
+    o.daysSinceStart,
+    today,
+  )
   const needed = neededHours(current, target)
   const studiedHours = o.studiedMinutes / 60
   const hasData = o.daysSinceStart > 0
@@ -90,7 +145,9 @@ function Content({ o, current, target, today }: { o: ProgressOverview; current: 
         </h2>
         <ForecastBody forecast={forecast} target={target} today={today} />
         <p className="text-sm text-muted-foreground">
-          Считаются только минуты в сервисе; уровень «сейчас» выбран тобой, поэтому часы в сервисе вычитаются из нужных. Часы Cambridge рассчитаны на занятия с преподавателем, поправка 1,5–2 на самостоятельную учёбу — допущение.
+          Считаются только минуты в сервисе; уровень «сейчас» выбран тобой, поэтому часы в сервисе
+          вычитаются из нужных. Часы Cambridge рассчитаны на занятия с преподавателем, поправка
+          1,5–2 на самостоятельную учёбу — допущение.
         </p>
       </section>
 
@@ -115,9 +172,15 @@ function Content({ o, current, target, today }: { o: ProgressOverview; current: 
             <table className="mt-2 w-full tabular-nums">
               <thead>
                 <tr className="text-left text-muted-foreground">
-                  <th scope="col" className="py-1 pr-4 font-semibold">День</th>
-                  <th scope="col" className="py-1 pr-4 font-semibold">Минут за день</th>
-                  <th scope="col" className="py-1 font-semibold">Часов всего</th>
+                  <th scope="col" className="py-1 pr-4 font-semibold">
+                    День
+                  </th>
+                  <th scope="col" className="py-1 pr-4 font-semibold">
+                    Минут за день
+                  </th>
+                  <th scope="col" className="py-1 font-semibold">
+                    Часов всего
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -134,12 +197,16 @@ function Content({ o, current, target, today }: { o: ProgressOverview; current: 
         )}
       </section>
 
+      {milestonesSlot}
+
       <section aria-labelledby="pace-title" className="surface flex flex-col gap-2 p-6">
         <h2 id="pace-title" className="font-sans text-sm font-semibold text-muted-foreground">
           Темп
         </h2>
         <p className="tabular-nums">
-          {o.paceReady ? `Средний темп за ${PACE_DAYS} дней: ${formatHoursMinutes(o.paceMinutesPerDay)} в день` : `Темп покажу после ${PACE_DAYS} суток занятий`}
+          {o.paceReady
+            ? `Средний темп за ${PACE_DAYS} дней: ${formatHoursMinutes(o.paceMinutesPerDay)} в день`
+            : `Темп покажу после ${PACE_DAYS} суток занятий`}
         </p>
         <p>{o.startedOn ? `Занимаешься с ${formatDayRu(o.startedOn)}` : 'Занятий пока не было'}</p>
         <p className="tabular-nums">{`Набрано: ${formatHoursMinutes(o.studiedMinutes)}`}</p>
@@ -148,27 +215,48 @@ function Content({ o, current, target, today }: { o: ProgressOverview; current: 
   )
 }
 
-function ForecastBody({ forecast, target, today }: { forecast: PaceForecast; target: string; today: Date }) {
+function ForecastBody({
+  forecast,
+  target,
+  today,
+}: {
+  forecast: PaceForecast
+  target: string
+  today: Date
+}) {
   switch (forecast.kind) {
     case 'reached':
       return (
         <p>
-          Цель достигнута. <Link to="/settings" className="underline underline-offset-4">Выбери цель повыше</Link>
+          Цель достигнута.{' '}
+          <Link to="/settings" className="underline underline-offset-4">
+            Выбери цель повыше
+          </Link>
         </p>
       )
     case 'enough':
       return (
         <p>
           Набрано больше нужных часов: оцени уровень и подними цель.{' '}
-          <Link to="/settings" className="underline underline-offset-4">Настройки</Link>
+          <Link to="/settings" className="underline underline-offset-4">
+            Настройки
+          </Link>
         </p>
       )
     case 'collecting':
       return (
         <div className="flex flex-col gap-2">
           <p className="text-title">Собираю данные</p>
-          <p>Дату покажу после {PACE_DAYS} суток занятий: сначала нужно увидеть, как быстро ты растёшь.</p>
-          <XpBar value={Math.min(forecast.daysSinceStart, PACE_DAYS)} total={PACE_DAYS} label="Сутки занятий" segments={PACE_DAYS} />
+          <p>
+            Дату покажу после {PACE_DAYS} суток занятий: сначала нужно увидеть, как быстро ты
+            растёшь.
+          </p>
+          <XpBar
+            value={Math.min(forecast.daysSinceStart, PACE_DAYS)}
+            total={PACE_DAYS}
+            label="Сутки занятий"
+            segments={PACE_DAYS}
+          />
           <p className="text-sm tabular-nums">{`${forecast.daysSinceStart} из ${PACE_DAYS} суток`}</p>
         </div>
       )
@@ -176,7 +264,10 @@ function ForecastBody({ forecast, target, today }: { forecast: PaceForecast; tar
       return (
         <div className="flex flex-col items-start gap-3">
           <p className="text-title">Сейчас занятий нет</p>
-          <p>Назвать дату нельзя: за последние {PACE_DAYS} суток минут почти не набралось. Начни сессию, и прогноз появится.</p>
+          <p>
+            Назвать дату нельзя: за последние {PACE_DAYS} суток минут почти не набралось. Начни
+            сессию, и прогноз появится.
+          </p>
           <Button asChild>
             <Link to="/session">Начать сессию</Link>
           </Button>
@@ -186,7 +277,10 @@ function ForecastBody({ forecast, target, today }: { forecast: PaceForecast; tar
       return (
         <div className="flex flex-col items-start gap-3">
           <p className="text-title">При таком темпе срок больше 10 лет</p>
-          <p>Дату назвать нельзя: за последние {PACE_DAYS} суток минут набралось слишком мало. Добавь занятий, и прогноз станет ближе.</p>
+          <p>
+            Дату назвать нельзя: за последние {PACE_DAYS} суток минут набралось слишком мало. Добавь
+            занятий, и прогноз станет ближе.
+          </p>
           <Button asChild>
             <Link to="/session">Начать сессию</Link>
           </Button>
@@ -197,10 +291,15 @@ function ForecastBody({ forecast, target, today }: { forecast: PaceForecast; tar
       return (
         <div className="flex flex-col gap-2">
           <p className="text-title">
-            До {target} примерно <span className="font-semibold">{describeDuration(forecast.days)}</span>
+            До {target} примерно{' '}
+            <span className="font-semibold">{describeDuration(forecast.days)}</span>
           </p>
           <p>{`к ${when}`}</p>
-          {forecast.unrealistic && <p className="text-sm font-semibold text-coral-text">Такой темп вряд ли удержать: больше 4 часов в день.</p>}
+          {forecast.unrealistic && (
+            <p className="text-sm font-semibold text-coral-text">
+              Такой темп вряд ли удержать: больше 4 часов в день.
+            </p>
+          )}
           {forecast.saveWithTenMore && (
             <p>{`Что изменить: +10 минут в день сократят срок примерно на ${forecast.saveWithTenMore.weeks} ${weeksWord(forecast.saveWithTenMore.weeks)}`}</p>
           )}
@@ -210,10 +309,19 @@ function ForecastBody({ forecast, target, today }: { forecast: PaceForecast; tar
   }
 }
 
-function TopicMap({ topics }: { topics: { topic: string; rating: number; deviation: number; attempts: number }[] | undefined }) {
+function TopicMap({
+  topics,
+}: {
+  topics: { topic: string; rating: number; deviation: number; attempts: number }[] | undefined
+}) {
   if (!topics) return null
   const sorted = [...topics].sort((a, b) => a.rating - b.rating)
-  const weak = new Set(sorted.filter((t) => t.attempts >= FEW_ANSWERS).slice(0, WEAK_COUNT).map((t) => t.topic))
+  const weak = new Set(
+    sorted
+      .filter((t) => t.attempts >= FEW_ANSWERS)
+      .slice(0, WEAK_COUNT)
+      .map((t) => t.topic),
+  )
   return (
     <section aria-labelledby="topics-title" className="surface flex flex-col gap-3 p-6">
       <h2 id="topics-title" className="font-sans text-sm font-semibold text-muted-foreground">
@@ -224,13 +332,20 @@ function TopicMap({ topics }: { topics: { topic: string; rating: number; deviati
       ) : (
         <ul aria-label="Карта тем" className="flex flex-col divide-y divide-border">
           {sorted.map((t) => (
-            <li key={t.topic} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2 first:pt-0 last:pb-0">
+            <li
+              key={t.topic}
+              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2 first:pt-0 last:pb-0"
+            >
               <span className="font-semibold">{topicName(t.topic)}</span>
               <span className="text-sm tabular-nums text-muted-foreground">
                 <span className="font-semibold text-foreground">{Math.round(t.rating)}</span>
-                {t.attempts < FEW_ANSWERS ? ' · мало ответов' : ` · надёжность: ${reliabilityLabel(t.deviation)}`}
+                {t.attempts < FEW_ANSWERS
+                  ? ' · мало ответов'
+                  : ` · надёжность: ${reliabilityLabel(t.deviation)}`}
                 {weak.has(t.topic) && ' · '}
-                {weak.has(t.topic) && <span className="font-semibold text-foreground">слабая тема</span>}
+                {weak.has(t.topic) && (
+                  <span className="font-semibold text-foreground">слабая тема</span>
+                )}
               </span>
             </li>
           ))}
