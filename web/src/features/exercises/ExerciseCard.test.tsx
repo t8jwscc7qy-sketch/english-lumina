@@ -121,4 +121,27 @@ describe('ExerciseCard: сопоставление', () => {
     await user.keyboard(' ')
     expect(onNext).toHaveBeenCalledTimes(1)
   })
+
+  it('пять из пяти мышью: лисёнок подпрыгивает; с клавиатуры нет', async () => {
+    const allRight = pairs.map((p) => ({ ...p, given: p.answer, correct: true }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.endsWith('/exercises/answer')) return jsonResponse(200, { correct: true, answer: 'x', translation: '', ratings: [], pairs: allRight })
+        if (url.endsWith('/exercises/topics')) return jsonResponse(200, { topics: [] })
+        throw new Error(`неожиданный запрос ${url}`)
+      }),
+    )
+    const user = userEvent.setup()
+    const view = renderAt('/x', [{ path: '/x', element: <ExerciseCard exercise={match} onNext={vi.fn()} loadingNext={false} /> }])
+    await screen.findByLabelText('Упражнение')
+    const right: [number, number][] = [[0, 1], [1, 4], [2, 3], [3, 0], [4, 2]]
+    for (const [w, o] of right) {
+      await user.click(screen.getByRole('button', { name: new RegExp(`^${w + 1}\\.`) }))
+      await user.click(screen.getByRole('button', { name: new RegExp(`^${'abcde'[o]}\\.`) }))
+    }
+    await user.click(screen.getByRole('button', { name: 'Проверить' }))
+    await screen.findByText('Все пары верны')
+    expect(view.container.querySelector('.fox-jump')).not.toBeNull()
+  })
 })

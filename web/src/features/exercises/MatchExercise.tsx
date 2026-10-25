@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import type { AnswerResult } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,8 @@ import {
   undoLast,
   type MatchState,
 } from './match'
+import { confetti, lastInput, prefersReducedMotion, sparkOffsets, trackInput } from './matchFx'
+import { MatchThreads } from './MatchThreads'
 
 type Props = {
   words: string[]
@@ -25,6 +27,21 @@ type Props = {
   onSubmit: (given: string) => void
   /** Вернуть фокус на карточку: тогда Enter и цифры работают после клика мышью. */
   restoreFocus: () => void
+}
+
+// Источник ввода запоминается с загрузки приложения: «Дальше» с клавиатуры не должно открывать упражнение анимацией.
+trackInput()
+
+/** Шаги счётчика: от 0 до target за ms, начиная через delay; выключен — сразу target (счётчик живёт одно упражнение). */
+function useStepCount(target: number, enabled: boolean, delay: number, ms: number): number {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    if (!enabled) return
+    const timers: number[] = []
+    for (let k = 1; k <= target; k++) timers.push(window.setTimeout(() => setN(k), delay + (ms * k) / Math.max(1, target)))
+    return () => timers.forEach(window.clearTimeout)
+  }, [target, enabled, delay, ms])
+  return enabled ? n : target
 }
 
 /** Цвета пар: рамка плитки и значок с номером пары. Цвет не единственный признак: номер и подписи в именах плиток. */
@@ -48,7 +65,15 @@ function isTypingTarget(t: EventTarget | null): boolean {
 /** «Сопоставление»: слева английские слова, справа переводы вперемешку; пары собираются нажатиями или клавишами. */
 export function MatchExercise({ words, options, frozen, pending, result, onSubmit, restoreFocus }: Props) {
   const [state, setState] = useState<MatchState>(() => emptyState(words.length))
-  const [input, setInput] = useState<'pointer' | 'keyboard'>('pointer')
+  const [input, setInput] = useState<'pointer' | 'keyboard'>(lastInput)
+  const [reduced] = useState(prefersReducedMotion)
+  const [enter] = useState(() => lastInput() === 'pointer' && !prefersReducedMotion())
+  const motion = input === 'pointer' && !reduced
+  const rootRef = useRef<HTMLDivElement>(null)
+  const wordEls = useRef<(HTMLElement | null)[]>([])
+  const optionEls = useRef<(HTMLElement | null)[]>([])
+  const [gridEl, setGridEl] = useState<HTMLElement | null>(null)
+  const gridRef = useCallback((el: HTMLDivElement | null) => setGridEl(el), [])
   const complete = isComplete(state)
   const given = toGiven(words, options, state)
 
@@ -88,6 +113,14 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
   const wordOf = (o: number) => state.pairs.indexOf(o)
   const verdict = (w: number) => result?.pairs?.find((p) => p.word === words[w])
   const rightCount = result?.pairs?.filter((p) => p.correct).length ?? 0
+  const total = result?.pairs?.length ?? words.length
+  const verdicts = useMemo(() => words.map((_, i) => result?.pairs?.find((p) => p.word === words[i])?.correct), [words, result])
+  const win = !!result?.correct
+  const sparks = useMemo(() => sparkOffsets(rightCount + words.length, 4), [rightCount, words.length])
+  const pieces = useMemo(() => confetti(words.join('').length, 12), [words])
+  // Проверка идёт по очереди с шагом 90 мс; счёт набирается после последней пары.
+  const STEP = 90
+  const shown = useStepCount(rightCount, motion && !!result, total * STEP, 300)
 
   function tileTone(w: number | null): string {
     if (w === null || w < 0) return '[--frame:var(--input)]'
@@ -96,28 +129,58 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
     return PAIR_STYLE[pairColor(w)].frame
   }
 
-  function Mark({ w }: { w: number }) {
+  /** Значок пары: номер до ответа, галочка или крестик после (вызывается как функция, чтобы анимации не перезапускались). */
+  function mark(w: number) {
     const v = verdict(w)
     if (v) {
       return v.correct ? (
-        <Check aria-hidden className="size-5 shrink-0 text-grass-text" strokeWidth={2} />
+        <Check aria-hidden className="size-4 shrink-0 text-grass-text sm:size-5" strokeWidth={2} />
       ) : (
-        <X aria-hidden className="size-5 shrink-0 text-coral-text" strokeWidth={2} />
+        <X aria-hidden className="size-4 shrink-0 text-coral-text sm:size-5" strokeWidth={2} />
       )
     }
     return (
-      <span aria-hidden className={cn('grid size-6 shrink-0 place-items-center text-xs font-bold tabular-nums', PAIR_STYLE[pairColor(w)].badge)}>
+      <span aria-hidden className={cn('grid size-5 shrink-0 place-items-center text-[11px] font-bold tabular-nums sm:size-6 sm:text-xs', PAIR_STYLE[pairColor(w)].badge)}>
         {w + 1}
       </span>
     )
   }
 
+  /** Вспышка и искры верной пары, тряска неверной: только когда движение включено, у каждой плитки своя очередь. */
+  function reaction(w: number) {
+    const v = verdict(w)
+    if (!v || !motion) return null
+    return v.correct ? (
+      <>
+        <span aria-hidden className="m-flash pointer-events-none absolute inset-0 bg-grass" style={{ ['--d' as string]: `${w * STEP}ms` }} />
+        {sparks.map((p, k) => (
+          <span
+            key={k}
+            aria-hidden
+            className="m-spark pointer-events-none absolute right-5 top-1/2 size-1 bg-sun"
+            style={{ ['--dx' as string]: `${p.dx}px`, ['--dy' as string]: `${p.dy}px`, ['--d' as string]: `${w * STEP}ms` }}
+          />
+        ))}
+      </>
+    ) : null
+  }
+
   const tile =
-    'pixel-frame pixel-press flex min-h-12 w-full items-center gap-3 bg-card px-3 py-2 text-left font-semibold transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring disabled:cursor-default'
+    'm-tile pixel-frame pixel-press relative flex min-h-12 w-full items-center gap-1.5 bg-card px-1.5 py-2 sm:gap-3 sm:px-3 text-left font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring disabled:cursor-default'
+  const entry = (k: number) => (enter ? { className: 'm-tile-in', style: { ['--d' as string]: `${k * 40}ms` } } : {})
 
   return (
-    <div data-input={input} onPointerDown={() => setInput('pointer')} className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8">
+    <div
+      ref={rootRef}
+      data-input={input}
+      data-motion={motion ? 'on' : 'off'}
+      onPointerDown={() => setInput('pointer')}
+      className="relative flex flex-col gap-5"
+    >
+      <div
+        ref={gridRef}
+        className="relative grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8"
+      >
         <ol aria-label="Слова" className="flex flex-col gap-3">
           {words.map((word, i) => {
             const paired = state.pairs[i]
@@ -127,7 +190,7 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
               (paired !== null ? `, соединено с «${options[paired]}»` : '') +
               (v ? (v.correct ? ', верно' : ', неверно') : '')
             return (
-              <li key={word}>
+              <li key={word} ref={(el) => { wordEls.current[i] = el }} {...entry(i)}>
                 <button
                   type="button"
                   disabled={frozen}
@@ -138,11 +201,13 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
                     setState((s) => selectWord(s, i))
                     restoreFocus()
                   }}
-                  className={cn(tile, state.selected === i ? '[--frame:var(--sun)] -translate-y-0.5 bg-muted' : tileTone(paired !== null ? i : null))}
+                  style={{ ['--d' as string]: `${i * STEP}ms` }}
+                  className={cn(tile, motion && v && !v.correct && 'm-wrong', state.selected === i ? '[--frame:var(--sun)] -translate-y-0.5 bg-muted' : tileTone(paired !== null ? i : null))}
                 >
-                  <kbd aria-hidden className="grid size-6 shrink-0 place-items-center border border-border font-sans text-xs">{i + 1}</kbd>
+                  <kbd aria-hidden className="grid size-6 shrink-0 place-items-center border border-border font-sans text-xs max-sm:hidden">{i + 1}</kbd>
                   <span lang="en" className="min-w-0 flex-1 break-words">{word}</span>
-                  {paired !== null && <Mark w={i} />}
+                  {paired !== null && mark(i)}
+                  {reaction(i)}
                 </button>
               </li>
             )
@@ -157,7 +222,7 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
               (w >= 0 ? `, соединено со словом «${words[w]}»` : '') +
               (v ? (v.correct ? ', верно' : ', неверно') : '')
             return (
-              <li key={option}>
+              <li key={option} ref={(el) => { optionEls.current[j] = el }} {...entry(j + words.length)}>
                 <button
                   type="button"
                   disabled={frozen}
@@ -169,14 +234,23 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
                   }}
                   className={cn(tile, tileTone(w >= 0 ? w : null))}
                 >
-                  <kbd aria-hidden className="grid size-6 shrink-0 place-items-center border border-border font-sans text-xs uppercase">{optionLabel(j)}</kbd>
+                  <kbd aria-hidden className="grid size-6 shrink-0 place-items-center border border-border font-sans text-xs uppercase max-sm:hidden">{optionLabel(j)}</kbd>
                   <span lang="ru" className="min-w-0 flex-1 break-words">{option}</span>
-                  {w >= 0 && <Mark w={w} />}
+                  {w >= 0 && mark(w)}
                 </button>
               </li>
             )
           })}
         </ul>
+        <MatchThreads
+          container={gridEl}
+          wordEls={wordEls}
+          optionEls={optionEls}
+          words={words}
+          options={options}
+          pairs={state.pairs}
+          verdicts={verdicts}
+        />
       </div>
 
       {!result && (
@@ -192,7 +266,11 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
 
       {result?.pairs && (
         <div className="flex flex-col gap-3">
-          <p className="font-semibold tabular-nums">{`Верно ${rightCount} из ${result.pairs.length}`}</p>
+          {/* Читалке итог виден сразу, счётчик для глаз набирается ступенями. */}
+          <p className="sr-only">{`Верно ${rightCount} из ${result.pairs.length}`}</p>
+          <p aria-hidden className="font-semibold tabular-nums">
+            {`Счёт: ${shown} / ${result.pairs.length}`}
+          </p>
           <ul aria-label="Разбор пар" className="flex flex-col gap-1.5 text-sm">
             {result.pairs.map((p) => (
               <li key={p.word} className={cn('flex flex-wrap items-baseline gap-x-2', !p.correct && 'text-coral-text')}>
@@ -211,7 +289,21 @@ export function MatchExercise({ words, options, frozen, pending, result, onSubmi
           </ul>
         </div>
       )}
+
+      {win && motion && (
+        <>
+          <span aria-hidden className="m-ring pointer-events-none absolute -inset-3 border-2 border-sun" style={{ animationDelay: `${total * STEP}ms` }} />
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-0">
+            {pieces.map((p, k) => (
+              <span
+                key={k}
+                className={cn('m-confetti absolute size-2', PAIR_STYLE[p.color].badge)}
+                style={{ left: `${p.x}%`, top: `${p.y}px`, ['--d' as string]: `${total * STEP + p.delay}ms` }}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
-

@@ -11,6 +11,7 @@ describe('topicName', () => {
     expect(topicName('grammar:modals')).toBe('Модальные глаголы')
     expect(topicName('grammar:past_simple')).toBe('Прошедшее простое')
     expect(topicName('skill:form')).toBe('Выбор формы')
+    expect(topicName('skill:match')).toBe('Сопоставление')
     expect(topicName('level:A1')).toBe('Уровень A1')
     expect(topicName('pos:verb')).toBe('Глаголы')
     expect(topicName('pos:noun')).toBe('Существительные')

@@ -1,5 +1,5 @@
 import { Fox } from '@/components/brand/Fox'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Navigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -11,6 +11,7 @@ import { useAnswer, type AnswerResult, type Exercise } from './exercises'
 import { topicName } from './topics'
 import { AddToCards } from './AddToCards'
 import { MatchExercise } from './MatchExercise'
+import { lastInput, prefersReducedMotion } from './matchFx'
 import { OrderExercise } from './OrderExercise'
 
 /** Ключ идемпотентности: новый на каждое упражнение. Повтор с тем же ключом сервер не применяет дважды. */
@@ -81,6 +82,8 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
   const inputRef = useRef<HTMLInputElement>(null)
   const isOrder = exercise.kind === 'order'
   const isMatch = exercise.kind === 'match'
+  // Лисёнок подпрыгивает только при пяти из пяти и только если ответ дан мышью и движение не отключено.
+  const celebrate = useMemo(() => isMatch && !!result?.correct && lastInput() === 'pointer' && !prefersReducedMotion(), [isMatch, result])
   const manual = !isOrder && !isMatch && exercise.choices.length === 0
 
   // Новое упражнение (и результат ответа) забирает фокус: клавиши работают сразу.
@@ -268,7 +271,12 @@ export function ExerciseCard({ exercise, onNext, loadingNext, onAnswered }: Exer
         {result && (
           <>
           <p className={cn('flex items-center gap-2 font-semibold', !result.correct && 'text-coral-text')}>
-            <Fox scale={2} mood={result.correct || (isMatch && matchRight(result) >= 4) ? 'happy' : 'thinking'} bob={false} />
+            <Fox
+              scale={2}
+              mood={result.correct || (isMatch && matchRight(result) >= 4) ? 'happy' : 'thinking'}
+              bob={false}
+              className={celebrate ? 'fox-jump' : undefined}
+            />
             {result.correct ? <Check aria-hidden className="size-5 text-grass-text" /> : <X aria-hidden className="size-5" />}
             {isMatch ? (result.correct ? 'Все пары верны' : 'Есть ошибки в парах') : result.correct ? 'Верно' : 'Неверно'}
           </p>
