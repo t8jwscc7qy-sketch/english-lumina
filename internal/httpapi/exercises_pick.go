@@ -424,6 +424,8 @@ const (
 	matchWeakWords   = 10 // слабых слов карточек в набор кандидатов
 	matchLexemeBatch = 30 // случайных слов на уровень
 	dictionarySource = "freedict-eng-rus"
+	// ruFrequencySource — частотный список русских слов: по нему «сопоставление» отбирает обычные переводы.
+	ruFrequencySource = "frequencywords-ru"
 )
 
 // dictPos — часть речи словаря (n, v, adj, adv) по части речи лексемы; пусто, если слово не годится.
@@ -467,7 +469,11 @@ func (s *authServer) matchCandidate(ctx context.Context, userID int64, level str
 			cands = append(cands, exercises.MatchCandidate{Word: w.lemma, Senses: sn})
 		}
 	}
-	m, ok := exercises.BuildMatch(cands, nil, s.rnd(1<<62))
+	ranks, err := s.ruRanks(ctx, cands)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	m, ok := exercises.BuildMatch(cands, ranks, s.rnd(1<<62))
 	if !ok {
 		return gapCandidate{}, false, nil
 	}
@@ -476,4 +482,29 @@ func (s *authServer) matchCandidate(ctx context.Context, userID int64, level str
 		c.level = level
 	}
 	return c, true, nil
+}
+
+// ruRanks читает места русских вариантов перевода в списке частот. Пусто, если список не загружен или вариантов нет:
+// тогда выбор перевода идёт без частот.
+func (s *authServer) ruRanks(ctx context.Context, cands []exercises.MatchCandidate) (map[string]int, error) {
+	var words []string
+	for _, c := range cands {
+		for _, ru := range exercises.RuCandidates(c.Senses) {
+			if !slices.Contains(words, ru) {
+				words = append(words, ru)
+			}
+		}
+	}
+	if len(words) == 0 {
+		return nil, nil
+	}
+	rows, err := s.store.ListWordFrequencies(ctx, db.ListWordFrequenciesParams{SourceName: ruFrequencySource, Words: words})
+	if err != nil {
+		return nil, err
+	}
+	ranks := make(map[string]int, len(rows))
+	for _, r := range rows {
+		ranks[r.Word] = int(r.Rank)
+	}
+	return ranks, nil
 }
