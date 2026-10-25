@@ -43,7 +43,7 @@ function Bubble({ children }: { children: string }) {
         height="14"
         viewBox="0 0 12 14"
         shapeRendering="crispEdges"
-        className="absolute -left-2.5 top-3 text-input"
+        className="absolute -left-2.5 top-3 hidden text-input sm:block"
       >
         <path d="M9 1 L1 7 L9 13 H12 V1 Z" className="fill-card" />
         <path d="M9 1 L1 7 L9 13" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -95,12 +95,12 @@ export function TranslateExercise({
     <div data-motion={motion ? 'on' : 'off'} className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">Переведи на английский</p>
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
           <Fox
             scale={2}
             mood={!answered && trimmed ? 'thinking' : 'neutral'}
             bob={false}
-            className="mt-1 shrink-0"
+            className="shrink-0 sm:mt-1"
           />
           <Bubble>{prompt}</Bubble>
         </div>
