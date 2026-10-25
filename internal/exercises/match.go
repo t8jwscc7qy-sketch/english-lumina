@@ -97,7 +97,6 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 		count, firstSense, firstPos int
 	}
 	stats := map[string]*stat{}
-	usable := 0
 	// Редкие варианты отбрасываются, только если у слова есть хотя бы один частый: книжной лексики в субтитрах мало,
 	// и слово без частых вариантов лучше оставить с прежним выбором, чем потерять.
 	onlyCommon := false
@@ -109,7 +108,6 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 	}
 	for si, sense := range senses {
 		seen := map[string]bool{}
-		any := false
 		for pi, raw := range sense {
 			ru := normalizeRu(raw)
 			if !validRu(ru) {
@@ -118,7 +116,6 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 			if onlyCommon && !isCommonRu(ranks, ru) {
 				continue
 			}
-			any = true
 			if seen[ru] {
 				continue
 			}
@@ -128,9 +125,6 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 			} else {
 				stats[ru] = &stat{count: 1, firstSense: si, firstPos: pi}
 			}
-		}
-		if any {
-			usable++
 		}
 	}
 	if len(stats) == 0 {
@@ -142,13 +136,13 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 			best, bestStat = ru, st
 		}
 	}
-	if usable > 1 && bestStat.count < 2 {
+	if bestStat.count < 2 && usableSenses(senses) > 1 {
+		if onlyCommon {
+			// отсев оставил слабый вариант (одно значение) у многозначного слова: частота не доказывает, что он верный,
+			// решает прежнее правило без частот
+			return PickTranslation(senses, nil)
+		}
 		return "", false
-	}
-	if onlyCommon && bestStat.count < 2 && usableSenses(senses) > 1 {
-		// отсев оставил одно значение, но у слова их несколько и консенсуса без отсева нет: частый вариант не доказывает,
-		// что он верный, поэтому решает прежнее правило без частот
-		return PickTranslation(senses, nil)
 	}
 	return best, true
 }

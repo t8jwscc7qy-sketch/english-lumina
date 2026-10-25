@@ -282,11 +282,15 @@ func TestPickTranslationEmptyRanksKeepsOldBehaviour(t *testing.T) {
 	}
 }
 
-func TestPickTranslationAmbiguityCountsOnlyRankedVariants(t *testing.T) {
-	// после отсева у «бежать» и «работать» по одному значению: консенсуса нет, слово неоднозначно
-	senses := [][]string{{"бежать", "батюшка"}, {"работать", "батюшка"}}
-	if got, ok := PickTranslation(senses, map[string]int{"бежать": 500, "работать": 300, "батюшка": 30608}); ok {
-		t.Fatalf("консенсуса нет, а получили %q", got)
+func TestPickTranslationWeakFilteredChoiceFallsBackToOldRule(t *testing.T) {
+	// после отсева лучший вариант встречается в одном значении из двух: частоты ничего не доказывают,
+	// решает прежнее правило (здесь «юбка» стоит за порогом, но встречается в обоих значениях)
+	senses := [][]string{{"юбка", "подол"}, {"юбка", "край"}}
+	ranks := map[string]int{"подол": 500, "край": 300, "юбка": 30000}
+	got, ok := PickTranslation(senses, ranks)
+	want, wantOK := PickTranslation(senses, nil)
+	if ok != wantOK || got != want || got != "юбка" {
+		t.Fatalf("как без частот («юбка»), получили %q %v", got, ok)
 	}
 }
 
