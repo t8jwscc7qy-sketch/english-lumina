@@ -352,6 +352,23 @@ paths:
                 $ref: "#/components/schemas/ProgressToday"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/progress/overview:
+    get:
+      operationId: getProgressOverview
+      summary: Обзор прогресса
+      description: >
+        Факты для страницы «Прогресс»: с какого дня занимаешься, сколько минут набрано, средний темп за 14 суток
+        и накопленные часы по суткам за последние 90. Прогноз срока считает клиент. Считается из журнала событий
+        (окно 365 суток), сутки в часовом поясе настроек (без настроек UTC). Ничего не записывает.
+      responses:
+        "200":
+          description: Обзор прогресса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressOverview"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   schemas:
     LoginRequest:
@@ -837,6 +854,44 @@ components:
           description: Последний пропуск, прощённый «заморозкой» (YYYY-MM-DD); нет поля, если заморозка не использовалась
         today:
           $ref: "#/components/schemas/TodayCounts"
+    DailyPoint:
+      type: object
+      required: [day, minutes, cumulativeHours]
+      properties:
+        day:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        minutes:
+          type: number
+          description: Минут занятий за сутки (одна десятая)
+        cumulativeHours:
+          type: number
+          description: Часов занятий с самого начала до конца этих суток (одна тысячная)
+    ProgressOverview:
+      type: object
+      required: [daysSinceStart, studiedMinutes, paceMinutesPerDay, paceReady, daily]
+      properties:
+        startedOn:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Сутки первого занятия в окне (YYYY-MM-DD); нет поля, если занятий не было
+        daysSinceStart:
+          type: integer
+          description: Сколько суток прошло с первого занятия, сегодня включительно (0, если занятий не было)
+        studiedMinutes:
+          type: number
+          description: Всего минут занятий в окне 365 суток (одна десятая)
+        paceMinutesPerDay:
+          type: number
+          description: Средний темп за последние 14 суток, включая пустые (одна десятая)
+        paceReady:
+          type: boolean
+          description: Прошло не меньше 14 суток с первого занятия, темп можно показывать
+        daily:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyPoint"
+          description: Последние 90 суток по порядку, без пропусков
     TopicList:
       type: object
       required: [topics]

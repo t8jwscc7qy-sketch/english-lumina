@@ -1,10 +1,11 @@
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { ComingSoonPage, NotFoundPage } from '@/features/placeholder/ComingSoonPage'
+import { NotFoundPage } from '@/features/placeholder/ComingSoonPage'
 import { OnboardingPage } from '@/features/settings/OnboardingPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { SourcesPage } from '@/features/sources/SourcesPage'
 import { WordsPage } from '@/features/words/WordsPage'
+import { ProgressPage } from '@/features/progress/ProgressPage'
 import { SessionPage } from '@/features/session/SessionPage'
 import { ExercisesPage } from '@/features/exercises/ExercisesPage'
 import { MistakesPage } from '@/features/mistakes/MistakesPage'
@@ -12,8 +13,6 @@ import { CardsPage } from '@/features/cards/CardsPage'
 import { AppShell } from '@/features/shell/AppShell'
 import { TodayPage } from '@/features/today/TodayPage'
 import { RedirectIfAuthed, RedirectIfOnboarded, RequireAuth, RequireOnboarded } from './guards'
-
-const soon = (title: string, text: string) => <ComingSoonPage title={title} text={text} />
 
 export const routes: RouteObject[] = [
   {
@@ -50,7 +49,7 @@ export const routes: RouteObject[] = [
       { path: 'session', element: <SessionPage /> },
       { path: 'words', element: <WordsPage /> },
       { path: 'mistakes', element: <MistakesPage /> },
-      { path: 'progress', element: soon('Прогресс', 'Здесь будет линия прогресса и прогноз.') },
+      { path: 'progress', element: <ProgressPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'sources', element: <SourcesPage /> },
       { path: '*', element: <NotFoundPage /> },

@@ -170,3 +170,11 @@ export async function getProgressToday(): Promise<ProgressToday> {
   const res = await request('/api/v1/progress/today')
   return (await res.json()) as ProgressToday
 }
+
+export type ProgressOverview = components['schemas']['ProgressOverview']
+
+/** Факты для страницы «Прогресс»: старт, темп, накопленные часы по суткам. */
+export async function getProgressOverview(): Promise<ProgressOverview> {
+  const res = await request('/api/v1/progress/overview')
+  return (await res.json()) as ProgressOverview
+}

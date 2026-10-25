@@ -22,7 +22,7 @@ const TRANSITION_HOURS: Record<Exclude<Level, 'C1'>, number> = { A1: 95, A2: 185
 const SELF_STUDY_FACTOR = { min: 1.5, max: 2.0 }
 
 /** Больше этого в день заниматься нереально. Совпадает с верхней границей настроек. */
-const MAX_MINUTES_PER_DAY = 240
+export const MAX_MINUTES_PER_DAY = 240
 
 const DAYS_PER_MONTH = 30.4
 const DAYS_PER_WEEK = 7
@@ -41,8 +41,15 @@ function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
-function addDays(d: Date, n: number): Date {
+export function addDays(d: Date, n: number): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+}
+
+/** Нужные часы занятий для перехода с уровня на цель (диапазон с поправкой на самостоятельную учёбу); null, если цель не выше уровня. */
+export function neededHours(current: Level, target: Level): Range | null {
+  const base = baseHours(current, target)
+  if (base === 0) return null
+  return { min: base * SELF_STUDY_FACTOR.min, max: base * SELF_STUDY_FACTOR.max }
 }
 
 export function forecastForward(
