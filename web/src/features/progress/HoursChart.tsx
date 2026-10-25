@@ -4,6 +4,7 @@ import { formatHoursMinutes, formatRange, formatShortDay } from './progress'
 type Point = { day: string; minutes: number; cumulativeHours: number }
 
 const TICK_EVERY = 14 // подпись оси времени раз в 2 недели
+const NARROW_TICK_EVERY = 42 // на узком экране (до sm) подписи реже, иначе наезжают друг на друга
 const VIEW_W = 1000
 const VIEW_H = 200
 
@@ -35,7 +36,7 @@ export function HoursChart({ points, neededMin, neededMax }: { points: Point[]; 
 
   const hp = hover === null ? null : points[hover]
   return (
-    <div aria-hidden="true" className="flex flex-col gap-1 pl-12 pr-3 pb-6">
+    <div aria-hidden="true" className="flex flex-col gap-1 pl-14 pr-3 pb-6">
       <div
         data-testid="hours-surface"
         className="relative h-48 touch-pan-y"
@@ -72,7 +73,7 @@ export function HoursChart({ points, neededMin, neededMax }: { points: Point[]; 
         </svg>
 
         {[0, 0.5, 1].map((f) => (
-          <span key={f} className="absolute right-full pr-2 text-xs tabular-nums text-muted-foreground" style={{ top: `${(1 - f) * 100}%`, transform: 'translateY(-50%)' }}>
+          <span key={f} className="absolute right-full whitespace-nowrap pr-2 text-xs tabular-nums text-muted-foreground" style={{ top: `${(1 - f) * 100}%`, transform: 'translateY(-50%)' }}>
             {`${Math.round(yMax * f)} ч`}
           </span>
         ))}
@@ -82,7 +83,7 @@ export function HoursChart({ points, neededMin, neededMax }: { points: Point[]; 
           </span>
         )}
         <span
-          className="absolute right-0 text-xs font-semibold tabular-nums text-foreground"
+          className="absolute right-0 whitespace-nowrap text-xs font-semibold tabular-nums text-foreground"
           style={{ top: `${(y(last) / VIEW_H) * 100}%`, transform: 'translateY(-130%)' }}
         >
           {formatHoursMinutes(last * 60)}
@@ -103,7 +104,7 @@ export function HoursChart({ points, neededMin, neededMax }: { points: Point[]; 
         {ticks.map((i) => (
           <span
             key={i}
-            className="absolute top-full pt-1.5 text-xs tabular-nums text-muted-foreground"
+            className={`absolute top-full whitespace-nowrap pt-1.5 text-xs tabular-nums text-muted-foreground ${i % NARROW_TICK_EVERY === 0 ? '' : 'hidden sm:block'}`}
             style={{ left: `${(x(i) / VIEW_W) * 100}%`, transform: i === 0 ? 'none' : 'translateX(-50%)' }}
           >
             {formatShortDay(points[i].day)}

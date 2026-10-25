@@ -176,6 +176,15 @@ export const EXERCISES: ExerciseFixture[] = [
  * Подменяет API Go-сервера. `settings: null` — онбординг не пройден (GET /settings даёт 404);
  * PUT сохраняет присланное и дальше GET его возвращает. `puts` копит тела принятых PUT.
  */
+export type OverviewOpts = {
+  /** Сколько последних суток подряд были занятия (0 — занятий не было). */
+  activeDays?: number
+  /** Минут занятий в каждые из этих суток. */
+  minutesPerDay?: number
+  /** GET /progress/overview отвечает 500, пока флаг включён. */
+  fail?: boolean
+}
+
 export type ProgressOpts = {
   /** Минут занятий за сегодня к началу теста. */
   minutes?: number
@@ -189,7 +198,7 @@ export type ProgressOpts = {
 
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -406,6 +415,33 @@ export async function mockApi(
       return route.fulfill({ json: result })
     }
     return route.fulfill({ status: 404 })
+  })
+
+  await page.route('**/api/v1/progress/overview', (route) => {
+    if (opts.overview?.fail) return route.fulfill(apiError(500, 'internal', 'Внутренняя ошибка, попробуй ещё раз'))
+    const active = opts.overview?.activeDays ?? 0
+    const perDay = opts.overview?.minutesPerDay ?? 0
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const now = new Date()
+    let cum = 0
+    const daily = Array.from({ length: 90 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (89 - i))
+      const minutes = 89 - i < active ? perDay : 0
+      cum += minutes
+      return { day: iso(d), minutes, cumulativeHours: Math.round((cum / 60) * 100) / 100 }
+    })
+    const started = active > 0 ? iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (active - 1))) : undefined
+    return route.fulfill({
+      json: {
+        ...(started ? { startedOn: started } : {}),
+        daysSinceStart: active,
+        studiedMinutes: active * perDay,
+        paceMinutesPerDay: Math.round(((Math.min(active, 14) * perDay) / 14) * 10) / 10,
+        paceReady: active >= 14,
+        daily,
+      },
+    })
   })
 
   await page.route('**/api/v1/progress/today', (route) => {
