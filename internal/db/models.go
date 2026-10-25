@@ -122,7 +122,7 @@ type KbTeachingCard struct {
 type KbTranslation struct {
 	ID        int64
 	LexemeID  int64
-	SenseID   *int64
+	SenseNo   *int32
 	Lang      string
 	Text      string
 	Score     float32

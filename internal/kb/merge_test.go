@@ -219,3 +219,47 @@ func TestGoldenListWellFormed(t *testing.T) {
 		}
 	}
 }
+
+func TestPickTranslationsSkipsBadSecond(t *testing.T) {
+	scored := []Scored{
+		{Candidate: Candidate{Text: "дуть", SenseNo: 1}, Score: 8},
+		{Candidate: Candidate{Text: "соса́ть", SenseNo: 2}, Score: 7, Flags: []string{"vulgar"}},
+		{Candidate: Candidate{Text: "батюшка", SenseNo: 3}, Score: 6, Flags: []string{"archaic"}},
+		{Candidate: Candidate{Text: "веять", SenseNo: 4}, Score: 2, Flags: []string{"slang"}},
+	}
+	got := texts(PickTranslations(scored, 2))
+	if !slices.Equal(got, []string{"дуть", "веять"}) {
+		t.Fatalf("грубое и устаревшее вторым не берём: %v", got)
+	}
+	bad := []Scored{{Candidate: Candidate{Text: "батюшка"}, Score: 1, Flags: []string{"archaic"}}}
+	if got := texts(PickTranslations(bad, 2)); !slices.Equal(got, []string{"батюшка"}) {
+		t.Fatalf("единственный (первый) перевод берётся даже с пометкой: %v", got)
+	}
+}
+
+func TestPickTranslationsExtraNeedsMinScore(t *testing.T) {
+	weak := []Scored{{Candidate: Candidate{Text: "ааа"}, Score: 9}, {Candidate: Candidate{Text: "ббб"}, Score: 1.5}}
+	if got := texts(PickTranslations(weak, 2)); !slices.Equal(got, []string{"ааа"}) {
+		t.Fatalf("слабый добавочный перевод не берётся: %v", got)
+	}
+	ok := []Scored{{Candidate: Candidate{Text: "ааа"}, Score: 9}, {Candidate: Candidate{Text: "ббб"}, Score: 2}}
+	if got := texts(PickTranslations(ok, 2)); !slices.Equal(got, []string{"ааа", "ббб"}) {
+		t.Fatalf("оценка 2 проходит: %v", got)
+	}
+	if got := texts(PickTranslations([]Scored{{Candidate: Candidate{Text: "ааа"}, Score: -3}}, 2)); !slices.Equal(got, []string{"ааа"}) {
+		t.Fatalf("первый перевод берётся при любой оценке: %v", got)
+	}
+}
+
+func TestScoreTranslationsKaikkiSenseBeatsLegacySense(t *testing.T) {
+	// у «редкий» в старом словаре номер значения 1, у Kaikki — 2; у «тонкий» в Kaikki — 1: значение 1 решает по Kaikki
+	cands := []Candidate{
+		{Text: "тонкий", Source: "kaikki", SenseNo: 1},
+		{Text: "редкий", Source: "kaikki", SenseNo: 2, Tags: []string{"rare"}},
+		{Text: "редкий", Source: "freedict", SenseNo: 1},
+	}
+	got := ScoreTranslations(cands, map[string]int{"тонкий": 16560, "редкий": 12922})
+	if got[0].Text != "тонкий" {
+		t.Fatalf("номер значения от Kaikki важнее номера старого словаря: %v", texts(got))
+	}
+}

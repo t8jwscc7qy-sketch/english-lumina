@@ -23,6 +23,7 @@ const (
 	rankTop           = 5000
 	rankCommon        = 20000
 	maxTranslationLen = 64
+	minExtraScore     = 2.0 // добавочный (второй) перевод берётся только с оценкой не ниже
 )
 
 var (
@@ -103,7 +104,8 @@ type group struct {
 	text    string
 	sources map[string]bool
 	tags    map[string]bool
-	senseNo int
+	senseNo int // номер значения от Kaikki; нумерация старого словаря с ней несравнима
+	otherNo int // номер значения от остальных источников (используется, только если у Kaikki номера нет)
 }
 
 // ScoreTranslations оценивает кандидатов: одинаковые переводы из разных источников склеиваются, негодные (латиница,
@@ -126,8 +128,14 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 		for _, t := range c.Tags {
 			g.tags[strings.ToLower(t)] = true
 		}
-		if c.SenseNo > 0 && (g.senseNo == 0 || c.SenseNo < g.senseNo) {
-			g.senseNo = c.SenseNo
+		if c.SenseNo > 0 {
+			if c.Source == "kaikki" {
+				if g.senseNo == 0 || c.SenseNo < g.senseNo {
+					g.senseNo = c.SenseNo
+				}
+			} else if g.otherNo == 0 || c.SenseNo < g.otherNo {
+				g.otherNo = c.SenseNo
+			}
 		}
 	}
 	out := make([]Scored, 0, len(groups))
@@ -145,6 +153,9 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 		}
 		slices.Sort(sources)
 
+		if g.senseNo == 0 {
+			g.senseNo = g.otherNo
+		}
 		score := weight
 		if len(sources) >= 2 {
 			score += bonusAgreement
@@ -196,26 +207,29 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 }
 
 // PickTranslations выбирает до max переводов: первый — лучший, следующие по возможности из других значений
-// (если значения известны), иначе по порядку оценок.
+// (если значения известны), иначе по порядку оценок. Вторым и далее не берутся грубые и устаревшие переводы и переводы
+// с оценкой ниже minExtraScore: единственный лучший перевод слова берётся даже с пометкой и низкой оценкой, добавочные нет.
 func PickTranslations(scored []Scored, max int) []Scored {
 	var picked []Scored
 	used := make([]bool, len(scored))
 	for len(picked) < max {
-		next := -1
+		next, fresh := -1, -1
 		for i, s := range scored {
 			if used[i] {
+				continue
+			}
+			if len(picked) > 0 && (s.Score < minExtraScore || hasAny(s.Flags, oldTags) || hasAny(s.Flags, coarseTags)) {
 				continue
 			}
 			if next < 0 {
 				next = i
 			}
-			if len(picked) == 0 {
-				break
+			if fresh < 0 && s.SenseNo > 0 && !senseUsed(picked, s.SenseNo) {
+				fresh = i
 			}
-			if s.SenseNo > 0 && !senseUsed(picked, s.SenseNo) {
-				next = i
-				break
-			}
+		}
+		if len(picked) > 0 && fresh >= 0 {
+			next = fresh
 		}
 		if next < 0 {
 			break

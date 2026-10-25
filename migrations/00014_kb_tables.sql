@@ -27,15 +27,16 @@ CREATE TABLE kb_sense (
 CREATE TABLE kb_translation (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     lexeme_id  bigint  NOT NULL REFERENCES lexemes (id) ON DELETE CASCADE,
-    sense_id   bigint  REFERENCES kb_sense (id) ON DELETE SET NULL,
+    sense_no   integer,                         -- номер значения (kb_sense.sense_no); пусто, если значение неизвестно
     lang       text    NOT NULL CHECK (lang <> ''),
     text       text    NOT NULL CHECK (text <> ''),
     score      real    NOT NULL,
     rank       integer NOT NULL CHECK (rank > 0),
-    chosen     boolean NOT NULL DEFAULT false, -- до двух выбранных на слово и язык
+    chosen     boolean NOT NULL DEFAULT false, -- до двух выбранных на слово и язык; у выбранных rank 1 или 2, у остальных дальше по оценке
     flags      text[]  NOT NULL DEFAULT '{}',
     source_ids bigint[] NOT NULL DEFAULT '{}',
-    CHECK (NOT chosen OR rank BETWEEN 1 AND 2)
+    CHECK (NOT chosen OR rank BETWEEN 1 AND 2),
+    FOREIGN KEY (lexeme_id, sense_no) REFERENCES kb_sense (lexeme_id, sense_no) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX kb_translation_chosen ON kb_translation (lexeme_id, lang, rank) WHERE chosen;
 CREATE INDEX kb_translation_lexeme ON kb_translation (lexeme_id) WHERE chosen;

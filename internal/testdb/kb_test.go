@@ -48,6 +48,15 @@ func TestKbTables(t *testing.T) {
 	if err := ins(insTr, "папка", 1, true); err == nil {
 		t.Fatal("два выбранных перевода с одним рангом отклоняются")
 	}
+	if err := ins(`INSERT INTO kb_sense (lexeme_id, sense_no, gloss_en, source_id) VALUES ($1, 1, 'A father.', $2)`, src.ID); err != nil {
+		t.Fatalf("значение: %v", err)
+	}
+	if err := ins(`INSERT INTO kb_translation (lexeme_id, sense_no, lang, text, score, rank, chosen) VALUES ($1, 1, 'ru', 'тятенька', 1, 4, false)`); err != nil {
+		t.Fatalf("перевод с существующим значением: %v", err)
+	}
+	if err := ins(`INSERT INTO kb_translation (lexeme_id, sense_no, lang, text, score, rank, chosen) VALUES ($1, 7, 'ru', 'тятя', 1, 5, false)`); err == nil {
+		t.Fatal("перевод ссылается на несуществующее значение — отклоняется")
+	}
 	if err := ins(`INSERT INTO kb_pronunciation (lexeme_id, accent, ipa, audio_ref, is_primary, source_id) VALUES ($1, 'xx', 'dæd', '', true, $2)`, src.ID); err == nil {
 		t.Fatal("акцент вне us/uk/пусто отклоняется")
 	}
