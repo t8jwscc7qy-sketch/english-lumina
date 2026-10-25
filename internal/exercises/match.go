@@ -2,6 +2,7 @@ package exercises
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"regexp"
 	"slices"
@@ -69,7 +70,7 @@ func validRu(s string) bool {
 	return strings.IndexFunc(s, func(r rune) bool { return unicode.Is(unicode.Cyrillic, r) }) >= 0
 }
 
-// maxRuRank — предел списка частот русских слов: вариант с местом хуже или без места редкий и не годится.
+// maxRuRank — предел списка частот русских слов: вариант с местом хуже или без места считается редким.
 const maxRuRank = 20000
 
 // RuCandidates возвращает нормализованные годные русские варианты по всем значениям, без повторов, в порядке
@@ -88,9 +89,9 @@ func RuCandidates(senses [][]string) []string {
 }
 
 // PickTranslation выбирает основной перевод слова среди его значений: вариант, который встречается в наибольшем
-// числе значений. Годятся только однословные переводы. Если ranks не пуст (места слов в списке частот), варианты
-// без места или с местом хуже maxRuRank отбрасываются, а при равенстве выигрывает вариант с лучшим местом; иначе при
-// равенстве выигрывает стоящий раньше (по значению, затем по месту в значении). Если значений несколько, а ни один
+// числе значений. Годятся только однословные переводы. Если ranks не пуст (места слов в списке частот) и у слова
+// есть хотя бы один частый вариант (место не хуже maxRuRank), редкие и безместные отбрасываются; при равенстве
+// выигрывает вариант с лучшим местом (без места — худший), затем стоящий раньше (по значению, затем по месту в значении). Если значений несколько, а ни один
 // вариант не повторяется, перевод неоднозначен: false.
 func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 	type stat struct {
@@ -98,6 +99,15 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 	}
 	stats := map[string]*stat{}
 	usable := 0
+	// Редкие варианты отбрасываются, только если у слова есть хотя бы один частый: книжной лексики в субтитрах мало,
+	// и слово без частых вариантов лучше оставить с прежним выбором, чем потерять.
+	onlyCommon := false
+	for _, ru := range RuCandidates(senses) {
+		if isCommonRu(ranks, ru) {
+			onlyCommon = true
+			break
+		}
+	}
 	for si, sense := range senses {
 		seen := map[string]bool{}
 		any := false
@@ -106,10 +116,8 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 			if !validRu(ru) {
 				continue
 			}
-			if len(ranks) > 0 {
-				if r, ok := ranks[ru]; !ok || r > maxRuRank {
-					continue
-				}
+			if onlyCommon && !isCommonRu(ranks, ru) {
+				continue
 			}
 			any = true
 			if seen[ru] {
@@ -141,14 +149,28 @@ func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 	return best, true
 }
 
+// isCommonRu: у варианта есть место в списке частот не хуже maxRuRank.
+func isCommonRu(ranks map[string]int, ru string) bool {
+	r, ok := ranks[ru]
+	return ok && r <= maxRuRank
+}
+
+// rankOf — место варианта в списке частот; у слов без места оно хуже любого.
+func rankOf(ranks map[string]int, ru string) int {
+	if r, ok := ranks[ru]; ok {
+		return r
+	}
+	return math.MaxInt
+}
+
 // better: вариант a лучше b — больше значений; при равенстве лучшее место в списке частот (если он есть), затем
 // раньше в словаре, затем по алфавиту.
 func better(a string, aCount, aSense, aPos int, b string, bCount, bSense, bPos int, ranks map[string]int) bool {
 	if aCount != bCount {
 		return aCount > bCount
 	}
-	if len(ranks) > 0 && ranks[a] != ranks[b] {
-		return ranks[a] < ranks[b]
+	if ra, rb := rankOf(ranks, a), rankOf(ranks, b); ra != rb {
+		return ra < rb
 	}
 	if aSense != bSense {
 		return aSense < bSense

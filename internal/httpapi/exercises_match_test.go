@@ -349,7 +349,7 @@ func TestMatchWithoutRussianFrequenciesKeepsOldChoice(t *testing.T) {
 	}
 }
 
-func TestMatchSkipsWordWithOnlyRareTranslation(t *testing.T) {
+func TestMatchKeepsWordWithOnlyRareTranslation(t *testing.T) {
 	e, token := matchEnv(t)
 	withSenses(e, "apple", "n", []string{"батюшка"})
 	ruRanks(e, otherRanks)
@@ -359,7 +359,7 @@ func TestMatchSkipsWordWithOnlyRareTranslation(t *testing.T) {
 		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
 	}
 	ex := decodeExercise(t, rec)
-	if ex.Words == nil || slices.Contains(*ex.Words, "apple") || len(*ex.Words) != 5 {
-		t.Fatalf("слово с редким переводом пропускается, остальные пять выдаются: %+v", ex.Words)
+	if ex.Words == nil || !slices.Equal(*ex.Words, []string{"apple", "house", "water", "book", "dog"}) {
+		t.Fatalf("слово с единственным редким переводом не теряется: %+v", ex.Words)
 	}
 }

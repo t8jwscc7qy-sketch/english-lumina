@@ -267,9 +267,26 @@ func TestPickTranslationDropsUnrankedVariant(t *testing.T) {
 	}
 }
 
-func TestPickTranslationAllRareSkipsWord(t *testing.T) {
-	if got, ok := PickTranslation([][]string{{"батюшка"}}, map[string]int{"батюшка": 30608, "папа": 274}); ok {
-		t.Fatalf("все варианты редкие, слово пропускается: %q", got)
+func TestPickTranslationAllRareKeepsWord(t *testing.T) {
+	// частых вариантов нет: слово не теряем, выбор как без частот (книжная лексика в субтитрах редкая)
+	got, ok := PickTranslation([][]string{{"батюшка"}}, map[string]int{"батюшка": 30608, "папа": 274})
+	if !ok || got != "батюшка" {
+		t.Fatalf("ждали запасной «батюшка», получили %q %v", got, ok)
+	}
+}
+
+func TestPickTranslationUnrankedWordKept(t *testing.T) {
+	got, ok := PickTranslation([][]string{{"туризм"}}, map[string]int{"папа": 274})
+	if !ok || got != "туризм" {
+		t.Fatalf("слово без места не теряется: %q %v", got, ok)
+	}
+}
+
+func TestPickTranslationRankedBeatsUnrankedOnTie(t *testing.T) {
+	senses := [][]string{{"ааа", "ббб"}, {"ааа", "ббб"}}
+	got, ok := PickTranslation(senses, map[string]int{"ббб": 40000})
+	if !ok || got != "ббб" {
+		t.Fatalf("при равенстве вариант со местом лучше безместного: %q %v", got, ok)
 	}
 }
 

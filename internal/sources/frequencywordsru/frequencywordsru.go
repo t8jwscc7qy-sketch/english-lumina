@@ -72,7 +72,8 @@ func (s *Source) Fetch(ctx context.Context, cacheDir string) (string, error) {
 	return path, nil
 }
 
-// Parse читает строки «слово счёт» и присваивает ранг по порядку строк. Список должен не возрастать по счёту,
+// Parse читает строки «слово счёт» и присваивает ранг по порядку строк (строки не из кириллицы пропускаются, но ранг
+// у них занят: у оставшихся слов он остаётся номером строки файла). Список должен не возрастать по счёту,
 // слова не повторяются; любая испорченная строка — ошибка с номером.
 func (s *Source) Parse(ctx context.Context, r io.Reader, emit func(row any) error) error {
 	br := bufio.NewReader(r)
@@ -102,6 +103,9 @@ func (s *Source) Parse(ctx context.Context, r io.Reader, emit func(row any) erro
 		seen[word] = true
 		prev = count
 		rank++
+		if !isCyrillicWord(word) {
+			continue // шум субтитров (латиница, смесь букв, цифры); место остальных слов остаётся номером строки
+		}
 		if err := emit(Row{Word: word, Count: count, Rank: rank}); err != nil {
 			return err
 		}
@@ -110,6 +114,11 @@ func (s *Source) Parse(ctx context.Context, r io.Reader, emit func(row any) erro
 		return fmt.Errorf("чтение файла: %w", err)
 	}
 	return nil
+}
+
+// isCyrillicWord: слово только из кириллических букв и дефиса (смесь вроде «чтo» с латинской «o» не годится).
+func isCyrillicWord(w string) bool {
+	return strings.IndexFunc(w, func(r rune) bool { return !unicode.Is(unicode.Cyrillic, r) && r != '-' }) < 0
 }
 
 func parseLine(line string) (string, int64, error) {
@@ -129,9 +138,6 @@ func parseLine(line string) (string, int64, error) {
 	}
 	if utf8.RuneCountInString(word) > maxWordLen {
 		return "", 0, fmt.Errorf("слово длиннее %d символов", maxWordLen)
-	}
-	if strings.IndexFunc(word, func(r rune) bool { return !unicode.Is(unicode.Cyrillic, r) && r != '-' }) >= 0 {
-		return "", 0, fmt.Errorf("слово не из кириллицы: %q", word)
 	}
 	count, err := strconv.ParseInt(countText, 10, 64)
 	if err != nil || count <= 0 || strings.TrimLeft(countText, "0123456789") != "" {

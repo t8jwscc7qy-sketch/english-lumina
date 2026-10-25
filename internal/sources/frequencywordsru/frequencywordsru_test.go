@@ -126,8 +126,8 @@ func TestParseErrors(t *testing.T) {
 		{"слово из 65 символов", strings.Repeat("я", 65) + " 10\n", []string{"строка 1", "64"}},
 		{"недопустимый UTF-8", "я\xffя 10\n", []string{"строка 1", "UTF-8"}},
 		{"нулевой байт", "я\x00я 10\n", []string{"строка 1", "нулев"}},
-		{"латиница в слове", "я 10\ncat 9\n", []string{"строка 2", "кириллиц"}},
-		{"цифра в слове", "я 10\nа1 9\n", []string{"строка 2", "кириллиц"}},
+		{"повтор слова после пропущенной латиницы", "я 10\ncat 9\ncat 8\n", []string{"строка 3", "повтор"}},
+		{"счёт растёт после пропущенной латиницы", "я 10\ncat 9\nа 11\n", []string{"строка 3", "убыв"}},
 		{"пустая строка посреди файла", "я 10\n\nне 9\n", []string{"строка 2"}},
 	}
 	for _, tc := range tests {
@@ -165,5 +165,22 @@ func TestParseStopsOnCanceledContext(t *testing.T) {
 	cancel()
 	if err := New().Parse(ctx, strings.NewReader(readSample(t)), func(any) error { return nil }); !errors.Is(err, context.Canceled) {
 		t.Fatalf("ошибка %v, ожидали context.Canceled", err)
+	}
+}
+
+// Шум субтитров (латиница, смесь букв, цифры, точки) пропускается, а место остальных слов остаётся номером строки файла.
+func TestParseSkipsNonCyrillicKeepingRanks(t *testing.T) {
+	rows, err := parseAll(t, "я 100\nthe 90\nчтo 80\nа1 70\nо. 60\nне 50\nв-в 40\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Row{{"я", 100, 1}, {"не", 50, 6}, {"в-в", 40, 7}}
+	if len(rows) != len(want) {
+		t.Fatalf("строки %+v", rows)
+	}
+	for i := range want {
+		if rows[i] != want[i] {
+			t.Fatalf("строка %d: %+v, ждали %+v", i, rows[i], want[i])
+		}
 	}
 }
