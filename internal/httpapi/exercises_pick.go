@@ -467,7 +467,7 @@ func (s *authServer) matchCandidate(ctx context.Context, userID int64, level str
 			cands = append(cands, exercises.MatchCandidate{Word: w.lemma, Senses: sn})
 		}
 	}
-	m, ok := exercises.BuildMatch(cands, s.rnd(1<<62))
+	m, ok := exercises.BuildMatch(cands, nil, s.rnd(1<<62))
 	if !ok {
 		return gapCandidate{}, false, nil
 	}

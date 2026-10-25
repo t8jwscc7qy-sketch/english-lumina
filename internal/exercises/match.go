@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -68,10 +69,30 @@ func validRu(s string) bool {
 	return strings.IndexFunc(s, func(r rune) bool { return unicode.Is(unicode.Cyrillic, r) }) >= 0
 }
 
+// maxRuRank — предел списка частот русских слов: вариант с местом хуже или без места редкий и не годится.
+const maxRuRank = 20000
+
+// RuCandidates возвращает нормализованные годные русские варианты по всем значениям, без повторов, в порядке
+// появления: по ним обработчик читает места слов в списке частот.
+func RuCandidates(senses [][]string) []string {
+	var out []string
+	for _, sense := range senses {
+		for _, raw := range sense {
+			ru := normalizeRu(raw)
+			if validRu(ru) && !slices.Contains(out, ru) {
+				out = append(out, ru)
+			}
+		}
+	}
+	return out
+}
+
 // PickTranslation выбирает основной перевод слова среди его значений: вариант, который встречается в наибольшем
-// числе значений; при равенстве выигрывает стоящий раньше (по значению, затем по месту в значении). Годятся только
-// однословные переводы. Если значений несколько, а ни один вариант не повторяется, перевод неоднозначен: false.
-func PickTranslation(senses [][]string) (string, bool) {
+// числе значений. Годятся только однословные переводы. Если ranks не пуст (места слов в списке частот), варианты
+// без места или с местом хуже maxRuRank отбрасываются, а при равенстве выигрывает вариант с лучшим местом; иначе при
+// равенстве выигрывает стоящий раньше (по значению, затем по месту в значении). Если значений несколько, а ни один
+// вариант не повторяется, перевод неоднозначен: false.
+func PickTranslation(senses [][]string, ranks map[string]int) (string, bool) {
 	type stat struct {
 		count, firstSense, firstPos int
 	}
@@ -84,6 +105,11 @@ func PickTranslation(senses [][]string) (string, bool) {
 			ru := normalizeRu(raw)
 			if !validRu(ru) {
 				continue
+			}
+			if len(ranks) > 0 {
+				if r, ok := ranks[ru]; !ok || r > maxRuRank {
+					continue
+				}
 			}
 			any = true
 			if seen[ru] {
@@ -105,11 +131,7 @@ func PickTranslation(senses [][]string) (string, bool) {
 	}
 	best, bestStat := "", (*stat)(nil)
 	for ru, st := range stats {
-		switch {
-		case bestStat == nil, st.count > bestStat.count,
-			st.count == bestStat.count && (st.firstSense < bestStat.firstSense ||
-				st.firstSense == bestStat.firstSense && (st.firstPos < bestStat.firstPos ||
-					st.firstPos == bestStat.firstPos && ru < best)):
+		if bestStat == nil || better(ru, st.count, st.firstSense, st.firstPos, best, bestStat.count, bestStat.firstSense, bestStat.firstPos, ranks) {
 			best, bestStat = ru, st
 		}
 	}
@@ -119,9 +141,27 @@ func PickTranslation(senses [][]string) (string, bool) {
 	return best, true
 }
 
+// better: вариант a лучше b — больше значений; при равенстве лучшее место в списке частот (если он есть), затем
+// раньше в словаре, затем по алфавиту.
+func better(a string, aCount, aSense, aPos int, b string, bCount, bSense, bPos int, ranks map[string]int) bool {
+	if aCount != bCount {
+		return aCount > bCount
+	}
+	if len(ranks) > 0 && ranks[a] != ranks[b] {
+		return ranks[a] < ranks[b]
+	}
+	if aSense != bSense {
+		return aSense < bSense
+	}
+	if aPos != bPos {
+		return aPos < bPos
+	}
+	return a < b
+}
+
 // BuildMatch собирает набор из первых подходящих кандидатов: слово из латинских букв (2–20), однозначный перевод,
-// ни слово, ни перевод не повторяются. Меньше MatchPairs подходящих — false. Порядок переводов задаёт seed.
-func BuildMatch(cands []MatchCandidate, seed int64) (Match, bool) {
+// ни слово, ни перевод не повторяются; ranks — места русских вариантов в списке частот (может быть пустым). Меньше MatchPairs подходящих — false. Порядок переводов задаёт seed.
+func BuildMatch(cands []MatchCandidate, ranks map[string]int, seed int64) (Match, bool) {
 	var m Match
 	words, rus := map[string]bool{}, map[string]bool{}
 	for _, c := range cands {
@@ -131,7 +171,7 @@ func BuildMatch(cands []MatchCandidate, seed int64) (Match, bool) {
 		if !matchWordRe.MatchString(c.Word) || words[strings.ToLower(c.Word)] {
 			continue
 		}
-		ru, ok := PickTranslation(c.Senses)
+		ru, ok := PickTranslation(c.Senses, ranks)
 		if !ok || rus[ru] {
 			continue
 		}

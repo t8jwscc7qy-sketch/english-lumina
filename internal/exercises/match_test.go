@@ -7,21 +7,21 @@ import (
 )
 
 func TestPickTranslationMostSensesWins(t *testing.T) {
-	got, ok := PickTranslation([][]string{{"банк"}, {"берег", "банк"}, {"банк", "ряд"}})
+	got, ok := PickTranslation([][]string{{"банк"}, {"берег", "банк"}, {"банк", "ряд"}}, nil)
 	if !ok || got != "банк" {
 		t.Fatalf("ждали «банк», получили %q %v", got, ok)
 	}
 }
 
 func TestPickTranslationTieGoesToEarlierSense(t *testing.T) {
-	got, ok := PickTranslation([][]string{{"идти", "ходить"}, {"ходить", "идти"}})
+	got, ok := PickTranslation([][]string{{"идти", "ходить"}, {"ходить", "идти"}}, nil)
 	if !ok || got != "идти" {
 		t.Fatalf("при равенстве выигрывает вариант, раньше стоящий в первом значении: %q %v", got, ok)
 	}
 }
 
 func TestPickTranslationSingleSenseTakesFirstVariant(t *testing.T) {
-	got, ok := PickTranslation([][]string{{"яблоко", "яблочко"}})
+	got, ok := PickTranslation([][]string{{"яблоко", "яблочко"}}, nil)
 	if !ok || got != "яблоко" {
 		t.Fatalf("%q %v", got, ok)
 	}
@@ -29,47 +29,47 @@ func TestPickTranslationSingleSenseTakesFirstVariant(t *testing.T) {
 
 func TestPickTranslationAmbiguousWhenNoConsensus(t *testing.T) {
 	// несколько значений, и ни один вариант не встречается дважды
-	if got, ok := PickTranslation([][]string{{"бежать"}, {"работать"}, {"управлять"}}); ok {
+	if got, ok := PickTranslation([][]string{{"бежать"}, {"работать"}, {"управлять"}}, nil); ok {
 		t.Fatalf("консенсуса нет, а получили %q", got)
 	}
 }
 
 func TestPickTranslationNormalizes(t *testing.T) {
-	got, ok := PickTranslation([][]string{{"Яблоко"}, {"я́блоко "}})
+	got, ok := PickTranslation([][]string{{"Яблоко"}, {"я́блоко "}}, nil)
 	if !ok || got != "яблоко" {
 		t.Fatalf("регистр, ударение и пробелы не должны различать варианты: %q %v", got, ok)
 	}
 }
 
 func TestPickTranslationSkipsPhrasesAndLong(t *testing.T) {
-	got, ok := PickTranslation([][]string{{"в двух словах", "кратко"}, {"в двух словах", "кратко"}})
+	got, ok := PickTranslation([][]string{{"в двух словах", "кратко"}, {"в двух словах", "кратко"}}, nil)
 	if !ok || got != "кратко" {
 		t.Fatalf("словосочетание не годится, берём однословный вариант: %q %v", got, ok)
 	}
-	if _, ok := PickTranslation([][]string{{strings.Repeat("я", 25)}}); ok {
+	if _, ok := PickTranslation([][]string{{strings.Repeat("я", 25)}}, nil); ok {
 		t.Fatal("перевод длиннее 24 символов не годится")
 	}
-	if _, ok := PickTranslation([][]string{{"а;б"}}); ok {
+	if _, ok := PickTranslation([][]string{{"а;б"}}, nil); ok {
 		t.Fatal("перевод с разделителем пар не годится")
 	}
-	if _, ok := PickTranslation([][]string{{"а=б"}}); ok {
+	if _, ok := PickTranslation([][]string{{"а=б"}}, nil); ok {
 		t.Fatal("перевод со знаком равенства не годится")
 	}
 }
 
 func TestPickTranslationSkipsTooShort(t *testing.T) {
 	// «ма», «па»: сокращения из словаря для плитки не годятся; нужно не меньше трёх букв
-	if got, ok := PickTranslation([][]string{{"ма"}}); ok {
+	if got, ok := PickTranslation([][]string{{"ма"}}, nil); ok {
 		t.Fatalf("двухбуквенный перевод не годится: %q", got)
 	}
-	if got, ok := PickTranslation([][]string{{"дом"}}); !ok || got != "дом" {
+	if got, ok := PickTranslation([][]string{{"дом"}}, nil); !ok || got != "дом" {
 		t.Fatalf("трёхбуквенный годится: %q %v", got, ok)
 	}
 }
 
 func TestPickTranslationEmpty(t *testing.T) {
 	for _, in := range [][][]string{nil, {}, {{}}, {{""}, {"  "}}, {{"hello"}}} {
-		if got, ok := PickTranslation(in); ok {
+		if got, ok := PickTranslation(in, nil); ok {
 			t.Fatalf("%v: получили %q", in, got)
 		}
 	}
@@ -87,7 +87,7 @@ func fiveCands() []MatchCandidate {
 }
 
 func TestBuildMatchTakesFirstFiveSuitable(t *testing.T) {
-	m, ok := BuildMatch(fiveCands(), 1)
+	m, ok := BuildMatch(fiveCands(), nil, 1)
 	if !ok || len(m.Words) != MatchPairs || len(m.Options) != MatchPairs || len(m.Answers) != MatchPairs {
 		t.Fatalf("%+v %v", m, ok)
 	}
@@ -111,7 +111,7 @@ func TestBuildMatchSkipsUnsuitableWords(t *testing.T) {
 		{Word: "nothing"}, // нет значений
 		cand("apple", "яблоко"), cand("house", "дом"), cand("water", "вода"), cand("book", "книга"), cand("dog", "собака"),
 	}
-	m, ok := BuildMatch(cands, 3)
+	m, ok := BuildMatch(cands, nil, 3)
 	if !ok || !slices.Equal(m.Words, []string{"apple", "house", "water", "book", "dog"}) {
 		t.Fatalf("%+v %v", m, ok)
 	}
@@ -122,7 +122,7 @@ func TestBuildMatchNoSharedTranslations(t *testing.T) {
 		cand("big", "большой"), cand("large", "большой"), // синонимы
 		cand("house", "дом"), cand("water", "вода"), cand("book", "книга"), cand("dog", "собака"),
 	}
-	m, ok := BuildMatch(cands, 1)
+	m, ok := BuildMatch(cands, nil, 1)
 	if !ok || slices.Contains(m.Words, "large") || !slices.Contains(m.Words, "big") {
 		t.Fatalf("второе слово с тем же переводом пропускается: %v", m.Words)
 	}
@@ -131,30 +131,30 @@ func TestBuildMatchNoSharedTranslations(t *testing.T) {
 func TestBuildMatchNoDuplicateWords(t *testing.T) {
 	cands := append([]MatchCandidate{cand("run", "бег")}, cand("run", "бегать"))
 	cands = append(cands, cand("house", "дом"), cand("water", "вода"), cand("book", "книга"), cand("dog", "собака"))
-	m, ok := BuildMatch(cands, 1)
+	m, ok := BuildMatch(cands, nil, 1)
 	if !ok || strings.Count(strings.Join(m.Words, ","), "run") != 1 {
 		t.Fatalf("слово не должно повторяться: %v", m.Words)
 	}
 }
 
 func TestBuildMatchNeedsFivePairs(t *testing.T) {
-	if m, ok := BuildMatch(fiveCands()[:4], 1); ok {
+	if m, ok := BuildMatch(fiveCands()[:4], nil, 1); ok {
 		t.Fatalf("4 слова — мало: %+v", m)
 	}
-	if _, ok := BuildMatch(nil, 1); ok {
+	if _, ok := BuildMatch(nil, nil, 1); ok {
 		t.Fatal("пусто")
 	}
 }
 
 func TestBuildMatchSeedControlsOrderOfOptions(t *testing.T) {
-	a, _ := BuildMatch(fiveCands(), 1)
-	b, _ := BuildMatch(fiveCands(), 1)
+	a, _ := BuildMatch(fiveCands(), nil, 1)
+	b, _ := BuildMatch(fiveCands(), nil, 1)
 	if !slices.Equal(a.Options, b.Options) {
 		t.Fatalf("одинаковый seed — одинаковый порядок: %v %v", a.Options, b.Options)
 	}
 	different := false
 	for seed := int64(2); seed < 40; seed++ {
-		c, _ := BuildMatch(fiveCands(), seed)
+		c, _ := BuildMatch(fiveCands(), nil, seed)
 		if !slices.Equal(a.Options, c.Options) {
 			different = true
 		}
@@ -173,7 +173,7 @@ func TestBuildMatchSeedControlsOrderOfOptions(t *testing.T) {
 func TestBuildMatchAnswersAreNotInWordOrderOfOptions(t *testing.T) {
 	// хотя бы для одного seed варианты не совпадают с порядком слов (иначе упражнение не перемешано)
 	for seed := int64(1); seed < 40; seed++ {
-		m, _ := BuildMatch(fiveCands(), seed)
+		m, _ := BuildMatch(fiveCands(), nil, seed)
 		var inOrder []string
 		for _, p := range m.Answers {
 			inOrder = append(inOrder, p.Ru)
@@ -239,5 +239,81 @@ func TestCheckMatchErrors(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%q: ждали ошибку с %q, получили %v", given, want, err)
 		}
+	}
+}
+
+func TestPickTranslationRankDropsRareVariant(t *testing.T) {
+	// «батюшка» встречается так же часто, но стоит за порогом списка частот
+	senses := [][]string{{"батюшка", "папа"}, {"батюшка", "папа"}}
+	got, ok := PickTranslation(senses, map[string]int{"папа": 274, "батюшка": 30608})
+	if !ok || got != "папа" {
+		t.Fatalf("ждали «папа», получили %q %v", got, ok)
+	}
+}
+
+func TestPickTranslationRankTieBreakInsteadOfDictOrder(t *testing.T) {
+	// при равном числе значений решает место в списке, а не порядок словаря; смысл правило не различает
+	senses := [][]string{{"тонкий", "редкий"}, {"тонкий", "редкий"}}
+	got, ok := PickTranslation(senses, map[string]int{"редкий": 12922, "тонкий": 16560})
+	if !ok || got != "редкий" {
+		t.Fatalf("ждали «редкий» (место выше), получили %q %v", got, ok)
+	}
+}
+
+func TestPickTranslationDropsUnrankedVariant(t *testing.T) {
+	got, ok := PickTranslation([][]string{{"одёжа", "одежда"}}, map[string]int{"одежда": 4303})
+	if !ok || got != "одежда" {
+		t.Fatalf("вариант без места отбрасывается: %q %v", got, ok)
+	}
+}
+
+func TestPickTranslationAllRareSkipsWord(t *testing.T) {
+	if got, ok := PickTranslation([][]string{{"батюшка"}}, map[string]int{"батюшка": 30608, "папа": 274}); ok {
+		t.Fatalf("все варианты редкие, слово пропускается: %q", got)
+	}
+}
+
+func TestPickTranslationEmptyRanksKeepsOldBehaviour(t *testing.T) {
+	senses := [][]string{{"идти", "ходить"}, {"ходить", "идти"}}
+	for _, ranks := range []map[string]int{nil, {}} {
+		if got, ok := PickTranslation(senses, ranks); !ok || got != "идти" {
+			t.Fatalf("ranks=%v: прежний выбор «идти», получили %q %v", ranks, got, ok)
+		}
+	}
+}
+
+func TestPickTranslationAmbiguityCountsOnlyRankedVariants(t *testing.T) {
+	// после отсева у «бежать» и «работать» по одному значению: консенсуса нет, слово неоднозначно
+	senses := [][]string{{"бежать", "батюшка"}, {"работать", "батюшка"}}
+	if got, ok := PickTranslation(senses, map[string]int{"бежать": 500, "работать": 300, "батюшка": 30608}); ok {
+		t.Fatalf("консенсуса нет, а получили %q", got)
+	}
+}
+
+func TestRuCandidates(t *testing.T) {
+	got := RuCandidates([][]string{{"Папа", "па́па", "в двух словах"}, {"Тонкий", "папа"}})
+	want := []string{"папа", "тонкий"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("ждали %v, получили %v", want, got)
+	}
+}
+
+func TestBuildMatchUsesRanks(t *testing.T) {
+	cands := fiveCands()
+	cands[0].Senses = [][]string{{"батюшка", "папа"}, {"батюшка", "папа"}}
+	ranks := map[string]int{"папа": 274, "батюшка": 30608}
+	for _, c := range cands[1:] {
+		for _, s := range c.Senses {
+			for _, ru := range s {
+				ranks[ru] = 100
+			}
+		}
+	}
+	m, ok := BuildMatch(cands, ranks, 1)
+	if !ok {
+		t.Fatal("набор не собрался")
+	}
+	if m.Answers[0].Ru != "папа" {
+		t.Fatalf("ждали «папа», получили %q", m.Answers[0].Ru)
 	}
 }
