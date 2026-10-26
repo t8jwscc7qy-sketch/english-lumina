@@ -786,7 +786,15 @@ export interface components {
         WordList: {
             words: components["schemas"]["Word"][];
         };
+        /** @description Живая запись предложения с Tatoeba (файл на tatoeba.org, мы его не храним); автор и лицензия показываются рядом с воспроизведением. */
+        SentenceAudio: {
+            url: string;
+            author: string;
+            license: string;
+            attributionUrl?: string;
+        };
         ExampleSentence: {
+            audio?: components["schemas"]["SentenceAudio"];
             text: string;
             /** @description Автор предложения на Tatoeba (атрибуция по лицензии CC BY) */
             author: string;
@@ -1130,18 +1138,20 @@ export interface components {
             /** @description Номера предложений текста (с нуля), где конструкция найдена */
             sentences: number[];
         };
+        /** @description У предложений Tatoeba есть номера и авторы (атрибуция); у авторских текстов их нет. */
         ReadSentence: {
             /** Format: int64 */
-            tatoebaId: number;
+            tatoebaId?: number;
             /** @description Автор английского предложения на Tatoeba (атрибуция CC BY) */
-            author: string;
+            author?: string;
+            audio?: components["schemas"]["SentenceAudio"];
             /**
              * Format: int64
              * @description Номер русского перевода на Tatoeba
              */
-            ruTatoebaId: number;
+            ruTatoebaId?: number;
             /** @description Автор русского перевода (атрибуция CC BY) */
-            ruAuthor: string;
+            ruAuthor?: string;
             en: string;
             ru: string;
             /** @description Слова предложения в исходном регистре, в порядке появления */

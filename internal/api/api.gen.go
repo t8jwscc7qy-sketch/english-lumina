@@ -621,6 +621,9 @@ type ExampleList struct {
 
 // ExampleSentence defines model for ExampleSentence.
 type ExampleSentence struct {
+	// Audio Живая запись предложения с Tatoeba (файл на tatoeba.org, мы его не храним); автор и лицензия показываются рядом с воспроизведением.
+	Audio *SentenceAudio `json:"audio,omitempty"`
+
 	// Author Автор предложения на Tatoeba (атрибуция по лицензии CC BY)
 	Author string `json:"author"`
 
@@ -1057,19 +1060,22 @@ type ReadConstruction struct {
 	Title   string  `json:"title"`
 }
 
-// ReadSentence defines model for ReadSentence.
+// ReadSentence У предложений Tatoeba есть номера и авторы (атрибуция); у авторских текстов их нет.
 type ReadSentence struct {
+	// Audio Живая запись предложения с Tatoeba (файл на tatoeba.org, мы его не храним); автор и лицензия показываются рядом с воспроизведением.
+	Audio *SentenceAudio `json:"audio,omitempty"`
+
 	// Author Автор английского предложения на Tatoeba (атрибуция CC BY)
-	Author string `json:"author"`
-	En     string `json:"en"`
-	Ru     string `json:"ru"`
+	Author *string `json:"author,omitempty"`
+	En     string  `json:"en"`
+	Ru     string  `json:"ru"`
 
 	// RuAuthor Автор русского перевода (атрибуция CC BY)
-	RuAuthor string `json:"ruAuthor"`
+	RuAuthor *string `json:"ruAuthor,omitempty"`
 
 	// RuTatoebaId Номер русского перевода на Tatoeba
-	RuTatoebaId int64 `json:"ruTatoebaId"`
-	TatoebaId   int64 `json:"tatoebaId"`
+	RuTatoebaId *int64 `json:"ruTatoebaId,omitempty"`
+	TatoebaId   *int64 `json:"tatoebaId,omitempty"`
 
 	// Tokens Слова предложения в исходном регистре, в порядке появления
 	Tokens []string `json:"tokens"`
@@ -1125,6 +1131,14 @@ type ReviewCardRequest struct {
 
 	// Rating 1 забыл, 2 трудно, 3 хорошо, 4 легко
 	Rating int `json:"rating"`
+}
+
+// SentenceAudio Живая запись предложения с Tatoeba (файл на tatoeba.org, мы его не храним); автор и лицензия показываются рядом с воспроизведением.
+type SentenceAudio struct {
+	AttributionUrl *string `json:"attributionUrl,omitempty"`
+	Author         string  `json:"author"`
+	License        string  `json:"license"`
+	Url            string  `json:"url"`
 }
 
 // Settings defines model for Settings.

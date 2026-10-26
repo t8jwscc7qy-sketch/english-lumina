@@ -1109,10 +1109,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Word"
+    SentenceAudio:
+      type: object
+      required: [url, author, license]
+      description: Живая запись предложения с Tatoeba (файл на tatoeba.org, мы его не храним); автор и лицензия показываются рядом с воспроизведением.
+      properties:
+        url:
+          type: string
+        author:
+          type: string
+        license:
+          type: string
+        attributionUrl:
+          type: string
     ExampleSentence:
       type: object
       required: [text, author, tatoebaId]
       properties:
+        audio:
+          $ref: "#/components/schemas/SentenceAudio"
         text:
           type: string
         author:
@@ -1746,7 +1761,8 @@ components:
           description: Номера предложений текста (с нуля), где конструкция найдена
     ReadSentence:
       type: object
-      required: [tatoebaId, author, ruTatoebaId, ruAuthor, en, ru, tokens]
+      required: [en, ru, tokens]
+      description: У предложений Tatoeba есть номера и авторы (атрибуция); у авторских текстов их нет.
       properties:
         tatoebaId:
           type: integer
@@ -1754,6 +1770,8 @@ components:
         author:
           type: string
           description: Автор английского предложения на Tatoeba (атрибуция CC BY)
+        audio:
+          $ref: "#/components/schemas/SentenceAudio"
         ruTatoebaId:
           type: integer
           format: int64

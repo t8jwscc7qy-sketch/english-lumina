@@ -186,6 +186,15 @@ type Sentence struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type SentenceAudio struct {
+	AudioID           int64
+	SentenceTatoebaID int64
+	Username          string
+	License           string
+	AttributionUrl    *string
+	SourceID          int64
+}
+
 type SentencePair struct {
 	EnID     int64
 	RuID     int64
@@ -233,6 +242,8 @@ type Text struct {
 	CoverageAtBuild float32
 	Goal            float32
 	CreatedAt       pgtype.Timestamptz
+	Slug            *string
+	Band            *int16
 }
 
 type TextRead struct {
@@ -242,6 +253,13 @@ type TextRead struct {
 	Mode           string
 	Understood     string
 	CoverageAtRead float32
+}
+
+type TextShown struct {
+	UserID   int64
+	TextID   int64
+	ShownAt  pgtype.Timestamptz
+	Coverage float32
 }
 
 type TopicRating struct {

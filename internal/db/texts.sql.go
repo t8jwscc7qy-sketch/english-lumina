@@ -14,7 +14,7 @@ import (
 
 const textGet = `-- name: TextGet :one
 SELECT id, kind, title, body, word_count, coverage_at_build, goal, created_at
-FROM texts WHERE id = $1 AND user_id = $2
+FROM texts WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)
 `
 
 type TextGetParams struct {
@@ -81,12 +81,14 @@ func (q *Queries) TextInsert(ctx context.Context, arg TextInsertParams) (int64, 
 }
 
 const textLastUnrated = `-- name: TextLastUnrated :one
+
 SELECT t.id, t.kind, t.title, t.body, t.word_count, t.coverage_at_build, t.goal, t.created_at
-FROM texts t
-WHERE t.user_id = $1
-  AND t.created_at > now() - interval '12 hours'
-  AND NOT EXISTS (SELECT 1 FROM text_reads r WHERE r.text_id = t.id AND r.user_id = t.user_id)
-ORDER BY t.id DESC
+FROM text_shown sh
+JOIN texts t ON t.id = sh.text_id
+WHERE sh.user_id = $1
+  AND sh.shown_at > now() - interval '12 hours'
+  AND NOT EXISTS (SELECT 1 FROM text_reads r WHERE r.text_id = sh.text_id AND r.user_id = sh.user_id)
+ORDER BY sh.shown_at DESC
 LIMIT 1
 `
 
@@ -101,9 +103,10 @@ type TextLastUnratedRow struct {
 	CreatedAt       pgtype.Timestamptz
 }
 
-// Последний собранный и ещё не оценённый текст пользователя (не старше 12 часов): его отдаём повторно, пока он не оценён,
-// чтобы возврат на страницу и смена режима не теряли текст и не плодили новые.
-func (q *Queries) TextLastUnrated(ctx context.Context, userID *int64) (TextLastUnratedRow, error) {
+// свои склеенные и общие авторские
+// Последний показанный и ещё не оценённый текст пользователя (не старше 12 часов): его отдаём повторно, пока он не
+// оценён, чтобы возврат на страницу и смена режима не теряли текст и не плодили новые.
+func (q *Queries) TextLastUnrated(ctx context.Context, userID int64) (TextLastUnratedRow, error) {
 	row := q.db.QueryRow(ctx, textLastUnrated, userID)
 	var i TextLastUnratedRow
 	err := row.Scan(
@@ -121,7 +124,8 @@ func (q *Queries) TextLastUnrated(ctx context.Context, userID *int64) (TextLastU
 
 const textRateInsert = `-- name: TextRateInsert :execrows
 INSERT INTO text_reads (user_id, text_id, mode, understood, coverage_at_read)
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4,
+        COALESCE((SELECT sh.coverage FROM text_shown sh WHERE sh.user_id = $1 AND sh.text_id = $2), $5))
 ON CONFLICT DO NOTHING
 `
 
@@ -130,7 +134,7 @@ type TextRateInsertParams struct {
 	TextID         int64
 	Mode           string
 	Understood     string
-	CoverageAtRead float32
+	CoverageAtRead interface{}
 }
 
 // 1 строка — оценка записана, 0 — этот текст уже оценён (повтор запроса).
@@ -146,6 +150,31 @@ func (q *Queries) TextRateInsert(ctx context.Context, arg TextRateInsertParams) 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const textReadIDs = `-- name: TextReadIDs :many
+SELECT text_id FROM text_reads WHERE user_id = $1
+`
+
+// Номера текстов, которые пользователь уже оценил (прочитал).
+func (q *Queries) TextReadIDs(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, textReadIDs, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var text_id int64
+		if err := rows.Scan(&text_id); err != nil {
+			return nil, err
+		}
+		items = append(items, text_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const textRecentSentenceIDs = `-- name: TextRecentSentenceIDs :many
@@ -195,6 +224,23 @@ type TextSetCoverageParams struct {
 // Новая цель понимания текста (строка настроек обучения создаётся, если её ещё нет).
 func (q *Queries) TextSetCoverage(ctx context.Context, arg TextSetCoverageParams) error {
 	_, err := q.db.Exec(ctx, textSetCoverage, arg.UserID, arg.TextCoverage)
+	return err
+}
+
+const textShownInsert = `-- name: TextShownInsert :exec
+INSERT INTO text_shown (user_id, text_id, coverage)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, text_id) DO NOTHING
+`
+
+type TextShownInsertParams struct {
+	UserID   int64
+	TextID   int64
+	Coverage float32
+}
+
+func (q *Queries) TextShownInsert(ctx context.Context, arg TextShownInsertParams) error {
+	_, err := q.db.Exec(ctx, textShownInsert, arg.UserID, arg.TextID, arg.Coverage)
 	return err
 }
 
@@ -251,6 +297,35 @@ func (q *Queries) TextTargetWords(ctx context.Context, arg TextTargetWordsParams
 		return nil, err
 	}
 	return items, nil
+}
+
+const textUpsertAuthored = `-- name: TextUpsertAuthored :one
+INSERT INTO texts (user_id, kind, slug, band, title, body, word_count, coverage_at_build, goal)
+VALUES (NULL, 'authored', $1, $2, $3, $4, $5, 0, 0.85)
+ON CONFLICT (slug) WHERE slug IS NOT NULL DO UPDATE SET band = EXCLUDED.band, title = EXCLUDED.title, body = EXCLUDED.body, word_count = EXCLUDED.word_count
+RETURNING id
+`
+
+type TextUpsertAuthoredParams struct {
+	Slug      *string
+	Band      *int16
+	Title     string
+	Body      json.RawMessage
+	WordCount int16
+}
+
+// Авторский текст по slug: вставка или обновление (текст файла — источник истины).
+func (q *Queries) TextUpsertAuthored(ctx context.Context, arg TextUpsertAuthoredParams) (int64, error) {
+	row := q.db.QueryRow(ctx, textUpsertAuthored,
+		arg.Slug,
+		arg.Band,
+		arg.Title,
+		arg.Body,
+		arg.WordCount,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const textWordHints = `-- name: TextWordHints :many

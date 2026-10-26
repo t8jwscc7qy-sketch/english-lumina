@@ -99,7 +99,11 @@ type AuthStore interface {
 	SheetWordStatuses(ctx context.Context, arg db.SheetWordStatusesParams) ([]db.SheetWordStatusesRow, error)
 	TextInsert(ctx context.Context, arg db.TextInsertParams) (int64, error)
 	TextGet(ctx context.Context, arg db.TextGetParams) (db.TextGetRow, error)
-	TextLastUnrated(ctx context.Context, userID *int64) (db.TextLastUnratedRow, error)
+	TextLastUnrated(ctx context.Context, userID int64) (db.TextLastUnratedRow, error)
+	SentenceAudioFor(ctx context.Context, arg db.SentenceAudioForParams) ([]db.SentenceAudioForRow, error)
+	TextShownInsert(ctx context.Context, arg db.TextShownInsertParams) error
+	TextUpsertAuthored(ctx context.Context, arg db.TextUpsertAuthoredParams) (int64, error)
+	TextReadIDs(ctx context.Context, userID int64) ([]int64, error)
 	TextRateInsert(ctx context.Context, arg db.TextRateInsertParams) (int64, error)
 	TextRecentSentenceIDs(ctx context.Context, arg db.TextRecentSentenceIDsParams) ([]int64, error)
 	TextTargetWords(ctx context.Context, arg db.TextTargetWordsParams) ([]db.TextTargetWordsRow, error)
@@ -199,6 +203,10 @@ type authServer struct {
 	rnd func(n int64) int64
 	// Часы сервера; в тестах подменяются.
 	now func() time.Time
+	// Авторские тексты: загружаются и записываются в базу при первом обращении (texts_authored.go).
+	authoredMu     sync.Mutex
+	authoredLoaded bool
+	authored       []authoredEntry
 }
 
 func newAuthServer(store AuthStore, throttle *auth.Throttle) *authServer {

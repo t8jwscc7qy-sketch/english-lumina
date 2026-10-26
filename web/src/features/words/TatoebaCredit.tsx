@@ -12,6 +12,8 @@ function TatoebaLink({ id }: { id: number }) {
 
 /** Атрибуция по лицензии CC BY: номер и автор обеих сторон со ссылками на tatoeba.org. */
 export function TatoebaCredit({ en, ru }: { en: Sentence; ru: Sentence }) {
+  // Фраза из авторского текста проекта: номера Tatoeba у неё нет.
+  if (en.tatoebaId === 0) return <p className="text-xs text-muted-foreground">Фраза из авторского текста Verst</p>
   return (
     <p className="text-xs text-muted-foreground">
       Tatoeba: <TatoebaLink id={en.tatoebaId} /> {en.author} · <TatoebaLink id={ru.tatoebaId} /> {ru.author}

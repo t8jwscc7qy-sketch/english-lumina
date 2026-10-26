@@ -98,6 +98,8 @@ type fakeStore struct {
 	sheetStates      map[string]db.SheetStatesRow     // состояния шпаргалок одного пользователя
 	texts            map[int64]db.TextGetRow          // собранные тексты (texts_fake_test.go)
 	textRated        map[int64]bool
+	textShown        map[int64]bool
+	audio            []db.SentenceAudioForRow // живые записи предложений (audio_test.go)
 	nextTextID       int64
 	textTargets      []db.TextTargetWordsRow
 	textHints        []db.TextWordHintsRow

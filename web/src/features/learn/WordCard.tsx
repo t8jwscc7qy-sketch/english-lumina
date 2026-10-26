@@ -3,6 +3,7 @@ import type { LearnWord } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { HighlightedText } from '@/features/words/HighlightedText'
 import { TatoebaCredit } from '@/features/words/TatoebaCredit'
+import { canPlay, speak as playItems } from '@/features/read/speech'
 
 /** Произнести слово синтезом речи браузера: запасной путь, если записи нет или она не играет. */
 function speak(text: string) {
@@ -90,6 +91,16 @@ export function WordCard({ word }: { word: LearnWord }) {
               <p lang="en" className={i === 0 ? 'text-xl break-words' : 'break-words'}>
                 <HighlightedText text={ex.en.text} range={ex.highlight} />
               </p>
+              {canPlay([{ text: ex.en.text, audioUrl: ex.en.audio?.url }]) && (
+                <button
+                  type="button"
+                  onClick={() => playItems([{ text: ex.en.text, audioUrl: ex.en.audio?.url }], 1)}
+                  aria-label={`Прослушать фразу: ${ex.en.text}`}
+                  className="w-fit text-sm underline underline-offset-4"
+                >
+                  {ex.en.audio ? '▶ Запись' : '▶ Голос'}
+                </button>
+              )}
               <p lang="ru" className="break-words text-muted-foreground">{ex.ru.text}</p>
               <TatoebaCredit en={ex.en} ru={ex.ru} />
             </li>

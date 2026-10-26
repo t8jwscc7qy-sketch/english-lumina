@@ -94,7 +94,7 @@ func TestTextNextBuildsTextAtGoal(t *testing.T) {
 		t.Fatalf("целевых слов %d, предложений %d", len(text.Targets), len(text.Sentences))
 	}
 	for _, s := range text.Sentences {
-		if s.TatoebaId < 1000 || s.Author != "tom" || s.En == "" || s.Ru == "" || len(s.Tokens) < 4 {
+		if s.TatoebaId == nil || *s.TatoebaId < 1000 || s.Author == nil || *s.Author != "tom" || s.En == "" || s.Ru == "" || len(s.Tokens) < 4 {
 			t.Fatalf("предложение: %+v", s)
 		}
 	}
@@ -108,8 +108,8 @@ func TestTextNextBuildsTextAtGoal(t *testing.T) {
 			t.Fatalf("подсказка: %+v", h)
 		}
 	}
-	if len(e.store.texts) != 1 {
-		t.Fatalf("текст сохранён %d раз", len(e.store.texts))
+	if n := stitchedTexts(e); n != 1 {
+		t.Fatalf("склеенный текст сохранён %d раз", n)
 	}
 }
 
@@ -154,11 +154,11 @@ func TestTextNextDoesNotRepeatRecentSentences(t *testing.T) {
 	}
 	seen := map[int64]bool{}
 	for _, s := range first.Sentences {
-		seen[s.TatoebaId] = true
+		seen[*s.TatoebaId] = true
 	}
 	for _, s := range second.Sentences {
-		if seen[s.TatoebaId] {
-			t.Fatalf("предложение %d повторилось в следующем тексте", s.TatoebaId)
+		if seen[*s.TatoebaId] {
+			t.Fatalf("предложение %d повторилось в следующем тексте", *s.TatoebaId)
 		}
 	}
 }
@@ -285,11 +285,11 @@ func TestTextNextReturnsSameUnratedTextUntilRated(t *testing.T) {
 	if code != http.StatusOK || again.Id != first.Id || again.Mode != api.ReadTextModeListen || len(again.Sentences) != len(first.Sentences) {
 		t.Fatalf("неоценённый текст отдаётся повторно: %d %d (режим %s)", first.Id, again.Id, again.Mode)
 	}
-	if len(again.Hints) != len(first.Hints) || again.Sentences[0].Author != first.Sentences[0].Author {
+	if len(again.Hints) != len(first.Hints) || *again.Sentences[0].Author != *first.Sentences[0].Author {
 		t.Fatal("подсказки и атрибуция сохраняются вместе с текстом")
 	}
-	if len(e.store.texts) != 1 {
-		t.Fatalf("текстов в базе %d, ждали 1", len(e.store.texts))
+	if n := stitchedTexts(e); n != 1 {
+		t.Fatalf("склеенных текстов в базе %d, ждали 1", n)
 	}
 	forced, _, _ := nextText(t, e, token, "?new=1")
 	if forced.Id == first.Id {
@@ -308,7 +308,7 @@ func TestTextCarriesBothSidesAttribution(t *testing.T) {
 	e, token := textsEnv(t, 25)
 	text, _, _ := nextText(t, e, token, "")
 	for _, s := range text.Sentences {
-		if s.RuAuthor != "ivan" || s.RuTatoebaId < 2000 {
+		if s.RuAuthor == nil || *s.RuAuthor != "ivan" || s.RuTatoebaId == nil || *s.RuTatoebaId < 2000 {
 			t.Fatalf("у русского перевода должны быть автор и номер: %+v", s)
 		}
 	}
@@ -387,4 +387,15 @@ func TestTextWithoutConstructionsGetsEmptyList(t *testing.T) {
 	if text.Constructions == nil || !strings.Contains(body, `"constructions":[`) {
 		t.Fatalf("constructions должен быть массивом, а не null: %s", body)
 	}
+}
+
+// stitchedTexts — сколько склеенных текстов сохранено (авторские записываются при первом обращении и не в счёт).
+func stitchedTexts(e env) int {
+	n := 0
+	for _, t := range e.store.texts {
+		if t.Kind != "authored" {
+			n++
+		}
+	}
+	return n
 }

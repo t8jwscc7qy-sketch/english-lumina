@@ -122,7 +122,11 @@ func readTextOf(id int64, mode api.ReadTextMode, title string, goal, coverage fl
 		out.Targets = []string{}
 	}
 	for i, st := range body.Sentences {
-		out.Sentences[i] = api.ReadSentence{TatoebaId: st.TatoebaID, Author: st.Author, RuTatoebaId: st.RuTatoebaID, RuAuthor: st.RuAuthor, En: st.En, Ru: st.Ru, Tokens: st.Tokens}
+		out.Sentences[i] = api.ReadSentence{En: st.En, Ru: st.Ru, Tokens: st.Tokens}
+		if st.TatoebaID != 0 {
+			id, author, ruID, ruAuthor := st.TatoebaID, st.Author, st.RuTatoebaID, st.RuAuthor
+			out.Sentences[i].TatoebaId, out.Sentences[i].Author, out.Sentences[i].RuTatoebaId, out.Sentences[i].RuAuthor = &id, &author, &ruID, &ruAuthor
+		}
 	}
 	return out
 }
@@ -139,33 +143,9 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 		mode = api.ReadTextModeListen
 	}
 	ctx := r.Context()
-	// Пока предыдущий текст не оценён, отдаём его же: возврат на страницу и смена режима не теряют текст.
-	if r.URL.Query().Get("new") != "1" {
-		last, err := s.store.TextLastUnrated(ctx, &user.ID)
-		switch {
-		case err == nil:
-			var body storedText
-			if json.Unmarshal(last.Body, &body) == nil && len(body.Sentences) > 0 {
-				writeJSON(w, http.StatusOK, readTextOf(last.ID, mode, last.Title, float64(last.Goal), float64(last.CoverageAtBuild), body))
-				return
-			}
-		case !errors.Is(err, pgx.ErrNoRows):
-			s.failTexts(w, fmt.Errorf("последний текст: %w", err))
-			return
-		}
-	}
 	knownRows, err := s.store.TextKnownWords(ctx, user.ID)
 	if err != nil {
 		s.failTexts(w, fmt.Errorf("известные слова: %w", err))
-		return
-	}
-	if len(knownRows) < textMinKnown {
-		writeNoText(w)
-		return
-	}
-	goal, err := s.textGoal(ctx, user.ID)
-	if err != nil {
-		s.failTexts(w, fmt.Errorf("цель понимания: %w", err))
 		return
 	}
 	lemmas := make([]exercises.LemmaPos, len(knownRows))
@@ -173,6 +153,67 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 		lemmas[i] = exercises.LemmaPos{Lemma: k.Lemma, Pos: k.Pos}
 	}
 	known := exercises.KnownForms(lemmas)
+	goal, err := s.textGoal(ctx, user.ID)
+	if err != nil {
+		s.failTexts(w, fmt.Errorf("цель понимания: %w", err))
+		return
+	}
+	// Пока предыдущий текст не оценён, отдаём его же: возврат на страницу и смена режима не теряют текст.
+	if r.URL.Query().Get("new") != "1" {
+		last, err := s.store.TextLastUnrated(ctx, user.ID)
+		switch {
+		case err == nil && last.Kind == "authored":
+			if e, ok := entryByID(s.authoredTexts(ctx), last.ID); ok {
+				out, aerr := s.authoredResponse(ctx, e, mode, goal, known)
+				if aerr != nil {
+					s.failTexts(w, aerr)
+					return
+				}
+				writeJSON(w, http.StatusOK, out)
+				return
+			}
+		case err == nil:
+			var body storedText
+			if json.Unmarshal(last.Body, &body) == nil && len(body.Sentences) > 0 {
+				out := readTextOf(last.ID, mode, last.Title, float64(last.Goal), float64(last.CoverageAtBuild), body)
+				attachReadAudio(ctx, s.store, out.Sentences)
+				writeJSON(w, http.StatusOK, out)
+				return
+			}
+		case !errors.Is(err, pgx.ErrNoRows):
+			s.failTexts(w, fmt.Errorf("последний текст: %w", err))
+			return
+		}
+	}
+	if len(knownRows) < textMinKnown {
+		writeNoText(w)
+		return
+	}
+	// Сначала авторский текст с подходящей понятностью; склейка — запасной вариант.
+	if entries := s.authoredTexts(ctx); len(entries) > 0 {
+		readIDs, err := s.store.TextReadIDs(ctx, user.ID)
+		if err != nil {
+			s.failTexts(w, fmt.Errorf("прочитанные тексты: %w", err))
+			return
+		}
+		read := make(map[int64]bool, len(readIDs))
+		for _, id := range readIDs {
+			read[id] = true
+		}
+		if e, cov, ok := s.pickAuthored(entries, read, known, goal); ok {
+			out, aerr := s.authoredResponse(ctx, e, mode, goal, known)
+			if aerr != nil {
+				s.failTexts(w, aerr)
+				return
+			}
+			if err := s.store.TextShownInsert(ctx, db.TextShownInsertParams{UserID: user.ID, TextID: e.dbID, Coverage: float32(cov)}); err != nil {
+				s.failTexts(w, fmt.Errorf("показ текста: %w", err))
+				return
+			}
+			writeJSON(w, http.StatusOK, out)
+			return
+		}
+	}
 
 	recent, err := s.store.TextRecentSentenceIDs(ctx, db.TextRecentSentenceIDsParams{UserID: &user.ID, MaxTexts: textRecentTexts})
 	if err != nil {
@@ -264,7 +305,12 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 		s.failTexts(w, fmt.Errorf("сохранение текста: %w", err))
 		return
 	}
+	if err := s.store.TextShownInsert(ctx, db.TextShownInsertParams{UserID: user.ID, TextID: id, Coverage: float32(text.Coverage)}); err != nil {
+		s.failTexts(w, fmt.Errorf("показ текста: %w", err))
+		return
+	}
 	out := readTextOf(id, mode, title, goal, text.Coverage, stored)
+	attachReadAudio(ctx, s.store, out.Sentences)
 	writeJSON(w, http.StatusOK, out)
 }
 

@@ -22,8 +22,8 @@ export function ConstructionPanel({ construction: c, sentences, onClose }: Props
       {own.length > 0 && (
         <div className="flex flex-col gap-1 border-l-2 border-input pl-4">
           <p className="text-sm text-muted-foreground">В этом тексте:</p>
-          {own.map((s) => (
-            <p key={s.tatoebaId} lang="en" className="break-words">
+          {own.map((s, i) => (
+            <p key={`${i}-${s.tatoebaId ?? s.en}`} lang="en" className="break-words">
               {s.en}
             </p>
           ))}

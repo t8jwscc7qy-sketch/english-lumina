@@ -273,3 +273,57 @@ describe('ReadPage: холодный старт', () => {
     expect(screen.queryByText(/Осталось/)).not.toBeInTheDocument()
   })
 })
+
+describe('ReadPage: авторские тексты', () => {
+  it('у авторского текста нет атрибуции Tatoeba, в источниках сказано, что текст авторский', async () => {
+    const authored = {
+      ...TEXT,
+      sentences: TEXT.sentences.map((s) => ({ en: s.en, ru: s.ru, tokens: s.tokens })),
+    }
+    stub(() => jsonResponse(200, authored))
+    const user = userEvent.setup()
+    render()
+    await user.click(await screen.findByText('Источники предложений'))
+    expect(screen.getByText(/Авторский текст проекта Verst/)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '#101' })).not.toBeInTheDocument()
+    // слова по-прежнему нажимаются
+    await user.click((await screen.findAllByRole('button', { name: 'dog' }))[0])
+    expect(screen.getByRole('region', { name: 'Слово dog' })).toBeInTheDocument()
+  })
+})
+
+describe('ReadPage: живая озвучка', () => {
+  it('у предложения с записью — «▶ Запись», без — «▶ Голос»; в источниках автор и лицензия записи', async () => {
+    class FakeUtt {
+      text: string
+      constructor(text: string) {
+        this.text = text
+      }
+    }
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtt)
+    vi.stubGlobal('speechSynthesis', { cancel: () => {}, speak: () => {} })
+    const withAudio = {
+      ...TEXT,
+      sentences: [
+        { ...TEXT.sentences[0], audio: { url: 'https://tatoeba.org/audio/download/55', author: 'alice', license: 'CC BY 4.0', attributionUrl: 'https://example.org/alice' } },
+        TEXT.sentences[1],
+      ],
+    }
+    stub(() => jsonResponse(200, withAudio))
+    const user = userEvent.setup()
+    render()
+    expect(await screen.findByRole('button', { name: 'Прослушать предложение 1' })).toHaveTextContent('▶ Запись')
+    expect(screen.getByRole('button', { name: 'Прослушать предложение 2' })).toHaveTextContent('▶ Голос')
+    await user.click(screen.getByText('Источники предложений'))
+    expect(screen.getByText(/озвучка:/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'alice' })).toHaveAttribute('href', 'https://example.org/alice')
+    expect(screen.getByText(/CC BY 4\.0/)).toBeInTheDocument()
+  })
+
+  it('нет ни синтеза, ни записи — кнопок звука на предложениях нет', async () => {
+    stub(() => jsonResponse(200, TEXT))
+    render()
+    await screen.findByText(/Понимание этого текста/)
+    expect(screen.queryByRole('button', { name: /Прослушать предложение/ })).not.toBeInTheDocument()
+  })
+})

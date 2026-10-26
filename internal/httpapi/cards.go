@@ -8,13 +8,16 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/t8jwscc7qy-sketch/english-lumina/content"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/library"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/srs"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/words"
 )
@@ -123,7 +126,44 @@ type exampleSentence struct {
 	Start, End int
 }
 
-// exampleSentences возвращает до maxCardSources примеров, где форма слова найдена (без этого пропуска не сделать).
+// authoredSentenceLimit — сколько фраз из авторских текстов добавляется к примерам слова.
+const authoredSentenceLimit = 2
+
+var authoredLibrary = sync.OnceValue(func() []library.Text {
+	all, err := library.LoadAll(content.Texts)
+	if err != nil {
+		slog.Error("авторские тексты не загружены для карточек", "err", err)
+		return nil
+	}
+	return all
+})
+
+// authoredSentences — предложения авторских текстов, где есть форма слова (первые authoredSentenceLimit). У них нет
+// номера Tatoeba: автор «Verst», номера 0.
+func authoredSentences(forms [][]string) []exampleSentence {
+	var out []exampleSentence
+	for _, t := range authoredLibrary() {
+		for _, sn := range t.Sentences {
+			if len(out) >= authoredSentenceLimit {
+				return out
+			}
+			if start, end, ok := words.FindMatch(sn.En, forms); ok {
+				out = append(out, exampleSentence{Row: db.ListExamplesRow{EnText: sn.En, RuText: sn.Ru, EnAuthor: authoredAuthor, RuAuthor: authoredAuthor}, Start: start, End: end})
+			}
+		}
+	}
+	return out
+}
+
+// cardAuthoredSentences — источник фраз из авторских текстов; в тестах подменяется, чтобы обычные тесты не зависели от
+// содержимого библиотеки.
+var cardAuthoredSentences = authoredSentences
+
+// authoredAuthor — «автор» фраз из авторских текстов проекта.
+const authoredAuthor = "Verst"
+
+// exampleSentences возвращает до maxCardSources примеров, где форма слова найдена (без этого пропуска не сделать), и
+// первыми фразы из авторских текстов (со связным контекстом), если они есть.
 func exampleSentences(ctx context.Context, store AuthStore, lemma, pos string) ([]exampleSentence, error) {
 	forms := words.Forms(lemma, pos)
 	if len(forms) == 0 {
@@ -133,7 +173,7 @@ func exampleSentences(ctx context.Context, store AuthStore, lemma, pos string) (
 	if err != nil {
 		return nil, err
 	}
-	var out []exampleSentence
+	out := cardAuthoredSentences(forms)
 	for _, row := range rows {
 		if start, end, ok := words.FindMatch(row.EnText, forms); ok {
 			out = append(out, exampleSentence{Row: row, Start: start, End: end})
@@ -290,6 +330,9 @@ func queueResponse(ctx context.Context, store AuthStore, userID int64, now time.
 			En:  api.ExampleSentence{Text: ex.Row.EnText, Author: ex.Row.EnAuthor, TatoebaId: ex.Row.EnTatoebaID},
 			Ru:  api.ExampleSentence{Text: ex.Row.RuText, Author: ex.Row.RuAuthor, TatoebaId: ex.Row.RuTatoebaID},
 			Gap: api.TextRange{Start: ex.Start, End: ex.End},
+		}
+		if a, ok := audioFor(ctx, store, []int64{ex.Row.EnTatoebaID})[ex.Row.EnTatoebaID]; ok && ex.Row.EnTatoebaID != 0 {
+			qc.Sentence.En.Audio = &a
 		}
 	}
 	out.Card = qc

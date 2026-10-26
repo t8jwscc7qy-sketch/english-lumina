@@ -22,6 +22,7 @@ import (
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/frequencywordsru"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/octanove"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/tatoeba"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/tatoebaaudio"
 )
 
 // cacheDir лежит вне Git (см. .gitignore): скачанные базы в репозиторий не попадают.
@@ -42,6 +43,7 @@ func main() {
 	reg.Register(freedict.New())
 	reg.Register(octanove.New())
 	reg.Register(tatoeba.New())
+	reg.Register(tatoebaaudio.New())
 
 	if err := run(ctx, os.Args[1:], os.Stdout, reg, runOnDatabase); err != nil {
 		fmt.Fprintln(os.Stderr, "ошибка:", err)

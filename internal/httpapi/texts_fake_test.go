@@ -93,11 +93,62 @@ func (f *fakeStore) TextSetCoverage(_ context.Context, a db.TextSetCoverageParam
 	return nil
 }
 
-func (f *fakeStore) TextLastUnrated(_ context.Context, _ *int64) (db.TextLastUnratedRow, error) {
-	for id := f.nextTextID; id > 0; id-- {
-		if t, ok := f.texts[id]; ok && !f.textRated[id] {
-			return db.TextLastUnratedRow{ID: t.ID, Kind: t.Kind, Title: t.Title, Body: t.Body, WordCount: t.WordCount, CoverageAtBuild: t.CoverageAtBuild, Goal: t.Goal}, nil
+func (f *fakeStore) TextLastUnrated(_ context.Context, _ int64) (db.TextLastUnratedRow, error) {
+	best := int64(0)
+	for id := range f.textShown {
+		if !f.textRated[id] && f.textShown[id] && id > best {
+			best = id
 		}
 	}
-	return db.TextLastUnratedRow{}, pgx.ErrNoRows
+	if best == 0 {
+		return db.TextLastUnratedRow{}, pgx.ErrNoRows
+	}
+	t := f.texts[best]
+	return db.TextLastUnratedRow{ID: t.ID, Kind: t.Kind, Title: t.Title, Body: t.Body, WordCount: t.WordCount, CoverageAtBuild: t.CoverageAtBuild, Goal: t.Goal}, nil
+}
+
+func (f *fakeStore) TextShownInsert(_ context.Context, a db.TextShownInsertParams) error {
+	if f.textShown == nil {
+		f.textShown = map[int64]bool{}
+	}
+	f.textShown[a.TextID] = true
+	return nil
+}
+
+func (f *fakeStore) TextUpsertAuthored(_ context.Context, a db.TextUpsertAuthoredParams) (int64, error) {
+	if f.texts == nil {
+		f.texts = map[int64]db.TextGetRow{}
+	}
+	for id, t := range f.texts {
+		if t.Kind == "authored" && t.Title == a.Title {
+			return id, nil
+		}
+	}
+	f.nextTextID++
+	f.texts[f.nextTextID] = db.TextGetRow{ID: f.nextTextID, Kind: "authored", Title: a.Title, Body: a.Body, WordCount: a.WordCount}
+	return f.nextTextID, nil
+}
+
+func (f *fakeStore) TextReadIDs(_ context.Context, _ int64) ([]int64, error) {
+	var out []int64
+	for id, rated := range f.textRated {
+		if rated {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) SentenceAudioFor(_ context.Context, a db.SentenceAudioForParams) ([]db.SentenceAudioForRow, error) {
+	var out []db.SentenceAudioForRow
+	for _, row := range f.audio {
+		if slices.Contains(a.Ids, row.SentenceTatoebaID) && f.audioOK(a.Licenses, row) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) audioOK(licenses []string, row db.SentenceAudioForRow) bool {
+	return slices.Contains(licenses, row.License)
 }

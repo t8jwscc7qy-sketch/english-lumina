@@ -10,13 +10,15 @@ type Props = {
   /** Предложение, которое сейчас читается вслух, и слово в нём. */
   playing?: { sentence: number; word: number } | null
   showAllTranslations: boolean
+  /** Озвучить предложение i; нет — кнопок звука нет. */
+  onPlay?: (i: number) => void
 }
 
 /**
  * Текст предложениями. Слова — кнопки (подсказка по нажатию); новые слова текста выделены подчёркиванием.
  * Перевод предложения открывается кнопкой. Все тексты выводятся как текст, без разметки.
  */
-export function TextView({ sentences, hints, selected, onPick, playing, showAllTranslations }: Props) {
+export function TextView({ sentences, hints, selected, onPick, playing, showAllTranslations, onPlay }: Props) {
   const targets = new Set(hints.filter((h) => h.target).map((h) => h.token))
   const [open, setOpen] = useState<Set<number>>(new Set())
 
@@ -34,7 +36,7 @@ export function TextView({ sentences, hints, selected, onPick, playing, showAllT
         let wordNo = -1
         const shown = showAllTranslations || open.has(i)
         return (
-          <li key={s.tatoebaId} lang="en" className={`flex flex-col gap-1 ${playing?.sentence === i ? 'border-l-4 border-primary pl-3' : 'border-l-4 border-transparent pl-3'}`}>
+          <li key={`${i}-${s.tatoebaId ?? s.en}`} lang="en" className={`flex flex-col gap-1 ${playing?.sentence === i ? 'border-l-4 border-primary pl-3' : 'border-l-4 border-transparent pl-3'}`}>
             <p className="text-xl leading-relaxed break-words">
               {segment(s.en).map((seg, k) => {
                 if (!seg.word) return <span key={k}>{seg.text}</span>
@@ -56,6 +58,11 @@ export function TextView({ sentences, hints, selected, onPick, playing, showAllT
               })}
             </p>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              {onPlay && (
+                <button type="button" onClick={() => onPlay(i)} aria-label={`Прослушать предложение ${i + 1}`} className="text-sm underline underline-offset-4">
+                  {s.audio ? '▶ Запись' : '▶ Голос'}
+                </button>
+              )}
               <button type="button" aria-expanded={shown} onClick={() => toggle(i)} className="text-sm underline underline-offset-4">
                 {shown ? 'Скрыть перевод' : 'Перевод'}
               </button>
