@@ -19,6 +19,7 @@ func orderFirst(e env) {
 	for _, tp := range grammarTopics {
 		e.store.topicRatings[topicKey{1, tp}] = rated(tp, 1700, 5)
 	}
+	e.store.topicRatings[topicKey{1, translateTopic}] = rated(translateTopic, 1700, 5) // перевод не мешает
 }
 
 func knownAll(e env, level string, ws ...string) {

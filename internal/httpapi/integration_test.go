@@ -1074,7 +1074,7 @@ func TestExerciseFormOnRealDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Остальные темы освоены, поэтому новая skill:form выбирается первой.
-	for _, tp := range append(append([]string{}, grammarTopics...), orderTopic) {
+	for _, tp := range append(append([]string{}, grammarTopics...), orderTopic, translateTopic) {
 		if err := q.EnsureTopicRating(ctx, db.EnsureTopicRatingParams{UserID: user.ID, Topic: tp}); err != nil {
 			t.Fatal(err)
 		}

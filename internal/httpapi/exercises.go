@@ -30,6 +30,9 @@ const (
 // orderTopic — тема «порядка слов»; выбирается как любая другая слабая тема.
 const orderTopic = "skill:order"
 
+// translateTopic — тема «перевода» вводом; выбирается как любая другая слабая тема.
+const translateTopic = "skill:translate"
+
 // formTopic — тема «выбора формы»; открывается через exercises.Unlocked.
 const formTopic = "skill:form"
 
@@ -76,11 +79,12 @@ type gapCandidate struct {
 	sentenceID  int64
 	translation string
 	gap         exercises.Gap
-	level       string           // уровень предложения
-	pos         string           // часть речи слова (только для level:*)
-	order       *exercises.Order // «порядок слов»: вместо gap
-	form        *formInfo        // «выбор формы»: слово упражнения
-	match       *exercises.Match // «сопоставление»: вместо gap
+	level       string               // уровень предложения
+	pos         string               // часть речи слова (только для level:*)
+	order       *exercises.Order     // «порядок слов»: вместо gap
+	form        *formInfo            // «выбор формы»: слово упражнения
+	match       *exercises.Match     // «сопоставление»: вместо gap
+	translate   *exercises.Translate // «перевод»: вместо gap
 }
 
 // GetNextExercise выбирает тему по рейтингам (слабая раньше), собирает пропуск и записывает упражнение.
@@ -122,7 +126,7 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		available = slices.DeleteFunc(available, func(t string) bool { return t == topic })
-		used, err := s.usedSentences(ctx, user.ID, topic)
+		used, err := s.usedSentencesFor(ctx, user.ID, topic)
 		if err != nil {
 			s.failExercises(w, err)
 			return
@@ -132,6 +136,8 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case topic == orderTopic:
 			cand, found, err = s.orderCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
+		case topic == translateTopic:
+			cand, found, err = s.translateCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
 		case topic == formTopic:
 			cand, found, err = s.formCandidate(ctx, &rng, user.ID, userLevel, used)
 		case topic == matchTopic:
@@ -183,10 +189,10 @@ func (s *authServer) failExercises(w http.ResponseWriter, err error) {
 	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
 }
 
-// availableTopics: пять грамматических тем, «порядок слов», «выбор формы» и «сопоставление» (если открыты), уровень пользователя и следующий за ним.
+// availableTopics: пять грамматических тем, «порядок слов», «перевод», «выбор формы» и «сопоставление» (если открыты), уровень пользователя и следующий за ним.
 // Без настроек — без level:*. Вторым значением отдаёт текущий уровень пользователя (пусто без настроек).
 func (s *authServer) availableTopics(ctx context.Context, userID int64, ratings []exercises.TopicRating) ([]string, string, error) {
-	out := append(slices.Clone(grammarTopics), orderTopic)
+	out := append(slices.Clone(grammarTopics), orderTopic, translateTopic)
 	if exercises.Unlocked(formTopic, ratings) {
 		out = append(out, formTopic)
 	}
@@ -221,6 +227,32 @@ func orderMaxLevel(userLevel string) string {
 	return allLevels[min(i+1, len(allLevels)-1)]
 }
 
+// usedSentencesFor: предложения, которые тема уже использовала. «Порядок слов» и «перевод» делят предложения: собрав
+// плитки, пользователь видел английский ответ, и печатать его по памяти уже не упражнение.
+func (s *authServer) usedSentencesFor(ctx context.Context, userID int64, topic string) (map[int64]bool, error) {
+	used, err := s.usedSentences(ctx, userID, topic)
+	if err != nil {
+		return nil, err
+	}
+	var twin string
+	switch topic {
+	case translateTopic:
+		twin = orderTopic
+	case orderTopic:
+		twin = translateTopic
+	default:
+		return used, nil
+	}
+	more, err := s.usedSentences(ctx, userID, twin)
+	if err != nil {
+		return nil, err
+	}
+	for id := range more {
+		used[id] = true
+	}
+	return used, nil
+}
+
 func (s *authServer) usedSentences(ctx context.Context, userID int64, topic string) (map[int64]bool, error) {
 	ids, err := s.store.UsedSentences(ctx, db.UsedSentencesParams{UserID: userID, Topic: topic})
 	if err != nil {
@@ -250,6 +282,11 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 		// «Порядок слов»: пользователь видит перевод и перемешанные плитки.
 		kind, prompt, choices, answers, tiles = api.Order, c.translation, []string{}, c.order.Answers, c.order.Tiles
 	}
+	translation := c.translation
+	if c.translate != nil {
+		// «Перевод»: пользователь видит русское предложение и печатает английское; перевод-подсказки нет.
+		kind, prompt, choices, answers, translation = api.Translate, c.translation, []string{}, c.translate.Answers, ""
+	}
 	var hint string
 	var words, options []string
 	var sentenceID *int64
@@ -271,7 +308,7 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 		kind, hint = api.Form, c.form.lemma
 		ans.LexemeID, ans.Lemma, ans.Pos = c.form.lexemeID, c.form.lemma, c.form.pos
 	}
-	payload, err := json.Marshal(exercisePayload{Prompt: prompt, Translation: c.translation, Choices: choices, Tiles: tiles, Topic: topic, Hint: hint, Words: words, Options: options})
+	payload, err := json.Marshal(exercisePayload{Prompt: prompt, Translation: translation, Choices: choices, Tiles: tiles, Topic: topic, Hint: hint, Words: words, Options: options})
 	if err != nil {
 		return api.Exercise{}, err
 	}
@@ -285,7 +322,7 @@ func (s *authServer) saveExercise(ctx context.Context, userID int64, topic strin
 	if err != nil {
 		return api.Exercise{}, err
 	}
-	ex := api.Exercise{Id: id, Kind: kind, Prompt: prompt, Translation: c.translation, Choices: choices, Topic: topic}
+	ex := api.Exercise{Id: id, Kind: kind, Prompt: prompt, Translation: translation, Choices: choices, Topic: topic}
 	if tiles != nil {
 		ex.Tiles = &tiles
 	}

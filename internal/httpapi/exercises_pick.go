@@ -15,9 +15,10 @@ import (
 // на тему, одна проверка уровней на окно кандидатов, у level:* ещё по одному поиску примеров на слово.
 
 const (
-	maxWindowCandidates = 30 // сколько кандидатов окна проверяем по уровням одним запросом
-	maxLevelBatches     = 2  // сколько раз проверяем уровни в level-пути
-	maxAlternatives     = 5  // сколько альтернативных английских предложений берём для «порядка слов»
+	maxWindowCandidates      = 30 // сколько кандидатов окна проверяем по уровням одним запросом
+	maxLevelBatches          = 2  // сколько раз проверяем уровни в level-пути
+	maxAlternatives          = 5  // сколько альтернативных английских предложений берём для «порядка слов»
+	maxTranslateAlternatives = 20 // сколько альтернативных переводов берём для «перевода» (любой длины)
 )
 
 // idRange — границы номеров предложений; читаются из базы лениво и один раз на вызов next.
@@ -286,6 +287,59 @@ func (s *authServer) orderCandidate(ctx context.Context, rng *idRange, maxLevel 
 			continue
 		}
 		return gapCandidate{sentenceID: p.row.ID, translation: p.row.RuText, order: &order, level: level}, true, nil
+	}
+	return gapCandidate{}, false, nil
+}
+
+// translateCandidate берёт окно предложений, оставляет те, из которых собирается «перевод», проверяет уровни
+// одним запросом (уровень не выше maxLevel) и для первого подходящего ищет альтернативные английские переводы
+// того же русского предложения: они принимаются как верные. maxLevel пуст — предела нет.
+func (s *authServer) translateCandidate(ctx context.Context, rng *idRange, maxLevel string, used map[int64]bool) (gapCandidate, bool, error) {
+	rows, err := s.sampleWindow(ctx, rng)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	var pending []orderPending
+	var lookup []string
+	for _, row := range rows {
+		if len(pending) >= maxWindowCandidates {
+			break
+		}
+		if used[row.ID] {
+			continue
+		}
+		if _, ok := exercises.BuildTranslate(row.Text, nil); !ok {
+			continue
+		}
+		p := orderPending{row: row, tokens: exercises.Tokens(row.Text)}
+		lookup = append(lookup, p.tokens...)
+		pending = append(pending, p)
+	}
+	if len(pending) == 0 {
+		return gapCandidate{}, false, nil
+	}
+	known, err := s.levelInfo(ctx, lookup)
+	if err != nil {
+		return gapCandidate{}, false, err
+	}
+	for _, p := range pending {
+		if level, ok := exercises.SentenceLevel(p.tokens, known); !ok || (maxLevel != "" && level > maxLevel) {
+			continue
+		}
+		alts, err := s.store.ListTranslateAlternatives(ctx, db.ListTranslateAlternativesParams{EnID: p.row.ID, RuID: p.row.RuID, MaxRows: maxTranslateAlternatives})
+		if err != nil {
+			return gapCandidate{}, false, err
+		}
+		texts := make([]string, len(alts))
+		for i, a := range alts {
+			texts[i] = a.Text
+		}
+		tr, ok := exercises.BuildTranslate(p.row.Text, texts)
+		if !ok {
+			continue
+		}
+		// Уровень предложения в темы не кладём: ввод труднее выбора и занижал бы точность предложения сменить уровень.
+		return gapCandidate{sentenceID: p.row.ID, translation: p.row.RuText, translate: &tr}, true, nil
 	}
 	return gapCandidate{}, false, nil
 }

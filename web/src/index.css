@@ -308,6 +308,10 @@
   30% { opacity: 1; }
   100% { opacity: 0; }
 }
+@keyframes t-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
 @keyframes fox-jump {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
@@ -323,4 +327,5 @@
 [data-motion="on"] .m-confetti { animation: m-confetti 700ms cubic-bezier(0.23, 1, 0.32, 1) both; animation-delay: var(--d, 0ms); }
 [data-motion="on"] .m-ring { animation: m-ring 400ms ease-out both; }
 .m-flash, .m-spark, .m-confetti, .m-ring { opacity: 0; }
+.t-blink { animation: t-blink 400ms steps(2, end) 2; }
 .fox-jump { animation: fox-jump 500ms steps(2, end) 1; }

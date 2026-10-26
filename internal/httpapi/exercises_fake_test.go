@@ -218,11 +218,12 @@ func (f *fakeStore) addPair(enID, ruID int64, text string, words int16) {
 	f.enRu[enID] = append(f.enRu[enID], ruID)
 }
 
-// ListEnglishAlternatives повторяет SQL: другие английские предложения (4–10 слов) с общим русским переводом, по id, не больше MaxRows.
+// ListEnglishAlternatives повторяет SQL: другие английские предложения с общим русским переводом и тем же числом слов
+// (4–10), по id, не больше MaxRows.
 func (f *fakeStore) ListEnglishAlternatives(_ context.Context, arg db.ListEnglishAlternativesParams) ([]db.ListEnglishAlternativesRow, error) {
 	var ids []int64
 	for id, rus := range f.enRu {
-		if id == arg.EnID || f.enWords[id] < 4 || f.enWords[id] > 10 {
+		if id == arg.EnID || f.enWords[id] != f.enWords[arg.EnID] || f.enWords[id] < 4 || f.enWords[id] > 10 {
 			continue
 		}
 		if slices.ContainsFunc(rus, func(r int64) bool { return slices.Contains(f.enRu[arg.EnID], r) }) {
@@ -247,3 +248,25 @@ func (f *fakeStore) ListWeakCardWords(_ context.Context, arg db.ListWeakCardWord
 
 // i64 — указатель на число (SentenceID у упражнения необязателен).
 func i64(v int64) *int64 { return &v }
+
+// ListTranslateAlternatives повторяет SQL: другие английские предложения (4–10 слов) с общим русским переводом, любой
+// длины, по id, не больше MaxRows.
+func (f *fakeStore) ListTranslateAlternatives(_ context.Context, arg db.ListTranslateAlternativesParams) ([]db.ListTranslateAlternativesRow, error) {
+	var ids []int64
+	for id, rus := range f.enRu {
+		if id == arg.EnID || f.enWords[id] < 4 || f.enWords[id] > 10 {
+			continue
+		}
+		if slices.Contains(rus, arg.RuID) {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	var out []db.ListTranslateAlternativesRow
+	for _, id := range ids {
+		if int32(len(out)) < arg.MaxRows {
+			out = append(out, db.ListTranslateAlternativesRow{ID: id, Text: f.enText[id]})
+		}
+	}
+	return out, nil
+}

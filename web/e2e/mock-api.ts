@@ -104,14 +104,14 @@ export const SETTINGS: Settings = {
 
 export type ExerciseFixture = {
   id: number
-  kind: 'gap' | 'order' | 'form' | 'match'
+  kind: 'gap' | 'order' | 'form' | 'match' | 'translate'
   prompt: string
   translation: string
   choices: string[]
   topic: string
   /** Верный ответ живёт только в подмене сервера, клиенту не отдаётся до ответа. */
   answer: string
-  /** Только для order: слова в перемешанном порядке; допустимые порядки (без точки) в `accept`. */
+  /** order: слова в перемешанном порядке, допустимые порядки (без точки) в `accept`; translate: допустимые переводы, первый основной. */
   tiles?: string[]
   accept?: string[]
   /** Только для form: начальная форма в скобках. */
@@ -150,6 +150,12 @@ export const ORDER_EXERCISE: ExerciseFixture = {
   id: 31, kind: 'order', prompt: 'Вчера я пошёл домой.', translation: 'Вчера я пошёл домой.',
   choices: [], tiles: ['home', 'went', 'yesterday', 'I'], topic: 'skill:order',
   answer: 'Yesterday I went home.', accept: ['Yesterday I went home.', 'I went home yesterday.'],
+}
+
+export const TRANSLATE_MAIN = 'We eat red apples every morning.'
+export const TRANSLATE_EXERCISE: ExerciseFixture = {
+  id: 61, kind: 'translate', prompt: 'Мы едим красные яблоки каждое утро.', translation: '', choices: [], topic: 'skill:translate',
+  answer: TRANSLATE_MAIN, accept: [TRANSLATE_MAIN, 'Every morning we eat red apples.', 'We have red apples every morning.'],
 }
 
 export const MATCH_EXERCISE: ExerciseFixture = {
@@ -426,7 +432,21 @@ export async function mockApi(
       const fx = exQueue.find((e) => e.id === body.exerciseId)
       if (!fx) return route.fulfill(apiError(404, 'not_found', 'Такого упражнения нет'))
       const norm = (t: string) => t.trim().replace(/\s+/g, ' ').replace(/[.!?]$/, '').toLowerCase()
+      // «Перевод»: точное совпадение без регистра и знаков, иначе опечатка в одну букву (фраза от 12 символов).
+      const flat = (t: string) => t.toLowerCase().replace(/[’‘]/g, "'").replace(/[,.!?]/g, '').split(/\s+/).filter(Boolean).join(' ')
+      const oneEdit = (a: string, b: string) => {
+        if (Math.abs(a.length - b.length) > 1 || b.length < 12 || a === b) return false
+        const [x, y] = a.length >= b.length ? [a, b] : [b, a]
+        let i = 0
+        while (i < y.length && x[i] === y[i]) i++
+        if (x.length === y.length) return x.slice(i + 1) === y.slice(i + 1) || (x[i] === y[i + 1] && x[i + 1] === y[i] && x.slice(i + 2) === y.slice(i + 2))
+        return x.slice(i + 1) === y.slice(i)
+      }
+      const variants = fx.accept ?? [fx.answer]
+      const exact = fx.kind === 'translate' ? variants.find((v) => flat(v) === flat(body.given)) : undefined
+      const typo = fx.kind === 'translate' && !exact ? variants.find((v) => oneEdit(flat(body.given), flat(v))) : undefined
       const correct =
+        fx.kind === 'translate' ? exact !== undefined || typo !== undefined :
         fx.kind === 'order' ? (fx.accept ?? [fx.answer]).some((a) => norm(a) === norm(body.given)) : body.given.trim().toLowerCase() === fx.answer.toLowerCase()
       // «Сопоставление»: разбор по парам, счёт дробный (доля верных).
       let pairResults: { word: string; given: string; answer: string; correct: boolean }[] | undefined
@@ -449,7 +469,9 @@ export async function mockApi(
       prog.minutes += prog.step
       if (mistake && !matchCorrect) prog.opened += 1
       if (mistake?.status === 'closed') prog.closed += 1
-      const result = { correct: matchCorrect, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}), ...(mistake ? { mistake } : {}), ...(pairResults ? { pairs: pairResults } : {}) }
+      const matched = exact ?? typo
+      const accepted = fx.kind === 'translate' ? variants.slice(1).filter((v) => v !== matched).slice(0, 3) : undefined
+      const result = { correct: matchCorrect, answer: fx.answer, translation: fx.translation, ratings: [{ ...r }], ...(fx.word ? { word: fx.word } : {}), ...(mistake ? { mistake } : {}), ...(pairResults ? { pairs: pairResults } : {}), ...(accepted ? { accepted } : {}), ...(typo ? { nearMiss: typo } : {}) }
       results.set(body.key, result)
       return route.fulfill({ json: result })
     }

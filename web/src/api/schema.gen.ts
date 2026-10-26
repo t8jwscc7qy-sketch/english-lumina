@@ -524,13 +524,13 @@ export interface components {
             /** Format: int64 */
             id: number;
             /**
-             * @description Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
+             * @description Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, translate — перевести русское предложение (prompt) по-английски, ответ вводится вручную (choices пуст, tiles нет), form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
              * @enum {string}
              */
-            kind: "gap" | "order" | "form" | "match";
-            /** @description gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles) */
+            kind: "gap" | "order" | "form" | "match" | "translate";
+            /** @description gap — предложение с пропуском (английский); order — русское предложение, которое нужно перевести (собрать по-английски из tiles); translate — русское предложение, которое нужно перевести вводом */
             prompt: string;
-            /** @description Перевод-подсказка на русском */
+            /** @description Перевод-подсказка на русском (для translate всегда пустая строка, русская фраза лежит в prompt) */
             translation: string;
             /** @description Варианты ответа; пустой список — ответ вводится вручную (для order всегда пустой) */
             choices: string[];
@@ -578,6 +578,10 @@ export interface components {
                 inCards: boolean;
             };
             mistake?: components["schemas"]["MistakeResult"];
+            /** @description Только для translate: ответ принят с опечаткой в одну букву; здесь вариант, с которым он совпал («Правильно: …») */
+            nearMiss?: string;
+            /** @description Только для translate — другие допустимые переводы, до трёх (без основного и без совпавшего) */
+            accepted?: string[];
             /** @description Только для match, разбор каждой пары (в порядке слов упражнения) */
             pairs?: components["schemas"]["PairResult"][];
         };
@@ -606,9 +610,9 @@ export interface components {
             id: number;
             /** @description Основная тема ошибки */
             topic: string;
-            /** @description Вид упражнения (gap, order или form, как у Exercise.kind) */
+            /** @description Вид упражнения (gap, order, form или translate, как у Exercise.kind) */
             kind: string;
-            /** @description Предложение с пропуском (gap, form) или русский перевод (order) */
+            /** @description Предложение с пропуском (gap, form) или русский перевод (order, translate) */
             prompt: string;
             /** @description Последний неверный ответ */
             given: string;

@@ -275,6 +275,8 @@ func (s *authServer) repeatFor(ctx context.Context, userID int64, m db.Mistake) 
 			return api.Exercise{}, false, nil
 		}
 		p.Tiles = shuffled
+	case string(api.Translate):
+		// Перемешивать нечего: копия совпадает с исходным упражнением (допустимые ответы уже проверены выше).
 	default:
 		slog.Warn("ошибка пропущена: неизвестный вид", "mistakeId", m.ID, "kind", m.Kind)
 		return api.Exercise{}, false, nil

@@ -157,6 +157,9 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 				Correct bool               `json:"correct"`
 				Mistake *api.MistakeResult `json:"mistake"`
 				Pairs   []api.PairResult   `json:"pairs"`
+				// только у translate: опечатка и совпавший допустимый вариант
+				NearMiss string `json:"nearMiss"`
+				Matched  string `json:"matched"`
 			}
 			if err := json.Unmarshal(prev.Payload, &old); err != nil {
 				return fmt.Errorf("событие %d: %w", prev.ID, err)
@@ -177,6 +180,9 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 			if ex.Kind == string(api.Match) {
 				result.Pairs = &old.Pairs
 			}
+			if ex.Kind == string(api.Translate) {
+				setTranslateResult(result, answer.Answers, old.Matched, old.NearMiss)
+			}
 			return nil
 		}
 
@@ -185,7 +191,15 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 		var correct bool
 		score := 0.0
 		var pairs []api.PairResult
-		if ex.Kind == string(api.Match) {
+		var verdict exercises.TranslateVerdict
+		if ex.Kind == string(api.Translate) {
+			// Опечатка в одну букву засчитывается верным ответом: серию и рейтинг не ломает, ошибку не открывает.
+			verdict = exercises.CheckTranslate(answer.Answers, req.Given)
+			correct = verdict.Result != exercises.TranslateWrong
+			if correct {
+				score = 1
+			}
+		} else if ex.Kind == string(api.Match) {
 			// Дробный счёт: доля верных пар. Неверный формат — ошибка 400, ничего не записано.
 			res, right, err := exercises.CheckMatch(answer.Pairs, req.Given)
 			if err != nil {
@@ -244,6 +258,14 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 		if ex.Kind == string(api.Form) {
 			evData["lexemeId"] = answer.LexemeID
 		}
+		nearMiss := ""
+		if ex.Kind == string(api.Translate) {
+			evData["matched"] = verdict.Matched
+			if verdict.Result == exercises.TranslateTypo {
+				nearMiss = verdict.Matched
+				evData["nearMiss"] = nearMiss
+			}
+		}
 		if ex.Kind == string(api.Match) {
 			right := 0
 			for _, p := range pairs {
@@ -276,6 +298,31 @@ func (s *authServer) answerTx(ctx context.Context, user db.User, req api.AnswerR
 		if ex.Kind == string(api.Match) {
 			result.Pairs = &pairs
 		}
+		if ex.Kind == string(api.Translate) {
+			setTranslateResult(result, answer.Answers, verdict.Matched, nearMiss)
+		}
 		return nil
 	})
+}
+
+// maxAccepted — сколько других допустимых переводов показываем после ответа.
+const maxAccepted = 3
+
+// setTranslateResult дописывает в результат «перевода» опечатку и другие допустимые переводы
+// (без основного и без совпавшего; список всегда есть, пусть и пустой).
+func setTranslateResult(result *api.AnswerResult, answers []string, matched, nearMiss string) {
+	accepted := []string{}
+	if len(answers) == 0 {
+		result.Accepted = &accepted
+		return
+	}
+	for _, a := range answers[1:] {
+		if a != matched && len(accepted) < maxAccepted {
+			accepted = append(accepted, a)
+		}
+	}
+	result.Accepted = &accepted
+	if nearMiss != "" {
+		result.NearMiss = &nearMiss
+	}
 }

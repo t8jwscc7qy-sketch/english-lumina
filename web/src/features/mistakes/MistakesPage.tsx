@@ -84,7 +84,7 @@ export function MistakesPage() {
                 <ul className="flex flex-col divide-y divide-border">
                   {items.map((m) => (
                     <li key={m.id} className="flex flex-col gap-1 py-3 first:pt-1 last:pb-0">
-                      <p lang={m.kind === 'order' ? 'ru' : 'en'} className="break-words text-lg">
+                      <p lang={m.kind === 'order' || m.kind === 'translate' ? 'ru' : 'en'} className="break-words text-lg">
                         {m.prompt}
                       </p>
                       <p className="break-words text-sm text-muted-foreground">
