@@ -96,6 +96,13 @@ type AuthStore interface {
 	SheetSetReviewed(ctx context.Context, arg db.SheetSetReviewedParams) (int64, error)
 	SheetTouchOpened(ctx context.Context, arg db.SheetTouchOpenedParams) error
 	SheetWordStatuses(ctx context.Context, arg db.SheetWordStatusesParams) ([]db.SheetWordStatusesRow, error)
+	TextInsert(ctx context.Context, arg db.TextInsertParams) (int64, error)
+	TextGet(ctx context.Context, arg db.TextGetParams) (db.TextGetRow, error)
+	TextRateInsert(ctx context.Context, arg db.TextRateInsertParams) (int64, error)
+	TextRecentSentenceIDs(ctx context.Context, arg db.TextRecentSentenceIDsParams) ([]int64, error)
+	TextTargetWords(ctx context.Context, arg db.TextTargetWordsParams) ([]db.TextTargetWordsRow, error)
+	TextWordHints(ctx context.Context, lemmas []string) ([]db.TextWordHintsRow, error)
+	TextSetCoverage(ctx context.Context, arg db.TextSetCoverageParams) error
 	LearnGetPreferences(ctx context.Context, userID int64) (db.LearnPreference, error)
 	LearnUpsertPreferences(ctx context.Context, arg db.LearnUpsertPreferencesParams) (db.LearnPreference, error)
 	KbListChosenTranslations(ctx context.Context, arg db.KbListChosenTranslationsParams) ([]db.KbListChosenTranslationsRow, error)
