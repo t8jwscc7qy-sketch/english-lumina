@@ -48,7 +48,8 @@ func TestNewWordsToday(t *testing.T) {
 
 func TestNewWordsTodayIsDeterministic(t *testing.T) {
 	in := Input{DailyMinutes: 25, Due: 3, Accuracy7d: 0.88, HasAccuracy: true, IntroducedToday: 1, Mode: "auto", Cap: 12}
-	if NewWordsToday(in) != NewWordsToday(in) {
+	first := NewWordsToday(in)
+	if second := NewWordsToday(in); first != second {
 		t.Fatal("результат не должен меняться между вызовами")
 	}
 }
