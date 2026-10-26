@@ -593,6 +593,9 @@ export async function mockApi(
             { tatoebaId: 101, author: 'tom', ruTatoebaId: 201, ruAuthor: 'ivan', en: "The dog can't run fast.", ru: 'Собака не может быстро бегать.', tokens: ['The', 'dog', "can't", 'run', 'fast'] },
             { tatoebaId: 102, author: 'ann', ruTatoebaId: 202, ruAuthor: 'olga', en: 'I like my dog.', ru: 'Я люблю свою собаку.', tokens: ['I', 'like', 'my', 'dog'] },
           ],
+          constructions: [
+            { id: 'modals', title: 'Модальные глаголы', form: 'can / could / must + глагол без to', explanation: 'Модальные глаголы выражают умение и долг. После них начальная форма без to.', exampleEn: 'You should rest.', exampleRu: 'Тебе стоит отдохнуть.', sentences: [0] },
+          ],
           hints: [
             { token: 'dog', lexemeId: 11, lemma: 'dog', pos: 'noun', translations: ['собака'], ipa: 'dɔɡ', target: true },
             { token: 'run', lexemeId: 12, lemma: 'run', pos: 'verb', translations: ['бежать'], target: true },

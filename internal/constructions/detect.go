@@ -50,6 +50,12 @@ var irregularParticiples = map[string]bool{
 
 var perfectAux = []string{"have", "has", "i've", "you've", "we've", "they've", "he's", "she's", "it's", "haven't", "hasn't"}
 
+var modalWords = []string{"may", "might", "would", "could", "should", "must", "can", "will", "shall", "wouldn't", "couldn't", "shouldn't", "mustn't", "won't", "can't"}
+
+// askVerbs — слова перед if, когда это «ли» в косвенном вопросе (wonder if, asked if), а не условие.
+var askVerbs = []string{"wonder", "wondered", "wonders", "ask", "asked", "asks", "asking", "know", "knew", "knows", "see", "saw",
+	"check", "checked", "tell", "told", "doubt", "sure", "unsure", "wondering", "understand", "remember", "learn", "find"}
+
 // perfectGap — слова, которые могут стоять между have и причастием.
 var perfectGap = []string{"not", "never", "already", "just", "ever", "yet", "still", "also"}
 
@@ -73,6 +79,10 @@ func isParticiple(w string) bool {
 func presentPerfect(l []string) bool {
 	for i, w := range l {
 		if !slices.Contains(perfectAux, w) {
+			continue
+		}
+		// После модального have — часть модальной конструкции (may have seen), а не Present Perfect.
+		if i > 0 && slices.Contains(modalWords, l[i-1]) {
 			continue
 		}
 		// «he's» и «it's» значат is/has: берём только если дальше стоит однозначное причастие (been, gone…), не -ed.
@@ -118,10 +128,20 @@ func conditional(l []string, main []string) bool {
 	if ifAt < 0 {
 		return false
 	}
-	for _, w := range l[ifAt+1:] {
-		if slices.Contains(main, w) {
-			return true
+	for _, w := range l[max(0, ifAt-3):ifAt] { // «asked Tom if…»: ask-слово за пару слов до if
+		if slices.Contains(askVerbs, w) {
+			return false
 		}
+	}
+	for j, w := range l[ifAt+1:] {
+		if !slices.Contains(main, w) {
+			continue
+		}
+		// would have — третье условное (If I had known, I would have come): не второе.
+		if next := ifAt + 1 + j + 1; (w == "would" || w == "wouldn't") && next < len(l) && l[next] == "have" {
+			return false
+		}
+		return true
 	}
 	return false
 }

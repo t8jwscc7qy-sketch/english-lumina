@@ -59,6 +59,10 @@ func TestDetectNegative(t *testing.T) {
 		{"If it rains, we would stay home.", FirstConditional},
 		{"If it rains, we will stay home.", SecondConditional},
 		{"She can run.", ThereIs},
+		{"He may have seen it.", PresentPerfect},        // модальный глагол + have
+		{"I wonder if he will come.", FirstConditional}, // «ли» в косвенном вопросе
+		{"I asked Tom if he would go.", SecondConditional},
+		{"If I had known, I would have come.", SecondConditional}, // третье условное
 	}
 	for _, c := range cases {
 		if got := ids(c.text); slices.Contains(got, c.not) {

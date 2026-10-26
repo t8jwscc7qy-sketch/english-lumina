@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { errorResponse, jsonResponse, renderAt } from '@/test/render'
@@ -212,5 +212,41 @@ describe('ReadPage: исправления после ревью', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('region', { name: 'Слово dog' })).not.toBeInTheDocument()
     await waitFor(() => expect(document.activeElement?.getAttribute('data-word')).toBe('dog'))
+  })
+})
+
+describe('ReadPage: конструкции', () => {
+  it('«Встретилось»: кнопки конструкций, пояснение с примером из текста и ссылкой на шпаргалку', async () => {
+    stub(() => jsonResponse(200, TEXT))
+    const user = userEvent.setup()
+    render()
+    expect(await screen.findByText('Встретилось:')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: /Конструкция/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Past Simple' }))
+    const panel = screen.getByRole('region', { name: 'Конструкция: Past Simple' })
+    expect(panel).toHaveTextContent('Законченное действие в прошлом.')
+    expect(panel).toHaveTextContent('I like my dog.') // предложение с номером 1 из этого текста
+    expect(panel).toHaveTextContent('She visited her aunt.')
+    expect(screen.getByRole('link', { name: 'Шпаргалка по теме' })).toHaveAttribute('href', '/sheets/irregular-verbs')
+    await user.click(screen.getByRole('button', { name: 'Модальные глаголы' }))
+    expect(screen.getByRole('region', { name: 'Конструкция: Модальные глаголы' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Шпаргалка по теме' })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+  })
+
+  it('нет конструкций — блока «Встретилось» нет', async () => {
+    stub(() => jsonResponse(200, { ...TEXT, constructions: [] }))
+    render()
+    await screen.findByText(/Понимание этого текста/)
+    expect(screen.queryByText('Встретилось:')).not.toBeInTheDocument()
+  })
+
+  it('«Закрыть» убирает пояснение', async () => {
+    stub(() => jsonResponse(200, TEXT))
+    const user = userEvent.setup()
+    render()
+    await user.click(await screen.findByRole('button', { name: 'Модальные глаголы' }))
+    await user.click(within(screen.getByRole('region', { name: 'Конструкция: Модальные глаголы' })).getByRole('button', { name: 'Закрыть' }))
+    expect(screen.queryByRole('region', { name: /Конструкция/ })).not.toBeInTheDocument()
   })
 })

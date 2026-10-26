@@ -51,6 +51,16 @@ test.describe('чтение и слушание', () => {
     await expect(page).toHaveURL(/\/read$/)
   })
 
+  test('конструкции: «Встретилось» открывает короткое пояснение', async ({ page }) => {
+    await mockApi(page, { loggedIn: true })
+    await page.goto('/read')
+    await page.getByRole('button', { name: 'Модальные глаголы' }).click()
+    const panel = page.getByRole('region', { name: 'Конструкция: Модальные глаголы' })
+    await expect(panel).toContainText('После них начальная форма без to.')
+    await expect(panel).toContainText("The dog can't run fast.")
+    await page.screenshot({ path: 'test-results/screens/read-construction.png' })
+  })
+
   test('клавиатура: слово нажимается Пробелом', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
     await page.goto('/read')
