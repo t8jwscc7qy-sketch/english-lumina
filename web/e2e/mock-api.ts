@@ -245,6 +245,10 @@ export type LearnOpts = {
   introduced?: unknown[]
   placed?: unknown[]
   prefsPuts?: unknown[]
+  /** Слов известно «Привалу» (по умолчанию 4: закрыт). */
+  campWords?: number
+  /** Сюда складываются запросы упражнений с mode=camp. */
+  campRequests?: number[]
 }
 
 export async function mockApi(
@@ -436,6 +440,10 @@ export async function mockApi(
       return route.fulfill({ json: { topics: [...ratings.values()] } })
     }
     if (path.endsWith('/exercises/next')) {
+      if (new URL(route.request().url()).searchParams.get('mode') === 'camp') {
+        opts.learn?.campRequests?.push(1)
+        if ((opts.learn?.campWords ?? 4) < 50) return route.fulfill(apiError(404, 'camp_closed', 'Привал откроется, когда ты изучишь больше слов'))
+      }
       if (ex.none || exQueue.length === 0) return route.fulfill(apiError(404, 'no_exercise', 'Подходящих упражнений пока нет'))
       return route.fulfill({ json: publicExercise(exQueue[0]) })
     }
@@ -510,6 +518,7 @@ export async function mockApi(
       json: {
         learned: 3, introduced: 2, knownAtStart: 1, newToday: opts.learn?.exhausted ? 5 : 1, limit: 5, remaining: opts.learn?.exhausted ? 0 : 4,
         reason: learnReason, mode: 'auto', perDay: 12, kbReady: opts.learn !== undefined,
+        campWords: opts.learn?.campWords ?? 4, campMinWords: 50, campOpen: (opts.learn?.campWords ?? 4) >= 50,
       },
     }),
   )

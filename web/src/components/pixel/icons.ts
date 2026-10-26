@@ -9,6 +9,7 @@ export type IconName =
   | 'progress'
   | 'settings'
   | 'sources'
+  | 'camp'
 
 export const ICON_SIZE = 12
 
@@ -111,6 +112,20 @@ const ROWS: Record<IconName, string[]> = {
     '.XX.XXXX.XX.',
     '.X..XXXX..X.',
     '....XXXX....',
+  ],
+  camp: [
+    '.....XX.....',
+    '....XXXX....',
+    '...XXXXXX...',
+    '..XXXXXXXX..',
+    '.XXXXXXXXXX.',
+    'XXXXX..XXXXX',
+    'XXXX....XXXX',
+    'XXX......XXX',
+    'XXX......XXX',
+    'XX........XX',
+    'X..........X',
+    '............',
   ],
   sources: [
     '.XXXXXXX....',
