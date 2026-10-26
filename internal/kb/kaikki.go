@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 // Translation — перевод слова на другой язык: Code — код языка Викисловаря (ru), Sense — значение словами.
@@ -72,8 +74,12 @@ func (f *flexInt) UnmarshalJSON(b []byte) error {
 }
 
 type rawLink struct {
-	Word string `json:"word"`
+	Word string   `json:"word"`
+	Tags []string `json:"tags"`
 }
+
+// skipLinkTags — пометки связей (синонимов и антонимов), с которыми слово не берётся: грубое, просторечное, устаревшее.
+var skipLinkTags = []string{"vulgar", "offensive", "derogatory", "slang", "archaic", "obsolete", "dated", "dialectal", "nonstandard", "rare"}
 
 type rawTranslation struct {
 	Code  string   `json:"code"`
@@ -128,9 +134,10 @@ func toTranslations(in []rawTranslation) []Translation {
 
 func appendLinks(dst []string, in []rawLink) []string {
 	for _, l := range in {
-		if l.Word != "" {
-			dst = append(dst, l.Word)
+		if l.Word == "" || slices.ContainsFunc(l.Tags, func(t string) bool { return slices.Contains(skipLinkTags, strings.ToLower(t)) }) {
+			continue
 		}
+		dst = append(dst, l.Word)
 	}
 	return dst
 }
@@ -152,8 +159,11 @@ func ParseEntry(line []byte) (Entry, error) {
 			glosses = s.RawGlosses // у части записей чистых значений нет
 		}
 		e.Senses = append(e.Senses, Sense{Glosses: glosses, Tags: s.Tags, Translations: toTranslations(s.Translations)})
-		e.Synonyms = appendLinks(e.Synonyms, s.Synonyms)
-		e.Antonyms = appendLinks(e.Antonyms, s.Antonyms)
+		if !slices.ContainsFunc(s.Tags, func(t string) bool { return slices.Contains(skipLinkTags, strings.ToLower(t)) }) {
+			// связи значений с пометкой «грубое», «просторечное», «устаревшее» не берём: «suck» у «blow» не синоним
+			e.Synonyms = appendLinks(e.Synonyms, s.Synonyms)
+			e.Antonyms = appendLinks(e.Antonyms, s.Antonyms)
+		}
 	}
 	for _, s := range r.Sounds {
 		e.Sounds = append(e.Sounds, Sound(s))

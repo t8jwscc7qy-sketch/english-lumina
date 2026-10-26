@@ -179,3 +179,28 @@ func TestParseEntryEtymologyNumberAsString(t *testing.T) {
 		}
 	}
 }
+
+func TestParseEntrySkipsVulgarAndArchaicLinks(t *testing.T) {
+	line := `{"word":"blow","pos":"verb","lang_code":"en","synonyms":[{"word":"puff"},{"word":"suck","tags":["vulgar","slang"]},{"word":"blowen","tags":["archaic"]},{"word":"gust","tags":["figuratively"]}],
+	"senses":[{"glosses":["x"],"antonyms":[{"word":"suck in","tags":["offensive"]},{"word":"inhale"}]}]}`
+	e, err := ParseEntry([]byte(line))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(e.Synonyms, []string{"puff", "gust"}) || !slices.Equal(e.Antonyms, []string{"inhale"}) {
+		t.Fatalf("синонимы %v, антонимы %v: грубые и устаревшие не нужны", e.Synonyms, e.Antonyms)
+	}
+}
+
+func TestParseEntrySkipsLinksOfVulgarSenses(t *testing.T) {
+	line := `{"word":"blow","pos":"verb","lang_code":"en","senses":[
+	{"glosses":["To exhale."],"synonyms":[{"word":"puff"}]},
+	{"glosses":["To perform oral sex."],"tags":["vulgar","slang"],"synonyms":[{"word":"suck"}],"antonyms":[{"word":"nothing"}]}]}`
+	e, err := ParseEntry([]byte(line))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(e.Synonyms, []string{"puff"}) || len(e.Antonyms) != 0 {
+		t.Fatalf("синонимы %v, антонимы %v: связи грубых значений не нужны", e.Synonyms, e.Antonyms)
+	}
+}
