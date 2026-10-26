@@ -3,6 +3,7 @@ package tatoebaaudio
 import (
 	"context"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -27,11 +28,12 @@ func TestParseKeepsOnlyAllowedLicenses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 3 {
-		t.Fatalf("записей %d, ждали 3 (CC BY 4.0, CC0, CC BY-SA 4.0): %+v", len(rows), rows)
+	if len(rows) != 4 {
+		t.Fatalf("записей %d, ждали 4 (CC BY 4.0, CC BY-NC-ND 3.0, CC0, CC BY-SA 4.0): %+v", len(rows), rows)
 	}
 	want := []Row{
 		{SentenceID: 1, AudioID: 100, Username: "alice", License: "CC BY 4.0", AttributionURL: "https://example.org/alice"},
+		{SentenceID: 2, AudioID: 101, Username: "bob", License: "CC BY-NC-ND 3.0"},
 		{SentenceID: 4, AudioID: 103, Username: "dave", License: "CC0 1.0"},
 		{SentenceID: 5, AudioID: 104, Username: "erin", License: "CC BY-SA 4.0"},
 	}
@@ -53,7 +55,7 @@ func TestParseLine(t *testing.T) {
 		}
 	}
 	// Не разрешённые лицензии — не ошибка, а пропуск.
-	for _, lic := range []string{"CC BY-NC 4.0", "CC BY-NC-ND 3.0", "", `\N`, "Public domain"} {
+	for _, lic := range []string{"", `\N`, "Public domain", "CC BY-ND 4.0"} {
 		if _, ok, err := parseLine("1\t2\tbob\t" + lic); ok || err != nil {
 			t.Errorf("лицензия %q: ok=%v err=%v, ждали пропуск", lic, ok, err)
 		}
@@ -71,9 +73,15 @@ func TestDescribeNamesLicensePolicy(t *testing.T) {
 	if info.Name != "tatoeba-audio" || !strings.Contains(info.License, "CC BY") || !strings.Contains(info.Attribution, "Tatoeba") {
 		t.Fatalf("%+v", info)
 	}
-	for _, l := range AllowedLicenses {
+	for _, l := range OpenLicenses {
 		if strings.Contains(l, "NC") || strings.Contains(l, "ND") {
-			t.Fatalf("в списке разрешённых не должно быть NC и ND: %s", l)
+			t.Fatalf("в открытых лицензиях не должно быть NC и ND: %s", l)
 		}
+	}
+	if len(ServedLicenses(false)) != len(OpenLicenses) || len(ServedLicenses(true)) != len(AllowedLicenses()) {
+		t.Fatal("настройка AUDIO_NONCOMMERCIAL выбирает между открытыми и всеми лицензиями")
+	}
+	if slices.Contains(ServedLicenses(false), "CC BY-NC-ND 3.0") || !slices.Contains(ServedLicenses(true), "CC BY-NC-ND 3.0") {
+		t.Fatal("NC-ND отдаётся только при включённой настройке")
 	}
 }

@@ -42,7 +42,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           httpapi.NewHandler(pool, httpapi.NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now)),
+		Handler:           httpapi.NewHandler(pool, httpapi.NewPgStore(pool), auth.NewThrottle(5, time.Minute, time.Now), httpapi.WithNonCommercialAudio(cfg.AudioNonCommercial)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

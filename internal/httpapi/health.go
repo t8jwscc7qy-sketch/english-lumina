@@ -10,6 +10,7 @@ import (
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/auth"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sources/tatoebaaudio"
 )
 
 // Pinger проверяет доступность базы данных (его реализует *pgxpool.Pool).
@@ -20,7 +21,22 @@ type Pinger interface {
 const pingTimeout = 2 * time.Second
 
 // NewHandler собирает маршруты сервера: /health открыт, /api/auth/* описан в api/openapi.yaml.
-func NewHandler(db Pinger, store AuthStore, throttle *auth.Throttle) http.Handler {
+// Option — необязательная настройка сервера.
+type Option func()
+
+// WithNonCommercialAudio включает (или выключает) озвучку Tatoeba под некоммерческими лицензиями (CC BY-NC, CC BY-NC-ND):
+// для личного некоммерческого проекта включена, для коммерческого её нужно выключить.
+func WithNonCommercialAudio(on bool) Option {
+	return func() {
+		l := tatoebaaudio.ServedLicenses(on)
+		servedAudioLicenses.Store(&l)
+	}
+}
+
+func NewHandler(db Pinger, store AuthStore, throttle *auth.Throttle, opts ...Option) http.Handler {
+	for _, o := range opts {
+		o()
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", health(db))
 	return api.HandlerWithOptions(newAuthServer(store, throttle), api.StdHTTPServerOptions{

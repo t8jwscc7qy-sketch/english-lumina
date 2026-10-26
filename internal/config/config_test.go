@@ -28,3 +28,20 @@ func TestLoadHTTPAddrFromEnv(t *testing.T) {
 		t.Fatalf("HTTPAddr = %q", cfg.HTTPAddr)
 	}
 }
+
+func TestAudioNonCommercialDefaultsToOnAndCanBeSwitchedOff(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://x")
+	t.Setenv("AUDIO_NONCOMMERCIAL", "")
+	cfg, err := Load()
+	if err != nil || !cfg.AudioNonCommercial {
+		t.Fatalf("по умолчанию включено: %+v %v", cfg, err)
+	}
+	t.Setenv("AUDIO_NONCOMMERCIAL", "false")
+	if cfg, _ := Load(); cfg.AudioNonCommercial {
+		t.Fatal("false выключает озвучку NC/ND")
+	}
+	t.Setenv("AUDIO_NONCOMMERCIAL", "true")
+	if cfg, _ := Load(); !cfg.AudioNonCommercial {
+		t.Fatal("true включает")
+	}
+}

@@ -66,3 +66,38 @@ func itoa(v int64) string {
 	}
 	return string(b)
 }
+
+func TestNonCommercialAudioSwitch(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	for w := 0; w < 6; w++ {
+		for s := 0; s < 3; s++ {
+			tid := int64(w*10+s+1) + 1000
+			e.store.audio = append(e.store.audio, db.SentenceAudioForRow{SentenceTatoebaID: tid, AudioID: tid * 10, Username: "bob", License: "CC BY-NC-ND 3.0"})
+		}
+	}
+	count := func() int {
+		text, code, body := nextText(t, e, token, "?new=1")
+		if code != http.StatusOK {
+			t.Fatalf("%d %s", code, body)
+		}
+		n := 0
+		for _, s := range text.Sentences {
+			if s.Audio != nil {
+				n++
+				if s.Audio.License != "CC BY-NC-ND 3.0" || s.Audio.Author != "bob" {
+					t.Fatalf("лицензия и автор записи показываются: %+v", s.Audio)
+				}
+			}
+		}
+		return n
+	}
+	t.Cleanup(func() { WithNonCommercialAudio(false)() })
+	WithNonCommercialAudio(false)()
+	if n := count(); n != 0 {
+		t.Fatalf("при AUDIO_NONCOMMERCIAL=false записи NC-ND не отдаются: %d", n)
+	}
+	WithNonCommercialAudio(true)()
+	if n := count(); n == 0 {
+		t.Fatal("при включённой настройке записи NC-ND отдаются")
+	}
+}

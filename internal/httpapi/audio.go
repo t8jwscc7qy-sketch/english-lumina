@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
@@ -13,6 +14,16 @@ import (
 // tatoebaAudioURL — адрес записи на tatoeba.org: файл не храним, браузер берёт его оттуда.
 const tatoebaAudioURL = "https://tatoeba.org/audio/download/%d"
 
+// Лицензии записей, которые сервер отдаёт; меняются при сборке сервера (WithNonCommercialAudio). По умолчанию открытые.
+var servedAudioLicenses atomic.Pointer[[]string]
+
+func audioLicenses() []string {
+	if l := servedAudioLicenses.Load(); l != nil {
+		return *l
+	}
+	return tatoebaaudio.OpenLicenses
+}
+
 // audioFor возвращает живые записи предложений Tatoeba по их номерам (разрешённые лицензии). Озвучка необязательна:
 // ошибка чтения пишется в журнал, а ответ остаётся без звука (проигрыватель берёт синтез речи).
 func audioFor(ctx context.Context, store AuthStore, tatoebaIDs []int64) map[int64]api.SentenceAudio {
@@ -20,7 +31,7 @@ func audioFor(ctx context.Context, store AuthStore, tatoebaIDs []int64) map[int6
 	if len(tatoebaIDs) == 0 {
 		return out
 	}
-	rows, err := store.SentenceAudioFor(ctx, db.SentenceAudioForParams{Ids: tatoebaIDs, Licenses: tatoebaaudio.AllowedLicenses})
+	rows, err := store.SentenceAudioFor(ctx, db.SentenceAudioForParams{Ids: tatoebaIDs, Licenses: audioLicenses()})
 	if err != nil {
 		slog.Warn("озвучка недоступна", "err", err)
 		return out

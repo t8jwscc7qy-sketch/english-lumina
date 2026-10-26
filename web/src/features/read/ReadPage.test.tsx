@@ -315,9 +315,9 @@ describe('ReadPage: живая озвучка', () => {
     expect(await screen.findByRole('button', { name: 'Прослушать предложение 1' })).toHaveTextContent('▶ Запись')
     expect(screen.getByRole('button', { name: 'Прослушать предложение 2' })).toHaveTextContent('▶ Голос')
     await user.click(screen.getByText('Источники предложений'))
-    expect(screen.getByText(/озвучка:/)).toBeInTheDocument()
+    expect(screen.getAllByText(/озвучка:/).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'alice' })).toHaveAttribute('href', 'https://example.org/alice')
-    expect(screen.getByText(/CC BY 4\.0/)).toBeInTheDocument()
+    expect(screen.getAllByText(/CC BY 4\.0/)).toHaveLength(2) // под предложением и в источниках
   })
 
   it('нет ни синтеза, ни записи — кнопок звука на предложениях нет', async () => {
@@ -325,5 +325,15 @@ describe('ReadPage: живая озвучка', () => {
     render()
     await screen.findByText(/Понимание этого текста/)
     expect(screen.queryByRole('button', { name: /Прослушать предложение/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('ReadPage: автор записи рядом с плеером', () => {
+  it('под предложением с записью видны автор и лицензия', async () => {
+    vi.stubGlobal('Audio', class { play() { return Promise.resolve() } })
+    const withAudio = { ...TEXT, sentences: [{ ...TEXT.sentences[0], audio: { url: 'https://tatoeba.org/audio/download/5', author: 'bob', license: 'CC BY-NC-ND 3.0' } }, TEXT.sentences[1]] }
+    stub(() => jsonResponse(200, withAudio))
+    render()
+    expect(await screen.findByText('озвучка: bob, CC BY-NC-ND 3.0')).toBeInTheDocument()
   })
 })

@@ -63,6 +63,9 @@ export function TextView({ sentences, hints, selected, onPick, playing, showAllT
                   {s.audio ? '▶ Запись' : '▶ Голос'}
                 </button>
               )}
+              {onPlay && s.audio && (
+                <span className="text-xs text-muted-foreground">{`озвучка: ${s.audio.author}, ${s.audio.license}`}</span>
+              )}
               <button type="button" aria-expanded={shown} onClick={() => toggle(i)} className="text-sm underline underline-offset-4">
                 {shown ? 'Скрыть перевод' : 'Перевод'}
               </button>

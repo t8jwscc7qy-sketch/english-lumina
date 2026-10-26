@@ -32,15 +32,33 @@ const (
 	maxFileSize = 60 << 20 // файл ~6 МБ
 	maxCSVBytes = 200 << 20
 
-	license     = "У каждой записи своя лицензия, выбранная автором записи; используются только CC BY, CC BY-SA и CC0 (записи с NC, ND или без лицензии не берутся). Нужно указывать автора записи."
+	license     = "У каждой записи своя лицензия, выбранная автором записи (CC BY, CC BY-SA, CC0 и для личного некоммерческого использования CC BY-NC и CC BY-NC-ND); записи без лицензии не берутся. Нужно указывать автора записи и лицензию. Какие лицензии показывать, решает настройка сервера AUDIO_NONCOMMERCIAL."
 	attribution = "Озвучка предложений: Tatoeba (tatoeba.org); автор и лицензия каждой записи сохранены и показываются рядом с воспроизведением."
 
 	maxUserLen = 64
 	maxLicLen  = 32
 )
 
-// AllowedLicenses — лицензии записей, которые мы используем. Изменение списка требует нового импорта.
-var AllowedLicenses = []string{"CC BY 4.0", "CC BY 3.0", "CC BY-SA 4.0", "CC BY-SA 3.0", "CC0 1.0"}
+// OpenLicenses — открытые лицензии записей: можно использовать и в коммерческом проекте с указанием автора.
+var OpenLicenses = []string{"CC BY 4.0", "CC BY 3.0", "CC BY-SA 4.0", "CC BY-SA 3.0", "CC0 1.0"}
+
+// NonCommercialLicenses — лицензии с запретом коммерческого использования (и переделки). В личном некоммерческом проекте
+// записи проигрываются без изменений с указанием автора; при коммерческом использовании их нужно отключить настройкой
+// сервера AUDIO_NONCOMMERCIAL=false (повторный импорт не нужен).
+var NonCommercialLicenses = []string{"CC BY-NC-ND 3.0", "CC BY-NC-ND 4.0", "CC BY-NC 4.0", "CC BY-NC 3.0", "CC BY-NC-SA 4.0", "CC BY-NC-SA 3.0"}
+
+// AllowedLicenses — лицензии, которые загружает импорт: открытые и некоммерческие (какие из них показывать, решает сервер).
+func AllowedLicenses() []string {
+	return append(append([]string{}, OpenLicenses...), NonCommercialLicenses...)
+}
+
+// ServedLicenses — лицензии, записи которых сервер отдаёт: открытые и, если nonCommercial, некоммерческие.
+func ServedLicenses(nonCommercial bool) []string {
+	if nonCommercial {
+		return AllowedLicenses()
+	}
+	return append([]string{}, OpenLicenses...)
+}
 
 // Row — одна запись: предложение, запись, автор, лицензия и ссылка автора для атрибуции.
 type Row struct {
@@ -80,7 +98,7 @@ func (s *Source) Fetch(ctx context.Context, cacheDir string) (string, error) {
 }
 
 func allowed(lic string) bool {
-	for _, a := range AllowedLicenses {
+	for _, a := range AllowedLicenses() {
 		if lic == a {
 			return true
 		}

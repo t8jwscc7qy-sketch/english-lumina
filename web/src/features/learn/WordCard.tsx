@@ -101,6 +101,7 @@ export function WordCard({ word }: { word: LearnWord }) {
                   {ex.en.audio ? '▶ Запись' : '▶ Голос'}
                 </button>
               )}
+              {ex.en.audio && <span className="text-xs text-muted-foreground">{`озвучка: ${ex.en.audio.author}, ${ex.en.audio.license}`}</span>}
               <p lang="ru" className="break-words text-muted-foreground">{ex.ru.text}</p>
               <TatoebaCredit en={ex.en} ru={ex.ru} />
             </li>
