@@ -263,3 +263,35 @@ func TestScoreTranslationsKaikkiSenseBeatsLegacySense(t *testing.T) {
 		t.Fatalf("номер значения от Kaikki важнее номера старого словаря: %v", texts(got))
 	}
 }
+
+func TestScoreTranslationsPrefersFirstGroupAndPosition(t *testing.T) {
+	// как в Викисловаре: основное значение — первая группа, внутри группы первое слово самое обычное
+	cands := []Candidate{
+		{Text: "ночь", Source: "kaikki", GroupNo: 2, GroupPos: 1},
+		{Text: "ночь", Source: "freedict", SenseNo: 1},
+		{Text: "утро", Source: "kaikki", GroupNo: 1, GroupPos: 1},
+		{Text: "утро", Source: "freedict", SenseNo: 1},
+	}
+	got := ScoreTranslations(cands, map[string]int{"ночь": 400, "утро": 600})
+	if got[0].Text != "утро" {
+		t.Fatalf("первая группа Викисловаря должна побеждать: %v", texts(got))
+	}
+	pos := ScoreTranslations([]Candidate{
+		{Text: "ааа", Source: "kaikki", GroupNo: 1, GroupPos: 3},
+		{Text: "ббб", Source: "kaikki", GroupNo: 1, GroupPos: 1},
+	}, nil)
+	if pos[0].Text != "ббб" {
+		t.Fatalf("первое слово группы лучше третьего: %v", texts(pos))
+	}
+}
+
+func TestScoreTranslationsRejectsMarkup(t *testing.T) {
+	cands := []Candidate{
+		{Text: "[[время]] до [[полдень|полудня]]", Source: "freedict"},
+		{Text: "время (до полудня)", Source: "freedict"},
+		{Text: "утро", Source: "freedict"},
+	}
+	if got := texts(ScoreTranslations(cands, nil)); !slices.Equal(got, []string{"утро"}) {
+		t.Fatalf("вики-разметка и скобки отбрасываются: %v", got)
+	}
+}

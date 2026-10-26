@@ -8,9 +8,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -34,6 +36,7 @@ func main() {
 func run(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("kb-build", flag.ContinueOnError)
 	dry := fs.Bool("dry-run", false, "только отчёт качества, без записи в базу")
+	explain := fs.String("explain", "", "слова через запятую (лемма/часть_речи): показать кандидатов-переводов с оценками, без записи")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -70,6 +73,14 @@ func run(ctx context.Context, args []string) error {
 		fmt.Fprintln(os.Stderr, "файла Kaikki нет (запустите kb-prepare kaikki): сборка только из прежних источников")
 	} else {
 		return err
+	}
+
+	if *explain != "" {
+		var r io.Reader
+		if in != nil {
+			r = in
+		}
+		return Explain(ctx, pool, r, strings.Split(*explain, ","), os.Stdout)
 	}
 
 	var rep kb.Report

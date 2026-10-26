@@ -1,6 +1,7 @@
 package kb
 
 import (
+	"math"
 	"slices"
 	"strings"
 	"unicode"
@@ -24,21 +25,31 @@ const (
 	rankCommon        = 20000
 	maxTranslationLen = 64
 	minExtraScore     = 2.0 // добавочный (второй) перевод берётся только с оценкой не ниже
+	// Порядок переводов в Викисловаре повторяет важность: первая группа — основное значение, первое слово группы —
+	// самое обычное. Это сильнее частоты русского слова (иначе «великий» обгоняет «большой»).
+	bonusGroup1    = 4.0
+	bonusGroup2    = 2.0
+	bonusGroup3    = 1.0
+	bonusPosFirst  = 1.5
+	bonusPosSecond = 0.5
 )
 
 var (
 	oldTags    = []string{"archaic", "obsolete", "dated", "historical"}
+	localTags  = []string{"dialectal", "regional"} // добавочным переводом не берутся
 	coarseTags = []string{"vulgar", "offensive", "derogatory"}
 	rareTags   = []string{"slang", "rare", "dialectal", "regional"}
 )
 
 // Candidate — перевод-кандидат из одного источника. SenseNo — номер значения слова (0, если неизвестен).
 type Candidate struct {
-	Text    string
-	Source  string
-	SenseNo int
-	Tags    []string
-	Sources []string // заполняется при слиянии одинаковых переводов
+	Text     string
+	Source   string
+	SenseNo  int // номер значения в kb_sense (0 — не известен); у переводов старого словаря нумерация своя
+	GroupNo  int // номер группы переводов в записи Kaikki (1 — первая, основное значение); 0 — нет
+	GroupPos int // место слова в группе (1 — первое)
+	Tags     []string
+	Sources  []string // заполняется при слиянии одинаковых переводов
 }
 
 // Scored — кандидат с оценкой и пометками (флаги штрафуемых и информационных тегов).
@@ -60,9 +71,19 @@ func NormalizeRu(s string) string {
 	return strings.ToLower(strings.Join(strings.Fields(s), " "))
 }
 
+// rankBonus — бонус за место русского слова в списке частот: плавно убывает с десятичным логарифмом места (место 100 даёт
+// 3, 1000 — 1,5, 10000 — 0), не выше 4 и не ниже −1; слова нет в списке — −penaltyNoRank.
+func rankBonus(rank int, ok bool) float64 {
+	if !ok || rank < 1 {
+		return -penaltyNoRank
+	}
+	return min(4, max(-1, 1.5*(4-math.Log10(float64(rank)))))
+}
+
 func foldYo(s string) string { return strings.ReplaceAll(s, "ё", "е") }
 
-// validRu: перевод годится — кириллица без латиницы, не длиннее maxTranslationLen символов.
+// validRu: перевод годится — только кириллица, пробел и дефис (вики-разметка, скобки, латиница отбрасываются), не длиннее
+// maxTranslationLen символов.
 func validRu(s string) bool {
 	if s == "" || utf8.RuneCountInString(s) > maxTranslationLen {
 		return false
@@ -70,10 +91,11 @@ func validRu(s string) bool {
 	cyrillic := false
 	for _, r := range s {
 		switch {
-		case r < 0x80 && unicode.IsLetter(r):
-			return false
 		case unicode.Is(unicode.Cyrillic, r):
 			cyrillic = true
+		case r == ' ' || r == '-':
+		default:
+			return false
 		}
 	}
 	return cyrillic
@@ -102,11 +124,14 @@ func bestRank(text string, ranks map[string]int) (int, bool) {
 }
 
 type group struct {
-	text    string
-	sources map[string]bool
-	tags    map[string]bool
-	senseNo int // номер значения от Kaikki; нумерация старого словаря с ней несравнима
-	otherNo int // номер значения от остальных источников (используется, только если у Kaikki номера нет)
+	text     string
+	sources  map[string]bool
+	tags     map[string]bool
+	senseNo  int // номер значения от Kaikki; нумерация старого словаря с ней несравнима
+	otherNo  int // номер значения от остальных источников (используется, только если у Kaikki номера нет)
+	groupNo  int // лучшая (наименьшая) группа переводов Kaikki и место слова в ней
+	groupPos int
+	bestTags map[string]bool // пометки лучшего вхождения: слово в чужом (грубом) значении не штрафуется за него
 }
 
 // ScoreTranslations оценивает кандидатов: одинаковые переводы из разных источников склеиваются, негодные (латиница,
@@ -126,8 +151,16 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 			groups[text] = g
 		}
 		g.sources[c.Source] = true
-		for _, t := range c.Tags {
-			g.tags[strings.ToLower(t)] = true
+		if c.GroupNo == 0 {
+			for _, t := range c.Tags {
+				g.tags[strings.ToLower(t)] = true
+			}
+		} else if g.groupNo == 0 || c.GroupNo < g.groupNo || (c.GroupNo == g.groupNo && c.GroupPos < g.groupPos) {
+			g.groupNo, g.groupPos = c.GroupNo, c.GroupPos
+			g.bestTags = map[string]bool{}
+			for _, t := range c.Tags {
+				g.bestTags[strings.ToLower(t)] = true
+			}
 		}
 		if c.SenseNo > 0 {
 			if c.Source == "kaikki" {
@@ -141,6 +174,9 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 	}
 	out := make([]Scored, 0, len(groups))
 	for _, g := range groups {
+		if g.groupNo > 0 {
+			g.tags = g.bestTags // есть вхождение с группой: пометки только лучшего
+		}
 		tags := make([]string, 0, len(g.tags))
 		for t := range g.tags {
 			tags = append(tags, t)
@@ -162,17 +198,26 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 		if len(sources) >= 2 {
 			score += bonusAgreement
 		}
-		if g.senseNo == 1 {
+		if g.senseNo == 1 && g.groupNo == 0 { // у переводов с группой порядок задаёт группа: номера значений Викисловаря не про важность
 			score += bonusFirstSense
 		}
-		switch r, ok := bestRank(g.text, ranks); {
-		case ok && r <= rankTop:
-			score += bonusRankTop
-		case ok && r <= rankCommon:
-			score += bonusRankCommon
-		default:
-			score -= penaltyNoRank
+		switch g.groupNo {
+		case 1:
+			score += bonusGroup1
+		case 2:
+			score += bonusGroup2
+		case 3:
+			score += bonusGroup3
 		}
+		if g.groupNo == 1 || g.groupNo == 2 {
+			switch g.groupPos {
+			case 1:
+				score += bonusPosFirst
+			case 2:
+				score += bonusPosSecond
+			}
+		}
+		score += rankBonus(bestRank(g.text, ranks))
 		var flags []string
 		if hasAny(tags, oldTags) {
 			score -= penaltyOld
@@ -209,7 +254,7 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 }
 
 // PickTranslations выбирает до max переводов: первый — лучший, следующие по возможности из других значений
-// (если значения известны), иначе по порядку оценок. Вторым и далее не берутся грубые и устаревшие переводы и переводы
+// (если значения известны), иначе по порядку оценок. Вторым и далее не берутся грубые, устаревшие, диалектные переводы и переводы
 // с оценкой ниже minExtraScore: единственный лучший перевод слова берётся даже с пометкой и низкой оценкой, добавочные нет.
 func PickTranslations(scored []Scored, max int) []Scored {
 	var picked []Scored
@@ -220,7 +265,7 @@ func PickTranslations(scored []Scored, max int) []Scored {
 			if used[i] {
 				continue
 			}
-			if len(picked) > 0 && (s.Score < minExtraScore || hasAny(s.Flags, oldTags) || hasAny(s.Flags, coarseTags)) {
+			if len(picked) > 0 && (s.Score < minExtraScore || hasAny(s.Flags, oldTags) || hasAny(s.Flags, coarseTags) || hasAny(s.Flags, localTags)) {
 				continue
 			}
 			if next < 0 {

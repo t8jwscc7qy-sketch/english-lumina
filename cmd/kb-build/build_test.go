@@ -357,3 +357,21 @@ func TestPrintReport(t *testing.T) {
 		}
 	}
 }
+
+func TestExplainShowsCandidates(t *testing.T) {
+	pool := testdb.Pool(t)
+	seed(t, pool)
+	var sb strings.Builder
+	if err := Explain(context.Background(), pool, sampleReader(t), []string{"dad/noun", "нет/noun"}, &sb); err != nil {
+		t.Fatal(err)
+	}
+	out := sb.String()
+	for _, want := range []string{"dad (noun)", "папа", "батюшка", "archaic", "нет (noun): в таблице lexemes нет такого слова"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("в выводе нет %q:\n%s", want, out)
+		}
+	}
+	if err := Explain(context.Background(), pool, nil, []string{"без-слэша"}, &sb); err == nil {
+		t.Fatal("слово задаётся как лемма/часть_речи")
+	}
+}

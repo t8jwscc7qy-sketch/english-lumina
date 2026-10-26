@@ -283,3 +283,84 @@ func TestAssembleTranslationSenseOnlyFromKaikki(t *testing.T) {
 		t.Fatal("у «папа» из Kaikki номер значения 1 сохраняется")
 	}
 }
+
+// Пояснение перевода у Kaikki — свободный текст; к значению оно привязывается по общим словам, а порядок групп
+// переводов задаёт основное значение.
+func TestAssembleTranslationGroupsAndSenseMatching(t *testing.T) {
+	entry := Entry{Word: "dog", Pos: "noun", LangCode: "en",
+		Senses: []Sense{
+			{Glosses: []string{"A mammal of the family Canidae:", "The species Canis familiaris."}},
+			{Glosses: []string{"A person:", "Someone who is cowardly, worthless, or morally reprehensible."}, Tags: []string{"derogatory"}},
+		},
+		Translations: []Translation{
+			{Code: "ru", Word: "соба́ка", Sense: "animal"},
+			{Code: "ru", Word: "пёс", Sense: "animal"},
+			{Code: "ru", Word: "соба́ка", Sense: "morally reprehensible person — see also scoundrel"},
+			{Code: "ru", Word: "су́ка", Sense: "morally reprehensible person — see also scoundrel"},
+		},
+	}
+	in := Inputs{Lexemes: []Lexeme{{1, "dog", "noun", "A1"}}, Entries: []Entry{entry}, RuRank: map[string]int{"собака": 300, "пёс": 2000, "сука": 3000}, SourceIDs: map[string]int64{"kaikki": 11}}
+	out, _ := Assemble(in)
+	if got := chosenTexts(out, 1); len(got) == 0 || got[0] != "собака" {
+		t.Fatalf("основной перевод dog: %v", got)
+	}
+	var suka *TranslationRow
+	for i, r := range out.Translations {
+		if r.Text == "сука" {
+			suka = &out.Translations[i]
+		}
+	}
+	if suka == nil || suka.SenseNo == nil || *suka.SenseNo != 2 || !slices.Contains(suka.Flags, "derogatory") {
+		t.Fatalf("«сука» привязана к значению 2 с пометкой derogatory: %+v", suka)
+	}
+}
+
+// У слова бывает несколько статей по этимологии: группы переводов нумеруются сквозь статьи по порядку этимологии,
+// иначе «первая группа» второй статьи (косяк рыб) обгоняет основное значение первой (школа).
+func TestAssembleEtymologyOrderDecidesGroups(t *testing.T) {
+	school := Entry{Word: "school", Pos: "noun", LangCode: "en", EtymNo: 1,
+		Senses:       []Sense{{Glosses: []string{"An institution dedicated to teaching and learning."}}},
+		Translations: []Translation{{Code: "ru", Word: "шко́ла", Sense: "an institution dedicated to teaching and learning"}},
+	}
+	fish := Entry{Word: "school", Pos: "noun", LangCode: "en", EtymNo: 2,
+		Senses:       []Sense{{Glosses: []string{"A group of fish or marine mammals."}}},
+		Translations: []Translation{{Code: "ru", Word: "косяк", Sense: "group of fish"}},
+	}
+	for _, order := range [][]Entry{{school, fish}, {fish, school}} {
+		in := Inputs{Lexemes: []Lexeme{{1, "school", "noun", "A1"}}, Entries: order, RuRank: map[string]int{"школа": 200, "косяк": 6000}, SourceIDs: map[string]int64{"kaikki": 11}}
+		out, _ := Assemble(in)
+		if got := chosenTexts(out, 1); len(got) == 0 || got[0] != "школа" {
+			t.Fatalf("основной перевод school: %v", got)
+		}
+	}
+}
+
+// Слабое (нечёткое) совпадение пояснения со значением не должно переносить на перевод пометки значения.
+func TestAssembleWeakSenseMatchDoesNotTransferTags(t *testing.T) {
+	entry := Entry{Word: "morning", Pos: "noun", LangCode: "en",
+		Senses: []Sense{
+			{Glosses: []string{"The early part of the day, especially from midnight to noon."}},
+			{Glosses: []string{"That part of the day from dawn until the main meal."}, Tags: []string{"obsolete"}},
+		},
+		Translations: []Translation{{Code: "ru", Word: "у́тро", Sense: "part of the day between dawn and midday"}},
+	}
+	in := Inputs{Lexemes: []Lexeme{{1, "morning", "noun", "A1"}}, Entries: []Entry{entry}, RuRank: map[string]int{"утро": 600}, SourceIDs: map[string]int64{"kaikki": 11}}
+	out, _ := Assemble(in)
+	for _, r := range out.Translations {
+		if r.Text == "утро" && (len(r.Flags) > 0 || r.SenseNo != nil) {
+			t.Fatalf("слабое совпадение не должно давать пометок и номера значения: %+v", r)
+		}
+	}
+}
+
+func TestDefaultOptions(t *testing.T) {
+	o := DefaultOptions()
+	if o.MinGolden < 0.9 || len(o.MinCoverage) != 6 {
+		t.Fatalf("%+v", o)
+	}
+	for level, v := range o.MinCoverage {
+		if v <= 0.5 || v >= 1 {
+			t.Errorf("порог %s = %v вне разумных границ", level, v)
+		}
+	}
+}

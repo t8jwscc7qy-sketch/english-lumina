@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"strconv"
 )
 
 // Translation — перевод слова на другой язык: Code — код языка Викисловаря (ru), Sense — значение словами.
@@ -41,12 +42,33 @@ type Entry struct {
 	Word         string
 	Pos          string
 	LangCode     string
+	EtymNo       int // номер статьи по этимологии (у слов с несколькими статьями); 0 — одна статья
 	Senses       []Sense
 	Sounds       []Sound
 	Forms        []Form
 	Translations []Translation
 	Synonyms     []string
 	Antonyms     []string
+}
+
+// flexInt читает целое из числа или из строки («2»); всё остальное даёт 0 (поле необязательное и в данных непостоянное).
+type flexInt int
+
+func (f *flexInt) UnmarshalJSON(b []byte) error {
+	var n int
+	if err := json.Unmarshal(b, &n); err == nil {
+		*f = flexInt(n)
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		if n, err := strconv.Atoi(s); err == nil {
+			*f = flexInt(n)
+			return nil
+		}
+	}
+	*f = 0
+	return nil
 }
 
 type rawLink struct {
@@ -84,6 +106,7 @@ type rawEntry struct {
 	Word         *string          `json:"word"`
 	Pos          string           `json:"pos"`
 	LangCode     string           `json:"lang_code"`
+	EtymNo       flexInt          `json:"etymology_number"`
 	Senses       []rawSense       `json:"senses"`
 	Sounds       []rawSound       `json:"sounds"`
 	Forms        []rawForm        `json:"forms"`
@@ -122,7 +145,7 @@ func ParseEntry(line []byte) (Entry, error) {
 	if r.Word == nil {
 		return Entry{}, errors.New("в записи нет поля word")
 	}
-	e := Entry{Word: *r.Word, Pos: r.Pos, LangCode: r.LangCode}
+	e := Entry{Word: *r.Word, Pos: r.Pos, LangCode: r.LangCode, EtymNo: int(r.EtymNo)}
 	for _, s := range r.Senses {
 		glosses := s.Glosses
 		if len(glosses) == 0 {

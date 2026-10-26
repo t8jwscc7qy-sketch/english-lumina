@@ -16,7 +16,7 @@ const (
 	// FileName — имя файла в кэше (.cache/sources/kaikki/).
 	FileName = "raw-wiktextract-data-" + DumpDate + ".jsonl.gz"
 	// FileSHA256 — закрепляется после первой загрузки (шаг «живой прогон» плана); пусто — загрузка отказывается.
-	FileSHA256 = ""
+	FileSHA256 = "244dcdc56868d81dc60e3820657780c06fac2729a90e2c5ffbfa13e6f9ecad1d"
 	// MaxFileSize — потолок размера файла (сейчас ≈ 2,9 ГБ).
 	MaxFileSize = 6 << 30
 

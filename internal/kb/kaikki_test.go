@@ -163,3 +163,19 @@ func TestWantedSkipsOtherLanguageAndUnknownWord(t *testing.T) {
 		t.Fatal("битая строка не отбирается")
 	}
 }
+
+func TestParseEntryEtymologyNumber(t *testing.T) {
+	e, err := ParseEntry([]byte(`{"word":"school","pos":"noun","lang_code":"en","etymology_number":2}`))
+	if err != nil || e.EtymNo != 2 {
+		t.Fatalf("%+v %v", e, err)
+	}
+}
+
+func TestParseEntryEtymologyNumberAsString(t *testing.T) {
+	for in, want := range map[string]int{`"2"`: 2, `2`: 2, `"x"`: 0, `null`: 0, `1.5`: 0} {
+		e, err := ParseEntry([]byte(`{"word":"w","pos":"noun","lang_code":"en","etymology_number":` + in + `}`))
+		if err != nil || e.EtymNo != want {
+			t.Errorf("%s: %+v %v, ждали %d", in, e, err, want)
+		}
+	}
+}

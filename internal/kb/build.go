@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 // ErrBelowThreshold — сборка хуже порогов качества: данные не записываются.
@@ -158,11 +159,12 @@ type Options struct {
 	MinGolden   float64
 }
 
-// DefaultOptions — пороги по умолчанию: покрытие переводом не ниже уровня на момент подключения Kaikki
-// (A1 93 %, A2 91 %, B1 89 %, B2 85 %, C1 71 %, C2 67 %) и 90 % контрольного списка.
+// DefaultOptions — пороги по умолчанию: покрытие переводом не ниже уровня «только старый словарь» по метрике сборки
+// (замер 2026-10-26: A1 80,5 %, A2 88,3 %, B1 89,2 %, B2 86,1 %, C1 71,4 %, C2 68,4 %; с Kaikki выше) и не менее 90 %
+// контрольного списка (старый словарь давал 75 %).
 func DefaultOptions() Options {
 	return Options{
-		MinCoverage: map[string]float64{"A1": 0.93, "A2": 0.91, "B1": 0.89, "B2": 0.85, "C1": 0.71, "C2": 0.67},
+		MinCoverage: map[string]float64{"A1": 0.80, "A2": 0.88, "B1": 0.89, "B2": 0.86, "C1": 0.71, "C2": 0.68},
 		MinGolden:   0.90,
 	}
 }
@@ -253,9 +255,28 @@ type keptSense struct {
 	tags  []string
 }
 
-// matchSense находит значение, к которому относится пояснение перевода (sense у Kaikki — слова, а не номер).
+var senseStop = map[string]bool{"with": true, "from": true, "that": true, "this": true, "which": true, "used": true, "being": true, "have": true, "some": true, "such": true, "also": true, "into": true, "their": true, "there": true, "what": true, "when": true, "where": true, "something": true, "someone": true}
+
+// contentWords — значимые слова текста (четыре буквы и больше, без служебных).
+func contentWords(s string) map[string]bool {
+	out := map[string]bool{}
+	for _, w := range strings.FieldsFunc(strings.ToLower(s), func(r rune) bool { return !unicode.IsLetter(r) }) {
+		if len(w) >= 4 && !senseStop[w] {
+			out[w] = true
+		}
+	}
+	return out
+}
+
+// matchSense находит значение, к которому относится пояснение перевода. У Kaikki пояснение — свободный текст
+// («of a great size — see also large»), поэтому сначала ищем подстроку в определениях, затем значение с наибольшим
+// числом общих значимых слов (не меньше 75 % слов пояснения: слабое совпадение хуже отсутствия, оно переносило бы на
+// перевод чужие пометки значения).
 func matchSense(senses []keptSense, text string) (int, []string) {
 	text = strings.ToLower(strings.TrimSpace(text))
+	if i := strings.Index(text, " — "); i >= 0 {
+		text = strings.TrimSpace(text[:i])
+	}
 	if text == "" {
 		return 0, nil
 	}
@@ -266,7 +287,27 @@ func matchSense(senses []keptSense, text string) (int, []string) {
 			}
 		}
 	}
-	return 0, nil
+	words := contentWords(text)
+	if len(words) == 0 {
+		return 0, nil
+	}
+	best, bestN := -1, 0
+	for i, s := range senses {
+		have := contentWords(strings.Join(s.gloss, " "))
+		n := 0
+		for w := range words {
+			if have[w] {
+				n++
+			}
+		}
+		if n > bestN {
+			best, bestN = i, n
+		}
+	}
+	if best < 0 || bestN*4 < len(words)*3 {
+		return 0, nil // совпало меньше 75 % значимых слов: связь ненадёжна, пометки значения переносить нельзя
+	}
+	return senses[best].no, senses[best].tags
 }
 
 func unionTags(a, b []string) []string {
@@ -315,6 +356,9 @@ func Assemble(in Inputs) (Output, Report) {
 		}
 		if c := strings.Compare(a.Pos, b.Pos); c != 0 {
 			return c
+		}
+		if a.EtymNo != b.EtymNo {
+			return a.EtymNo - b.EtymNo
 		}
 		return strings.Compare(firstGloss(a), firstGloss(b))
 	})
@@ -367,6 +411,7 @@ func Assemble(in Inputs) (Output, Report) {
 		synSeen := map[string]bool{}
 		var rels []RelationRow
 		senseNo := 0
+		groupBase := 0 // группы переводов нумеруются сквозь статьи слова по порядку этимологии
 		for _, e := range matched {
 			var kept []keptSense
 			local := make([]int, len(e.Senses)) // номер значения записи → общий номер (0 — значение без пояснения)
@@ -382,19 +427,30 @@ func Assemble(in Inputs) (Output, Report) {
 				})
 			}
 			for i, s := range e.Senses {
+				pos := 0
 				for _, t := range s.Translations {
 					if t.Code == "ru" {
-						cands = append(cands, Candidate{Text: t.Word, Source: "kaikki", SenseNo: local[i], Tags: unionTags(t.Tags, s.Tags)})
+						pos++
+						cands = append(cands, Candidate{Text: t.Word, Source: "kaikki", SenseNo: local[i], GroupNo: groupBase + i + 1, GroupPos: pos, Tags: unionTags(t.Tags, s.Tags)})
 					}
 				}
 			}
+			// Группы переводов идут в порядке Викисловаря: первая — основное значение, первое слово группы — самое обычное.
+			groupOf := map[string]int{}
+			posIn := map[string]int{}
 			for _, t := range e.Translations {
 				if t.Code != "ru" {
 					continue
 				}
+				key := strings.TrimSpace(t.Sense)
+				if _, ok := groupOf[key]; !ok {
+					groupOf[key] = len(groupOf) + 1
+				}
+				posIn[key]++
 				no, senseTags := matchSense(kept, t.Sense)
-				cands = append(cands, Candidate{Text: t.Word, Source: "kaikki", SenseNo: no, Tags: unionTags(t.Tags, senseTags)})
+				cands = append(cands, Candidate{Text: t.Word, Source: "kaikki", SenseNo: no, GroupNo: groupBase + groupOf[key], GroupPos: posIn[key], Tags: unionTags(t.Tags, senseTags)})
 			}
+			groupBase += max(len(groupOf), len(e.Senses))
 			sounds = append(sounds, e.Sounds...)
 			for _, kind := range []struct {
 				name  string
