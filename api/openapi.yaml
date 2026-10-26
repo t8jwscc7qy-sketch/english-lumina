@@ -356,6 +356,96 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /api/v1/course:
+    get:
+      operationId: getCourse
+      summary: Путь — блоки и уроки курса с состоянием
+      description: >
+        Уроки курса по порядку: пройден (done), текущий (current — первый непройденный), закрыт (locked).
+        Прогресс считается из событий lesson.completed. next — текущий урок (нет, если курс пройден).
+      responses:
+        "200":
+          description: Путь
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoursePath"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/course/lesson:
+    post:
+      operationId: getLesson
+      summary: Урок целиком
+      description: >
+        Урок с новыми словами, текстом, вопросами, заданиями закрепления и словариком для подсказок. Без id —
+        текущий урок. Открыть можно пройденный или текущий урок; закрытый — 403 lesson_locked. Номер урока в теле,
+        не в пути: параметр пути заставил бы генератор добавить зависимость.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonRef"
+      responses:
+        "200":
+          description: Урок
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Урок ещё закрыт (lesson_locked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Такого урока нет или курс пройден (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/course/complete:
+    post:
+      operationId: completeLesson
+      summary: Отметить урок пройденным
+      description: >
+        Новые слова урока становятся словами в изучении (карточки повторения FSRS), пишется событие
+        lesson.completed. Повтор по ключу отдаёт прежний ответ; повторное прохождение уже пройденного урока
+        ничего не добавляет. Закрытый урок — 403 lesson_locked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteLessonRequest"
+      responses:
+        "200":
+          description: Итог урока
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompleteLessonResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Урок ещё закрыт (lesson_locked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Такого урока нет (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/v1/learn/introduce:
     post:
       operationId: introduceWords
@@ -902,6 +992,210 @@ components:
           type: integer
         reason:
           $ref: "#/components/schemas/LearnReason"
+    CoursePath:
+      type: object
+      required: [units]
+      properties:
+        units:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseUnit"
+        next:
+          $ref: "#/components/schemas/CourseLessonRef"
+    CourseUnit:
+      type: object
+      required: [unit, title, lessons]
+      properties:
+        unit:
+          type: integer
+        title:
+          type: string
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseLessonRef"
+    CourseLessonRef:
+      type: object
+      required: [id, title, number, unit, state, newWords]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        number:
+          type: integer
+          description: Номер урока в блоке, с 1
+        unit:
+          type: integer
+        state:
+          type: string
+          enum: [done, current, locked]
+        newWords:
+          type: integer
+    LessonRef:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 32
+    Lesson:
+      type: object
+      required: [id, title, number, unit, unitTitle, done, words, sentences, questions, drills, glossary]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        number:
+          type: integer
+        unit:
+          type: integer
+        unitTitle:
+          type: string
+        done:
+          type: boolean
+          description: Урок уже пройден (повторное прохождение)
+        words:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonWord"
+        sentences:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonSentence"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonQuestion"
+        drills:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonDrill"
+        note:
+          $ref: "#/components/schemas/LessonNote"
+        glossary:
+          type: object
+          description: Перевод каждой формы известных к этому уроку слов (ключ — форма в нижнем регистре)
+          additionalProperties:
+            type: string
+    LessonWord:
+      type: object
+      required: [lemma, pos, ru, forms]
+      properties:
+        lemma:
+          type: string
+        pos:
+          type: string
+        ru:
+          type: string
+        forms:
+          type: array
+          items:
+            type: string
+        example:
+          $ref: "#/components/schemas/LessonSentence"
+    LessonSentence:
+      type: object
+      required: [en, ru]
+      properties:
+        speaker:
+          type: string
+        en:
+          type: string
+        ru:
+          type: string
+    LessonQuestion:
+      type: object
+      required: [prompt, options, answer]
+      properties:
+        prompt:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        answer:
+          type: integer
+    LessonNote:
+      type: object
+      required: [title, text]
+      properties:
+        title:
+          type: string
+        text:
+          type: string
+    LessonDrill:
+      type: object
+      required: [kind, old]
+      properties:
+        kind:
+          type: string
+          description: "Вид задания: gap (слово в пропуск), order (собрать предложение), match (пары)"
+        old:
+          type: boolean
+          description: Слово из прошлых уроков
+        prompt:
+          type: string
+        text:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        tiles:
+          type: array
+          items:
+            type: string
+        answer:
+          type: string
+        pairs:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonPair"
+    LessonPair:
+      type: object
+      required: [en, ru]
+      properties:
+        en:
+          type: string
+        ru:
+          type: string
+    CompleteLessonRequest:
+      type: object
+      required: [lessonId, key, seconds]
+      properties:
+        lessonId:
+          type: string
+          maxLength: 32
+        key:
+          type: string
+          maxLength: 64
+          description: Ключ идемпотентности
+        seconds:
+          type: integer
+          minimum: 0
+          description: Сколько длился урок (обрезается до 3600)
+        mistakes:
+          type: integer
+          minimum: 0
+          description: Сколько ответов в уроке было неверными
+    CompleteLessonResponse:
+      type: object
+      required: [lessonId, newWords, cardsAdded, seconds, repeated]
+      properties:
+        lessonId:
+          type: string
+        newWords:
+          type: integer
+        cardsAdded:
+          type: integer
+        seconds:
+          type: integer
+        repeated:
+          type: boolean
+          description: Урок уже был пройден раньше
+        next:
+          $ref: "#/components/schemas/CourseLessonRef"
     IntroduceRequest:
       type: object
       required: [lexemeIds, key]
@@ -1979,7 +2273,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, no_words, no_text, camp_closed, limit_reached, already_answered, invalid_answer, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, no_words, no_text, camp_closed, limit_reached, already_answered, invalid_answer, lesson_locked, internal]
             message:
               type: string
               description: Текст для пользователя на русском
