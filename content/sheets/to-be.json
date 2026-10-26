@@ -1,0 +1,138 @@
+{
+  "id": "to-be",
+  "title": "Глагол to be",
+  "summary": "Когда нужно сказать «я есть, он есть»: в английском be нельзя пропустить.",
+  "level": "A1",
+  "tags": [
+    "глаголы",
+    "основы"
+  ],
+  "blocks": [
+    {
+      "type": "text",
+      "text": "Be — самый частый глагол. В настоящем времени у него три формы: am, is, are. Они меняются по лицу, а в речи обычно сокращаются."
+    },
+    {
+      "type": "table",
+      "title": "Настоящее время",
+      "columns": [
+        {
+          "title": "Лицо"
+        },
+        {
+          "title": "Утверждение"
+        },
+        {
+          "title": "Отрицание"
+        },
+        {
+          "title": "Вопрос"
+        }
+      ],
+      "rows": [
+        {
+          "cells": [
+            "I",
+            "I **am** (I'm)",
+            "I am not (I'm not)",
+            "**Am** I late?"
+          ]
+        },
+        {
+          "cells": [
+            "you",
+            "you **are** (you're)",
+            "you are not (aren't)",
+            "**Are** you ready?"
+          ]
+        },
+        {
+          "cells": [
+            "he / she / it",
+            "he **is** (he's)",
+            "he is not (isn't)",
+            "**Is** she here?"
+          ]
+        },
+        {
+          "cells": [
+            "we",
+            "we **are** (we're)",
+            "we are not (aren't)",
+            "**Are** we late?"
+          ]
+        },
+        {
+          "cells": [
+            "they",
+            "they **are** (they're)",
+            "they are not (aren't)",
+            "**Are** they home?"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tip",
+      "text": "Be нельзя опустить: не «I student», а «I am a student»."
+    },
+    {
+      "type": "text",
+      "text": "Краткий ответ повторяет be и не сокращается в утверждении: Yes, I am. No, I'm not. Не «Yes, I'm»."
+    },
+    {
+      "type": "text",
+      "text": "Прошедшее время: was для I, he, she, it; were для you, we, they. Вопрос: Were you there? Отрицание: wasn't, weren't."
+    },
+    {
+      "type": "mistakes",
+      "pairs": [
+        {
+          "wrong": "I am agree.",
+          "right": "I agree.",
+          "note": "agree — уже глагол, be перед ним не нужен."
+        },
+        {
+          "wrong": "He have a car.",
+          "right": "He has a car.",
+          "note": "это про have, не be: у he/she/it форма has."
+        },
+        {
+          "wrong": "I student.",
+          "right": "I am a student.",
+          "note": "be и артикль нельзя пропускать."
+        },
+        {
+          "wrong": "Yes, I'm.",
+          "right": "Yes, I am.",
+          "note": "в кратком утвердительном ответе be не сокращают."
+        }
+      ]
+    },
+    {
+      "type": "examples",
+      "examples": [
+        {
+          "en": "She **is** a doctor.",
+          "ru": "Она врач."
+        },
+        {
+          "en": "We **are** not tired.",
+          "ru": "Мы не устали."
+        },
+        {
+          "en": "**Are** you from Moscow?",
+          "ru": "Ты из Москвы?"
+        },
+        {
+          "en": "They **were** at home yesterday.",
+          "ru": "Вчера они были дома."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "собственные знания автора; сверить с CEFR-J Grammar Profile (A1)"
+  ],
+  "status": "draft"
+}
