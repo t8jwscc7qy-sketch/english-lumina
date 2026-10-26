@@ -1,7 +1,7 @@
 [
  {
   "id": "t200-001",
-  "title": "Потерянная кошка",
+  "title": "Кошка на машине",
   "band": 200,
   "targets": [
    {
@@ -15,81 +15,84 @@
    {
     "lemma": "car",
     "pos": "noun"
-   },
-   {
-    "lemma": "lost",
-    "pos": "adjective"
    }
   ],
   "sentences": [
    {
-    "en": "Anna had a cat.",
-    "ru": "У Анны была кошка."
+    "en": "Max had a car, and he left it in the street.",
+    "ru": "У Макса была машина, и он оставлял её на улице."
    },
    {
-    "en": "The cat's name was Max.",
-    "ru": "Кошку звали Макс."
+    "en": "One day, he saw a cat on the car.",
+    "ru": "Однажды он увидел на машине кошку."
    },
    {
-    "en": "One night, the cat was lost.",
-    "ru": "Однажды ночью кошка пропала."
+    "en": "\"Go away, cat!\" said Max.",
+    "ru": "«Уходи, кошка!» — сказал Макс."
    },
    {
-    "en": "Anna looked for the cat at home, but she did not find it.",
-    "ru": "Анна искала кошку дома, но не нашла."
+    "en": "The cat did not go. It looked at Max.",
+    "ru": "Кошка не ушла. Она смотрела на Макса."
    },
    {
-    "en": "She went out to the street.",
-    "ru": "Она вышла на улицу."
+    "en": "The day after, the cat was on the car again.",
+    "ru": "На следующий день кошка снова сидела на машине."
    },
    {
-    "en": "\"Did you see a cat?\" she asked a man.",
-    "ru": "«Вы не видели кошку?» — спросила она мужчину."
+    "en": "It was there all the time.",
+    "ru": "Она сидела там всё время."
    },
    {
-    "en": "\"No,\" said the man. \"Sorry.\"",
-    "ru": "«Нет, — сказал мужчина. — Простите.»"
+    "en": "Max did not like it, but he started to talk to the cat.",
+    "ru": "Максу это не нравилось, но он начал разговаривать с кошкой."
    },
    {
-    "en": "Anna felt bad.",
-    "ru": "Анне было плохо."
+    "en": "\"Hey, cat,\" he said. \"How are you?\"",
+    "ru": "«Привет, кошка, — говорил он. — Как дела?»"
    },
    {
-    "en": "Then she heard something.",
-    "ru": "Вдруг она что-то услышала."
+    "en": "One day, the cat was not there.",
+    "ru": "Однажды кошки там не было."
    },
    {
-    "en": "It was her cat! The cat was on a car in the street.",
-    "ru": "Это была её кошка! Кошка сидела на машине на улице."
+    "en": "Max looked up and down the street.",
+    "ru": "Макс посмотрел вдоль улицы в обе стороны."
    },
    {
-    "en": "Anna took the cat from the car and went home.",
-    "ru": "Анна сняла кошку с машины и пошла домой."
+    "en": "He felt bad. He never wanted a cat, but now he wanted to see this one.",
+    "ru": "Ему стало грустно. Он никогда не хотел кошку, но теперь хотел увидеть эту."
    },
    {
-    "en": "The cat was not lost now, and Anna loved her cat.",
-    "ru": "Кошка больше не была потеряна, и Анна любила свою кошку."
+    "en": "The day after, the cat came back.",
+    "ru": "На следующий день кошка вернулась."
+   },
+   {
+    "en": "Max looked at the cat. \"Stay,\" he said. \"You can have my car.\"",
+    "ru": "Макс посмотрел на кошку. «Оставайся, — сказал он. — Можешь взять мою машину.»"
    }
   ],
   "sources": [
    "автор: Claude, пакет авторских текстов 2"
   ],
   "names": [
-   "Anna",
    "Max"
   ]
  },
  {
   "id": "t200-002",
-  "title": "Билеты в кино",
+  "title": "Два кинотеатра",
   "band": 200,
   "targets": [
    {
-    "lemma": "movie",
+    "lemma": "cinema",
     "pos": "noun"
    },
    {
     "lemma": "ticket",
+    "pos": "noun"
+   },
+   {
+    "lemma": "movie",
     "pos": "noun"
    },
    {
@@ -99,55 +102,56 @@
   ],
   "sentences": [
    {
-    "en": "Tom and his friend wanted to see a movie.",
-    "ru": "Том и его друг хотели посмотреть фильм."
+    "en": "Tom wanted to see a movie with Kate.",
+    "ru": "Том хотел сходить с Кейт на фильм."
    },
    {
-    "en": "Tom went to the place to buy tickets.",
-    "ru": "Том пошёл туда, чтобы купить билеты."
+    "en": "He went to the cinema to buy two tickets.",
+    "ru": "Он пошёл в кинотеатр, чтобы купить два билета."
    },
    {
-    "en": "He gave the man some money, and he could buy the tickets.",
-    "ru": "Он дал мужчине деньги и смог купить билеты."
+    "en": "\"Two tickets for the movie, please,\" he said.",
+    "ru": "«Два билета на фильм, пожалуйста», — сказал он."
    },
    {
-    "en": "\"Two tickets, please,\" said Tom.",
-    "ru": "«Два билета, пожалуйста», — сказал Том."
+    "en": "He gave the man some money and took the tickets.",
+    "ru": "Он дал мужчине деньги и взял билеты."
    },
    {
-    "en": "After that, Tom called his friend.",
-    "ru": "После этого Том позвонил другу."
+    "en": "Then Tom called Kate. \"I have the tickets! Come after work.\"",
+    "ru": "Потом Том позвонил Кейт. «У меня есть билеты! Приходи после работы.»"
    },
    {
-    "en": "\"I have the tickets!\" he said.",
-    "ru": "«У меня есть билеты!» — сказал он."
+    "en": "After work, Tom was at the cinema, but Kate was not there.",
+    "ru": "После работы Том был у кинотеатра, но Кейт там не было."
    },
    {
-    "en": "\"Great!\" said his friend. \"I will be there.\"",
-    "ru": "«Отлично! — сказал друг. — Я буду там.»"
+    "en": "At last, Kate called. \"Tom, where are you? I am at the cinema!\"",
+    "ru": "Наконец позвонила Кейт. «Том, где ты? Я у кинотеатра!»"
    },
    {
-    "en": "But then Tom could not find the tickets.",
-    "ru": "Но потом Том не смог найти билеты."
+    "en": "\"I am at the cinema, too!\" said Tom. \"I do not see you.\"",
+    "ru": "«Я тоже у кинотеатра! — сказал Том. — Я тебя не вижу.»"
    },
    {
-    "en": "He looked and looked. At last, he found them.",
-    "ru": "Он искал и искал. Наконец он их нашёл."
+    "en": "Kate looked around. \"This is the other cinema!\" she said.",
+    "ru": "Кейт огляделась. «Это другой кинотеатр!» — сказала она."
    },
    {
-    "en": "They were here all the time!",
-    "ru": "Они были здесь всё время!"
+    "en": "Tom went to her. They had to buy two new tickets there.",
+    "ru": "Том пошёл к ней. Им пришлось купить там два новых билета."
    },
    {
-    "en": "The movie started, and Tom felt great.",
-    "ru": "Фильм начался, и Тому было отлично."
+    "en": "\"A long day,\" said Tom. \"But a good movie,\" said Kate.",
+    "ru": "«Длинный день», — сказал Том. «Зато хороший фильм», — сказала Кейт."
    }
   ],
   "sources": [
    "автор: Claude, пакет авторских текстов 2"
   ],
   "names": [
-   "Tom"
+   "Tom",
+   "Kate"
   ]
  },
  {
@@ -216,65 +220,78 @@
  },
  {
   "id": "t200-004",
-  "title": "К морю",
+  "title": "Бутылка",
   "band": 200,
   "targets": [
+   {
+    "lemma": "bottle",
+    "pos": "noun"
+   },
    {
     "lemma": "sea",
     "pos": "noun"
    },
    {
-    "lemma": "car",
+    "lemma": "letter",
     "pos": "noun"
-   },
-   {
-    "lemma": "swim",
-    "pos": "verb"
    }
   ],
   "sentences": [
    {
-    "en": "Max and his friend wanted to see the sea.",
-    "ru": "Макс и его друг хотели увидеть море."
+    "en": "Max went to the sea with his friend.",
+    "ru": "Макс поехал к морю с другом."
    },
    {
-    "en": "They took a car.",
-    "ru": "Они поехали на машине."
+    "en": "It was a great day.",
+    "ru": "Был чудесный день."
    },
    {
-    "en": "The way was long.",
-    "ru": "Дорога была долгой."
+    "en": "On the way down to the sea, Max saw a bottle.",
+    "ru": "По дороге к морю Макс увидел бутылку."
    },
    {
-    "en": "After a long time, they saw the sea.",
-    "ru": "Через долгое время они увидели море."
+    "en": "\"What is that?\" he said.",
+    "ru": "«Что это?» — сказал он."
    },
    {
-    "en": "It was big and great.",
-    "ru": "Оно было большое и прекрасное."
+    "en": "He took the bottle. There was a letter in it!",
+    "ru": "Он взял бутылку. В ней было письмо!"
    },
    {
-    "en": "\"I want to swim!\" said Max.",
-    "ru": "«Я хочу плавать!» — сказал Макс."
+    "en": "\"Look at it!\" said his friend.",
+    "ru": "«Посмотри!» — сказал друг."
    },
    {
-    "en": "His friend said, \"Me, too!\"",
-    "ru": "Его друг сказал: «И я!»"
+    "en": "Max looked at the letter. \"My name is Kate. I live here by the sea. Come and see me!\"",
+    "ru": "Макс посмотрел на письмо. «Меня зовут Кейт. Я живу здесь, у моря. Приходи ко мне!»"
    },
    {
-    "en": "They left the car and went down to the sea.",
-    "ru": "Они оставили машину и спустились к морю."
+    "en": "Max looked at his friend. \"Who is Kate?\" he asked.",
+    "ru": "Макс посмотрел на друга. «Кто такая Кейт?» — спросил он."
    },
    {
-    "en": "The sea was great, and they swam and swam.",
-    "ru": "Море было чудесное, и они плавали и плавали."
+    "en": "\"Let us find her!\" said his friend.",
+    "ru": "«Давай найдём её!» — сказал друг."
+   },
+   {
+    "en": "They looked and looked. At last, they saw a girl.",
+    "ru": "Они искали и искали. Наконец они увидели девочку."
+   },
+   {
+    "en": "\"Hey! I am Kate,\" she said. \"You found my bottle!\"",
+    "ru": "«Привет! Я Кейт, — сказала она. — Вы нашли мою бутылку!»"
+   },
+   {
+    "en": "Now they had a new friend.",
+    "ru": "Теперь у них была новая подруга."
    }
   ],
   "sources": [
    "автор: Claude, пакет авторских текстов 2"
   ],
   "names": [
-   "Max"
+   "Max",
+   "Kate"
   ]
  },
  {
