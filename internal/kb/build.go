@@ -234,6 +234,13 @@ func LegacyPos(pos string) string {
 	return ""
 }
 
+// skipFormTags — теги форм Викисловаря, которые в базу не берутся: служебные и устаревшие, диалектные, нестандартные.
+var skipFormTags = []string{"table-tags", "inflection-template", "class", "alternative", "archaic", "obsolete", "dated", "dialectal", "nonstandard", "rare", "misspelling", "proscribed", "eye-dialect"}
+
+func hasAnyTag(tags, set []string) bool {
+	return slices.ContainsFunc(tags, func(t string) bool { return slices.Contains(set, strings.ToLower(t)) })
+}
+
 var flagTags = []string{"archaic", "obsolete", "dated", "historical", "vulgar", "offensive", "derogatory", "slang", "rare", "dialectal", "regional", "informal"}
 
 func flagsOf(tags []string) []string {
@@ -462,7 +469,11 @@ func Assemble(in Inputs) (Output, Report) {
 						continue
 					}
 					synSeen[k] = true
-					rels = append(rels, RelationRow{LexemeID: lex.ID, Kind: kind.name, OtherLemma: w, OtherLexemeID: resolve(byLemma, w, lex)})
+					other := resolve(byLemma, w, lex)
+					if other == nil && in.EnCount[strings.ToLower(w)] == 0 {
+						continue // редкое слово вне нашего словаря и списка частот (диалектное, устаревшее)
+					}
+					rels = append(rels, RelationRow{LexemeID: lex.ID, Kind: kind.name, OtherLemma: w, OtherLexemeID: other})
 				}
 			}
 		}
@@ -523,7 +534,7 @@ func Assemble(in Inputs) (Output, Report) {
 		}
 		for _, e := range matched {
 			for _, f := range e.Forms {
-				if slices.Contains(f.Tags, "table-tags") || slices.Contains(f.Tags, "inflection-template") || slices.Contains(f.Tags, "class") {
+				if hasAnyTag(f.Tags, skipFormTags) {
 					continue
 				}
 				addForm(f.Form, strings.Join(f.Tags, ","))
@@ -537,7 +548,23 @@ func Assemble(in Inputs) (Output, Report) {
 			}
 		}
 
-		// Связи слов (до maxRelations каждого вида).
+		// Связи слов: самые частые первыми (слова нашего словаря в первую очередь), до maxRelations каждого вида.
+		slices.SortStableFunc(rels, func(a, b RelationRow) int {
+			if (a.OtherLexemeID != nil) != (b.OtherLexemeID != nil) {
+				if a.OtherLexemeID != nil {
+					return -1
+				}
+				return 1
+			}
+			ca, cb := in.EnCount[strings.ToLower(a.OtherLemma)], in.EnCount[strings.ToLower(b.OtherLemma)]
+			switch {
+			case ca > cb:
+				return -1
+			case ca < cb:
+				return 1
+			}
+			return strings.Compare(a.OtherLemma, b.OtherLemma)
+		})
 		perKind := map[string]int{}
 		for _, r := range rels {
 			if perKind[r.Kind] < maxRelations {

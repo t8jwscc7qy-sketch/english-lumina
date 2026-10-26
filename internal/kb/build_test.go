@@ -31,7 +31,7 @@ func fixtureInputs(t *testing.T) Inputs {
 		RuRank: map[string]int{"папа": 274, "батюшка": 30608, "одежда": 4303, "дуть": 4000, "сосать": 3000, "тонкий": 16560, "редкий": 12922, "цвет": 150, "призрак": 8000},
 		EnCount: map[string]int64{
 			"dad": 1000, "dads": 100, "blow": 500, "blows": 50, "blew": 40, "thin": 300, "clothes": 400,
-			"colour": 200, "color": 150, "nothing": 5000, "father": 2000,
+			"colour": 200, "color": 150, "nothing": 5000, "father": 2000, "pa": 50, "thick": 800, "fat": 700, "slim": 300,
 		},
 		SourceIDs: map[string]int64{"kaikki": 11, "freedict": 12},
 	}
@@ -362,5 +362,60 @@ func TestDefaultOptions(t *testing.T) {
 		if v <= 0.5 || v >= 1 {
 			t.Errorf("порог %s = %v вне разумных границ", level, v)
 		}
+	}
+}
+
+// Формы и синонимы из Викисловаря бывают устаревшими и диалектными: в базу попадают обычные формы и обычные слова.
+func TestAssembleFiltersNoisyFormsAndSynonyms(t *testing.T) {
+	entry := Entry{Word: "dad", Pos: "noun", LangCode: "en",
+		Senses: []Sense{{Glosses: []string{"A father."}}},
+		Forms: []Form{
+			{Form: "dads", Tags: []string{"plural"}},
+			{Form: "dadde", Tags: []string{"alternative", "obsolete"}},
+			{Form: "dodge", Tags: []string{"dialectal"}},
+			{Form: "dadz", Tags: []string{"nonstandard"}},
+			{Form: "-", Tags: []string{"plural"}},
+		},
+		Synonyms: []string{"ayr", "pa", "father", "da", "papa"},
+		Sounds:   []Sound{{IPA: "/dæd/"}}, // карточка строится, когда есть перевод или произношение
+	}
+	in := Inputs{
+		Lexemes:   []Lexeme{{1, "dad", "noun", "A1"}, {2, "father", "noun", "A1"}},
+		Entries:   []Entry{entry},
+		EnCount:   map[string]int64{"dad": 1000, "dads": 100, "father": 5000, "pa": 50, "papa": 400},
+		SourceIDs: map[string]int64{"kaikki": 11},
+	}
+	out, _ := Assemble(in)
+	var forms []string
+	for _, f := range out.Forms {
+		if f.LexemeID == 1 {
+			forms = append(forms, f.Form)
+		}
+	}
+	slices.Sort(forms)
+	if !slices.Equal(forms, []string{"dad", "dads"}) {
+		t.Fatalf("формы: %v (устаревшие, диалектные и нестандартные не нужны)", forms)
+	}
+	var syn []string
+	for _, r := range out.Relations {
+		if r.LexemeID == 1 && r.Kind == "synonym" {
+			syn = append(syn, r.OtherLemma)
+		}
+	}
+	slices.Sort(syn)
+	if !slices.Equal(syn, []string{"father", "pa", "papa"}) {
+		t.Fatalf("синонимы: %v (редких слов вне словаря и частот быть не должно)", syn)
+	}
+	var card map[string]any
+	for _, c := range out.Cards {
+		if c.LexemeID == 1 {
+			if err := json.Unmarshal(c.Payload, &card); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	got, _ := card["synonyms"].([]any)
+	if len(got) != 3 || got[0] != "father" || got[1] != "papa" || got[2] != "pa" {
+		t.Fatalf("в карточке синонимы по убыванию частоты: %v", got)
 	}
 }
