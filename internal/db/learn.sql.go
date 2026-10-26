@@ -87,54 +87,6 @@ func (q *Queries) LearnGetPreferences(ctx context.Context, userID int64) (LearnP
 	return i, err
 }
 
-const learnHardWords = `-- name: LearnHardWords :many
-SELECT l.id AS lexeme_id, l.lemma, l.pos, c.payload
-FROM cards cd
-JOIN lexemes l ON l.id = cd.lexeme_id
-JOIN kb_teaching_card c ON c.lexeme_id = l.id
-WHERE cd.user_id = $1 AND cd.lapses >= 3
-ORDER BY cd.lapses DESC, l.id
-LIMIT $2::int
-`
-
-type LearnHardWordsParams struct {
-	UserID  int64
-	MaxRows int32
-}
-
-type LearnHardWordsRow struct {
-	LexemeID int64
-	Lemma    string
-	Pos      string
-	Payload  json.RawMessage
-}
-
-// Трудные слова: карточки с тремя и более провалами (на повторное знакомство), с карточкой базы знаний.
-func (q *Queries) LearnHardWords(ctx context.Context, arg LearnHardWordsParams) ([]LearnHardWordsRow, error) {
-	rows, err := q.db.Query(ctx, learnHardWords, arg.UserID, arg.MaxRows)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []LearnHardWordsRow{}
-	for rows.Next() {
-		var i LearnHardWordsRow
-		if err := rows.Scan(
-			&i.LexemeID,
-			&i.Lemma,
-			&i.Pos,
-			&i.Payload,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const learnInsertIntroduced = `-- name: LearnInsertIntroduced :execrows
 INSERT INTO word_learning (user_id, lexeme_id, status, source, introduced_at)
 VALUES ($1, $2, 'introduced', 'lesson', $3::timestamptz)

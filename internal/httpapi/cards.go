@@ -230,7 +230,13 @@ func (s *authServer) ReviewCard(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		return tx.UpdateCardState(ctx, updateParams(row.ID, after))
+		if err := tx.UpdateCardState(ctx, updateParams(row.ID, after)); err != nil {
+			return err
+		}
+		if req.Rating >= int(srs.Good) {
+			return markLearned(ctx, tx, user.ID, row.LexemeID, now)
+		}
+		return nil
 	})
 	if errors.Is(err, errCardNotFound) {
 		writeError(w, http.StatusNotFound, api.ErrorErrorCodeNotFound, "Такой карточки нет")

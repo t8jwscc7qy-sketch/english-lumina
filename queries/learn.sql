@@ -13,16 +13,6 @@ WHERE lv.level = ANY(sqlc.arg(levels)::text[])
 ORDER BY lv.level, st.freq_rank NULLS LAST, l.id
 LIMIT sqlc.arg(max_rows)::int;
 
--- name: LearnHardWords :many
--- Трудные слова: карточки с тремя и более провалами (на повторное знакомство), с карточкой базы знаний.
-SELECT l.id AS lexeme_id, l.lemma, l.pos, c.payload
-FROM cards cd
-JOIN lexemes l ON l.id = cd.lexeme_id
-JOIN kb_teaching_card c ON c.lexeme_id = l.id
-WHERE cd.user_id = sqlc.arg(user_id) AND cd.lapses >= 3
-ORDER BY cd.lapses DESC, l.id
-LIMIT sqlc.arg(max_rows)::int;
-
 -- name: LearnRelations :many
 -- Связи слов (синонимы, антонимы) между словами нашего словаря.
 SELECT lexeme_id, other_lexeme_id FROM kb_relation

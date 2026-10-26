@@ -156,9 +156,9 @@ func (f *fakeStore) AppendEvent(_ context.Context, arg db.AppendEventParams) (in
 
 func (f *fakeStore) InTx(_ context.Context, fn func(AuthStore) error) error {
 	cards, events, keys, next := maps.Clone(f.cards), slices.Clone(f.events), maps.Clone(f.eventKeys), f.nextCardID
-	ex := f.snapshotExercises()
+	ex, wl := f.snapshotExercises(), maps.Clone(f.wl)
 	if err := fn(f); err != nil {
-		f.cards, f.events, f.eventKeys, f.nextCardID = cards, events, keys, next
+		f.cards, f.events, f.eventKeys, f.nextCardID, f.wl = cards, events, keys, next, wl
 		f.restoreExercises(ex)
 		return err
 	}
