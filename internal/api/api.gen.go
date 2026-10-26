@@ -156,6 +156,7 @@ func (e LearnPreferencesNewWordsMode) Valid() bool {
 const (
 	LearnReasonCodeBacklog LearnReasonCode = "backlog"
 	LearnReasonCodeBase    LearnReasonCode = "base"
+	LearnReasonCodeCold    LearnReasonCode = "cold"
 	LearnReasonCodeDone    LearnReasonCode = "done"
 	LearnReasonCodeEasy    LearnReasonCode = "easy"
 	LearnReasonCodeHard    LearnReasonCode = "hard"
@@ -168,6 +169,8 @@ func (e LearnReasonCode) Valid() bool {
 	case LearnReasonCodeBacklog:
 		return true
 	case LearnReasonCodeBase:
+		return true
+	case LearnReasonCodeCold:
 		return true
 	case LearnReasonCodeDone:
 		return true
@@ -748,6 +751,12 @@ type LearnStatus struct {
 	PerDay    int         `json:"perDay"`
 	Reason    LearnReason `json:"reason"`
 	Remaining int         `json:"remaining"`
+
+	// TextMinWords Сколько слов в учёте нужно, чтобы «Читать» могло собрать первый текст
+	TextMinWords int `json:"textMinWords"`
+
+	// TrackedWords Слов в учёте (показано на «Знакомстве», изучено, отмечено «знаю»)
+	TrackedWords int `json:"trackedWords"`
 }
 
 // LearnStatusMode defines model for LearnStatus.Mode.

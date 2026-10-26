@@ -796,14 +796,14 @@ components:
       properties:
         code:
           type: string
-          enum: [manual, backlog, hard, easy, base, done]
+          enum: [manual, backlog, hard, easy, base, done, cold]
           description: Почему дневной лимит новых слов такой
         text:
           type: string
           description: Объяснение по-русски
     LearnStatus:
       type: object
-      required: [learned, introduced, knownAtStart, newToday, limit, remaining, reason, mode, perDay, kbReady, campWords, campMinWords, campOpen]
+      required: [learned, introduced, knownAtStart, newToday, limit, remaining, reason, mode, perDay, kbReady, campWords, campMinWords, campOpen, trackedWords, textMinWords]
       properties:
         learned:
           type: integer
@@ -841,6 +841,12 @@ components:
         campOpen:
           type: boolean
           description: Открыт ли «Привал»
+        trackedWords:
+          type: integer
+          description: Слов в учёте (показано на «Знакомстве», изучено, отмечено «знаю»)
+        textMinWords:
+          type: integer
+          description: Сколько слов в учёте нужно, чтобы «Читать» могло собрать первый текст
     LearnWord:
       type: object
       required: [lexemeId, lemma, pos, level, translations, forms, synonyms, examples]

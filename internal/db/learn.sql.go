@@ -18,13 +18,16 @@ FROM lexemes l
 JOIN kb_teaching_card c ON c.lexeme_id = l.id
 JOIN LATERAL (SELECT min(level) AS level FROM lexeme_cefr WHERE lexeme_id = l.id) lv ON true
 LEFT JOIN kb_lexeme_stat st ON st.lexeme_id = l.id
-WHERE lv.level = ANY($1::text[])
-  AND l.lemma ~ '^[a-z]+$'
-  AND l.pos IN ('noun', 'verb', 'adjective', 'adverb')
+WHERE (lv.level = ANY($1::text[]) OR st.freq_rank <= 1000)
+  AND (l.lemma ~ '^[a-z]+$' OR l.lemma = 'I') -- «I» — самое частотное слово с заглавной
+  AND (l.pos IN ('noun', 'verb', 'adjective', 'adverb') OR st.freq_rank <= 1000) -- у тысячи самых частых нужны и служебные слова
   AND COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof(c.payload->'translations') = 'array' THEN c.payload->'translations' END), 0) > 0
   AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = $2 AND w.lexeme_id = l.id)
   AND NOT EXISTS (SELECT 1 FROM cards cd WHERE cd.user_id = $2 AND cd.lexeme_id = l.id)
-ORDER BY lv.level, st.freq_rank NULLS LAST, l.id
+  -- Лемма, у которой другая часть речи уже в учёте (go глагол и go существительное), второй раз не предлагается.
+  AND NOT EXISTS (SELECT 1 FROM word_learning w2 JOIN lexemes l2 ON l2.id = w2.lexeme_id WHERE w2.user_id = $2 AND l2.lemma = l.lemma)
+  AND NOT EXISTS (SELECT 1 FROM cards c2 JOIN lexemes l3 ON l3.id = c2.lexeme_id WHERE c2.user_id = $2 AND l3.lemma = l.lemma)
+ORDER BY (st.freq_rank IS NULL OR st.freq_rank > 1000), CASE WHEN st.freq_rank <= 1000 THEN st.freq_rank END, lv.level, st.freq_rank NULLS LAST, l.id
 LIMIT $4::int OFFSET $3::int
 `
 
@@ -44,8 +47,9 @@ type LearnCandidatesRow struct {
 	Payload  json.RawMessage
 }
 
-// Слова для «Знакомства»: есть выбранный перевод в базе знаний, уровень из списка, нет ни карточки, ни строки
-// состояния изучения. По уровню (A1 раньше A2), затем по рангу частоты (нет ранга — в конце).
+// Слова для «Знакомства»: есть выбранный перевод в базе знаний, нет ни карточки, ни строки состояния изучения.
+// Сначала 1000 самых частотных слов строго по частоте (любой уровень CEFR-J), затем по уровню из списка и рангу частоты
+// (нет ранга — в конце).
 func (q *Queries) LearnCandidates(ctx context.Context, arg LearnCandidatesParams) ([]LearnCandidatesRow, error) {
 	rows, err := q.db.Query(ctx, learnCandidates,
 		arg.Levels,
@@ -215,10 +219,10 @@ SELECT l.id AS lexeme_id, l.lemma, l.pos
 FROM lexemes l
 JOIN LATERAL (SELECT min(level) AS level FROM lexeme_cefr WHERE lexeme_id = l.id) lv ON true
 LEFT JOIN kb_lexeme_stat st ON st.lexeme_id = l.id
-WHERE lv.level = ANY($1::text[])
+WHERE (lv.level = ANY($1::text[]) OR st.freq_rank <= 1000)
   AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = $2 AND w.lexeme_id = l.id)
   AND NOT EXISTS (SELECT 1 FROM cards cd WHERE cd.user_id = $2 AND cd.lexeme_id = l.id)
-ORDER BY lv.level, st.freq_rank NULLS LAST, l.id
+ORDER BY (st.freq_rank IS NULL OR st.freq_rank > 1000), CASE WHEN st.freq_rank <= 1000 THEN st.freq_rank END, lv.level, st.freq_rank NULLS LAST, l.id
 LIMIT $4::int OFFSET $3::int
 `
 
@@ -235,7 +239,8 @@ type LearnPlacementCandidatesRow struct {
 	Pos      string
 }
 
-// Слова быстрого теста: самые частые слова уровня, которых нет ни в карточках, ни в состоянии изучения (страницы по offset).
+// Слова быстрого теста: сначала 1000 самых частотных слов по частоте, затем самые частые слова уровня; тех, что уже в
+// карточках или в состоянии изучения, нет (страницы по offset).
 func (q *Queries) LearnPlacementCandidates(ctx context.Context, arg LearnPlacementCandidatesParams) ([]LearnPlacementCandidatesRow, error) {
 	rows, err := q.db.Query(ctx, learnPlacementCandidates,
 		arg.Levels,
@@ -377,4 +382,38 @@ func (q *Queries) LearnUpsertPreferences(ctx context.Context, arg LearnUpsertPre
 		&i.TextCoverage,
 	)
 	return i, err
+}
+
+const textKnownWords = `-- name: TextKnownWords :many
+SELECT l.id AS lexeme_id, l.lemma, l.pos
+FROM word_learning w
+JOIN lexemes l ON l.id = w.lexeme_id
+WHERE w.user_id = $1 AND w.status IN ('learned', 'known_at_start', 'introduced')
+`
+
+type TextKnownWordsRow struct {
+	LexemeID int64
+	Lemma    string
+	Pos      string
+}
+
+// Слова, понятные в тексте: изучено, «знаю» и уже показанные на «Знакомстве» (у них есть перевод и фраза).
+func (q *Queries) TextKnownWords(ctx context.Context, userID int64) ([]TextKnownWordsRow, error) {
+	rows, err := q.db.Query(ctx, textKnownWords, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TextKnownWordsRow{}
+	for rows.Next() {
+		var i TextKnownWordsRow
+		if err := rows.Scan(&i.LexemeID, &i.Lemma, &i.Pos); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

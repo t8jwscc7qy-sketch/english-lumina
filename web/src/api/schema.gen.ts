@@ -633,7 +633,7 @@ export interface components {
              * @description Почему дневной лимит новых слов такой
              * @enum {string}
              */
-            code: "manual" | "backlog" | "hard" | "easy" | "base" | "done";
+            code: "manual" | "backlog" | "hard" | "easy" | "base" | "done" | "cold";
             /** @description Объяснение по-русски */
             text: string;
         };
@@ -661,6 +661,10 @@ export interface components {
             campMinWords: number;
             /** @description Открыт ли «Привал» */
             campOpen: boolean;
+            /** @description Слов в учёте (показано на «Знакомстве», изучено, отмечено «знаю») */
+            trackedWords: number;
+            /** @description Сколько слов в учёте нужно, чтобы «Читать» могло собрать первый текст */
+            textMinWords: number;
         };
         LearnWord: {
             /** Format: int64 */

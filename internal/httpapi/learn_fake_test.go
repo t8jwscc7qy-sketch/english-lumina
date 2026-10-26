@@ -85,9 +85,6 @@ func (f *fakeStore) LearnRelations(_ context.Context, ids []int64) ([]db.LearnRe
 }
 
 func (f *fakeStore) LearnStatusCounts(_ context.Context, _ int64) ([]db.LearnStatusCountsRow, error) {
-	if f.failLearn {
-		return nil, errLearnDown
-	}
 	counts := map[string]int64{}
 	for _, w := range f.wl {
 		counts[w.status]++
@@ -95,6 +92,9 @@ func (f *fakeStore) LearnStatusCounts(_ context.Context, _ int64) ([]db.LearnSta
 	var out []db.LearnStatusCountsRow
 	for status, n := range counts {
 		out = append(out, db.LearnStatusCountsRow{Status: status, Count: n})
+	}
+	if f.extraTracked > 0 { // слова «в учёте» без отдельных строк: выводят тест из «холодного старта»
+		out = append(out, db.LearnStatusCountsRow{Status: "extra", Count: int64(f.extraTracked)})
 	}
 	return out, nil
 }
@@ -178,5 +178,17 @@ func (f *fakeStore) LearnKnownWords(_ context.Context, _ int64) ([]db.LearnKnown
 		}
 	}
 	slices.SortFunc(out, func(a, b db.LearnKnownWordsRow) int { return int(a.LexemeID - b.LexemeID) })
+	return out, nil
+}
+
+func (f *fakeStore) TextKnownWords(_ context.Context, _ int64) ([]db.TextKnownWordsRow, error) {
+	var out []db.TextKnownWordsRow
+	for id, w := range f.wl {
+		if w.status == "learned" || w.status == "known_at_start" || w.status == "introduced" {
+			lx := f.lexemesByID[id]
+			out = append(out, db.TextKnownWordsRow{LexemeID: id, Lemma: lx.Lemma, Pos: lx.Pos})
+		}
+	}
+	slices.SortFunc(out, func(a, b db.TextKnownWordsRow) int { return int(a.LexemeID - b.LexemeID) })
 	return out, nil
 }

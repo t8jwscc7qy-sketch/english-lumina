@@ -84,10 +84,10 @@ export function WordCard({ word }: { word: LearnWord }) {
       )}
 
       {word.examples.length > 0 && (
-        <ul className="flex flex-col gap-4">
-          {word.examples.map((ex) => (
+        <ul aria-label="Слово во фразах" className="flex flex-col gap-4">
+          {word.examples.map((ex, i) => (
             <li key={ex.en.tatoebaId} className="flex flex-col gap-1 border-l-2 border-input pl-4">
-              <p lang="en" className="break-words">
+              <p lang="en" className={i === 0 ? 'text-xl break-words' : 'break-words'}>
                 <HighlightedText text={ex.en.text} range={ex.highlight} />
               </p>
               <p lang="ru" className="break-words text-muted-foreground">{ex.ru.text}</p>

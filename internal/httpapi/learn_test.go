@@ -31,6 +31,7 @@ func learnEnv(t *testing.T) (env, string) {
 	token := login(t, e)
 	e.store.settings = &db.Setting{UserID: 1, CurrentLevel: "A1", TargetLevel: "B1", DailyMinMinutes: 15, Timezone: "UTC"}
 	e.store.kbBuilt = true
+	e.store.extraTracked = 500 // обычный пользователь: «холодный старт» позади
 	return e, token
 }
 
@@ -698,5 +699,18 @@ func TestReviewFailsAtomicallyWhenMarkLearnedFails(t *testing.T) {
 	e.store.markLearnedErr = nil
 	if rec := doReview(e, token, id, 3, "k1"); rec.Code != http.StatusOK {
 		t.Fatalf("повтор с тем же ключом после исправления: %d", rec.Code)
+	}
+}
+
+func TestLearnStatusReportsTrackedWordsForFirstText(t *testing.T) {
+	e, token := learnEnv(t)
+	e.store.extraTracked = 0
+	e.store.wl = map[int64]fakeWord{
+		1: {status: "learned", source: "card"}, 2: {status: "introduced", source: "lesson", introducedAt: time.Now()},
+		3: {status: "known_at_start", source: "placement"},
+	}
+	s := decodeStatus(t, getLearn(t, e, token, learnStatusPath).Body.String())
+	if s.TrackedWords != 3 || s.TextMinWords != textMinKnown {
+		t.Fatalf("в учёте %d, порог текста %d", s.TrackedWords, s.TextMinWords)
 	}
 }

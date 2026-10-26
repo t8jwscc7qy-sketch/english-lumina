@@ -353,6 +353,25 @@ type cardPayload struct {
 	Synonyms     []string `json:"synonyms,omitempty"`
 }
 
+// statCount — сумма счётов форм слова. Не считаются: сокращения (abbreviation: «in» у inch) и формы, которые на самом деле
+// другие слова (reflexive-of: «you» у yourself); у местоимений (himself → he, herself, itself, themselves) считается только
+// сама начальная форма. Иначе слова из таких списков попадали в двадцатку самых частых.
+func statCount(forms []FormRow, lexemeID int64, enCount map[string]int64, lemmaOnly bool) int64 {
+	var total int64
+	counted := map[string]bool{}
+	for _, f := range forms {
+		if f.LexemeID != lexemeID || counted[f.Form] || strings.Contains(f.Tag, "abbreviation") || strings.Contains(f.Tag, "reflexive-of") {
+			continue
+		}
+		if lemmaOnly && f.Tag != "lemma" {
+			continue
+		}
+		counted[f.Form] = true
+		total += enCount[f.Form]
+	}
+	return total
+}
+
 // Assemble сливает источники по правилам и возвращает строки таблиц kb_* и отчёт качества. Чистая функция:
 // результат не зависит от порядка входных срезов.
 func Assemble(in Inputs) (Output, Report) {
@@ -543,13 +562,7 @@ func Assemble(in Inputs) (Output, Report) {
 				addForm(f.Form, strings.Join(f.Tags, ","))
 			}
 		}
-		counted := map[string]bool{}
-		for _, f := range out.Forms {
-			if f.LexemeID == lex.ID && !counted[f.Form] {
-				counted[f.Form] = true
-				counts[lex.ID] += in.EnCount[f.Form]
-			}
-		}
+		counts[lex.ID] += statCount(out.Forms, lex.ID, in.EnCount, lex.Pos == "pronoun")
 
 		// Связи слов: самые частые первыми (слова нашего словаря в первую очередь), до maxRelations каждого вида.
 		slices.SortStableFunc(rels, func(a, b RelationRow) int {

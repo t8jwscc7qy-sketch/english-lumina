@@ -25,5 +25,5 @@ export const BLOCK: LearnBlock = { words: [WORD_APPLE, WORD_RUN], limit: 5, rema
 
 export const STATUS: LearnStatus = {
   learned: 3, introduced: 2, knownAtStart: 1, newToday: 1, limit: 5, remaining: 4, reason: REASON, mode: 'auto', perDay: 12, kbReady: true,
-  campWords: 4, campMinWords: 50, campOpen: false,
+  campWords: 4, campMinWords: 50, campOpen: false, trackedWords: 6, textMinWords: 20,
 }

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { errorResponse, jsonResponse, renderAt } from '@/test/render'
+import { STATUS } from '@/features/learn/fixtures'
 import { TEXT } from './fixtures'
 import { ReadPage } from './ReadPage'
 
@@ -248,5 +249,27 @@ describe('ReadPage: конструкции', () => {
     await user.click(await screen.findByRole('button', { name: 'Модальные глаголы' }))
     await user.click(within(screen.getByRole('region', { name: 'Конструкция: Модальные глаголы' })).getByRole('button', { name: 'Закрыть' }))
     expect(screen.queryByRole('region', { name: /Конструкция/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('ReadPage: холодный старт', () => {
+  it('нет текста: сколько слов в учёте и сколько осталось до первого текста', async () => {
+    stub(
+      () => errorResponse(404, 'no_text', 'Пока не из чего собрать текст.'),
+      (url) => (url.endsWith('/learn/status') ? jsonResponse(200, { ...STATUS, trackedWords: 6, textMinWords: 20 }) : null),
+    )
+    render()
+    expect(await screen.findByText('В учёте слов: 6 из 20. Осталось 14: первый блок «Знакомства» даёт до 7 слов.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Знакомство' })).toHaveAttribute('href', '/learn')
+  })
+
+  it('порог набран, а текста всё равно нет: подсказки про остаток нет', async () => {
+    stub(
+      () => errorResponse(404, 'no_text', 'Пока не из чего собрать текст.'),
+      (url) => (url.endsWith('/learn/status') ? jsonResponse(200, { ...STATUS, trackedWords: 25, textMinWords: 20 }) : null),
+    )
+    render()
+    await screen.findByRole('heading', { name: 'Пока не из чего собрать текст' })
+    expect(screen.queryByText(/Осталось/)).not.toBeInTheDocument()
   })
 })

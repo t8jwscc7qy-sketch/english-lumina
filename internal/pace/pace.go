@@ -14,6 +14,8 @@ const (
 	easyAccuracy    = 0.90 // точность не ниже (и мало просроченных) — лимит больше
 	defaultAccuracy = 0.8  // точность, если данных за неделю нет
 	adjust          = 2
+	coldStartWords  = 100 // пока слов в учёте меньше, действует «холодный старт»
+	coldStartFloor  = 20  // и новых слов в день не меньше (иначе до первых текстов недели)
 )
 
 // Input — исходные данные. Mode — «auto» или «manual» (всё остальное считается авто); Cap — потолок авто-режима.
@@ -26,6 +28,8 @@ type Input struct {
 	Mode            string
 	PerDay          int
 	Cap             int
+	// Tracked — слов уже в учёте (введено, изучено, отмечено «знаю»): определяет «холодный старт».
+	Tracked int
 }
 
 // Reason — причина лимита: код для клиента и текст по-русски.
@@ -48,6 +52,7 @@ var (
 	reasonEasy    = Reason{"easy", "Повторения идут легко"}
 	reasonBase    = Reason{"base", "Столько слов поместится в твои минуты"}
 	reasonDone    = Reason{"done", "На сегодня всё"}
+	reasonCold    = Reason{"cold", "Начало пути: сначала накопим слов для первых текстов"}
 )
 
 func clamp(v, lo, hi int) int { return min(hi, max(lo, v)) }
@@ -79,6 +84,10 @@ func NewWordsToday(in Input) Result {
 			limit, reason = min(cap, base+adjust), reasonEasy
 		default:
 			limit, reason = base, reasonBase
+		}
+		// Холодный старт: пока слов мало, лимит не ниже coldStartFloor (кроме случая накопившихся повторений).
+		if in.Tracked < coldStartWords && limit > 0 && limit < coldStartFloor {
+			limit, reason = coldStartFloor, reasonCold
 		}
 		// «Повторения идут легко» без прибавки (потолок) — это обычный лимит.
 		if reason == reasonEasy && limit == base {
