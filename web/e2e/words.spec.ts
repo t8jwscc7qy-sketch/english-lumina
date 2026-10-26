@@ -105,3 +105,28 @@ for (const theme of ['light', 'dark'] as const) {
     })
   }
 }
+
+test.describe('база знаний в «Словах»', () => {
+  const dad = { lemma: 'dad', pos: 'noun', level: 'A1', levels: [{ source: 'cefrj', level: 'A1', notes: [] }], inCards: false, frequencyRank: 348, ipa: 'dæd', translations: ['папа', 'папаша'], synonyms: ['father', 'daddy', 'pop'] }
+
+  for (const theme of ['light', 'dark'] as const) {
+    for (const size of [{ name: '1440', width: 1440, height: 900 }, { name: '390', width: 390, height: 844 }]) {
+      test(`транскрипция, переводы и синонимы ${theme} ${size.name}`, async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width: size.width, height: size.height }, colorScheme: theme, reducedMotion: 'reduce' })
+        const page = await context.newPage()
+        await mockApi(page, { loggedIn: true })
+        await page.route('**/api/v1/words?**', (route) => route.fulfill({ json: { words: [dad] } }), { times: 1 })
+        await page.goto('/words')
+        await page.getByRole('searchbox', { name: 'Слово' }).fill('dad')
+        const row = page.getByRole('listitem').first()
+        await expect(row.getByText('/dæd/')).toBeVisible()
+        await expect(row.getByText('папа, папаша')).toBeVisible()
+        await expect(row.getByText('Синонимы: father, daddy, pop')).toBeVisible()
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+        expect(overflow).toBeLessThanOrEqual(0)
+        await page.screenshot({ path: `test-results/screens/words-kb-${theme}-${size.name}.png`, fullPage: true })
+        await context.close()
+      })
+    }
+  }
+})
