@@ -6,7 +6,7 @@ const FIRST = 'Yesterday she _____ to the cinema with her sister.'
 test.describe('упражнения', () => {
   test('меню → ответ клавишей → «Верно», слабые темы, Пробел → следующее', async ({ page }) => {
     const { answers } = await mockApi(page, { loggedIn: true })
-    await page.goto('/')
+    await page.goto('/today')
     await page.getByRole('link', { name: 'Упражнения', exact: true }).click()
     await expect(page).toHaveURL(/\/exercises$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Упражнения' })).toBeVisible()

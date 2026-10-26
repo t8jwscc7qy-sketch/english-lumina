@@ -34,7 +34,7 @@ test.describe('примеры предложений', () => {
 test.describe('поиск слов', () => {
   test('из меню: ввод находит слова по началу и показывает уровни', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
-    await page.goto('/')
+    await page.goto('/today')
     await page.getByRole('link', { name: 'Слова', exact: true }).click()
     await expect(page).toHaveURL(/\/words$/)
     await expect(page.getByRole('searchbox', { name: 'Слово' })).toBeFocused()

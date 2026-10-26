@@ -17,3 +17,8 @@ var Constructions embed.FS
 //
 //go:embed texts/*.json
 var Texts embed.FS
+
+// Course — уроки курса «Путь» (по одному JSON-файлу на блок).
+//
+//go:embed course/*.json
+var Course embed.FS

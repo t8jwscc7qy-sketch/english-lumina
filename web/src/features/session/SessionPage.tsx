@@ -235,7 +235,7 @@ function ExercisesStep({
         </FoxNote>
         <div className="flex flex-wrap gap-3">
           <Button asChild>
-            <Link to="/">На главную</Link>
+            <Link to="/today">На главную</Link>
           </Button>
           <Button variant="secondary" onClick={onFinish}>
             Закончить
@@ -309,7 +309,7 @@ function Summary({
         )}
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg">
-            <Link to="/">На главную</Link>
+            <Link to="/today">На главную</Link>
           </Button>
           <Button size="lg" variant="secondary" onClick={onResume}>
             Ещё немного

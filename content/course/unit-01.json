@@ -1,0 +1,84 @@
+{
+ "unit": 1,
+ "title": "Знакомство",
+ "lessons": [
+  {
+   "id": "u1-l1",
+   "title": "Привет",
+   "words": [
+    {"lemma": "hello", "pos": "noun", "ru": "привет, здравствуй"},
+    {"lemma": "I", "pos": "pronoun", "ru": "я"},
+    {"lemma": "am", "pos": "be-verb", "ru": "есть (после I: I am — я есть)"},
+    {"lemma": "you", "pos": "pronoun", "ru": "ты, вы"},
+    {"lemma": "are", "pos": "be-verb", "ru": "есть (после you: you are — ты есть)"}
+   ],
+   "names": ["Anna", "Tom", "Ben"],
+   "sentences": [
+    {"speaker": "Anna", "en": "Hello! I am Anna.", "ru": "Привет! Я Анна."},
+    {"speaker": "Tom", "en": "Hello, Anna! I am Tom.", "ru": "Привет, Анна! Я Том."},
+    {"speaker": "Ben", "en": "Hello! Are you Anna?", "ru": "Привет! Ты Анна?"},
+    {"speaker": "Anna", "en": "I am Anna. You are Ben!", "ru": "Я Анна. А ты Бен!"},
+    {"speaker": "Ben", "en": "I am Ben. Hello, Tom!", "ru": "Я Бен. Привет, Том!"}
+   ],
+   "questions": [
+    {"prompt": "Кто здоровается первым?", "options": ["Анна", "Том", "Бен"], "answer": 0},
+    {"prompt": "Кто спрашивает «Are you Anna?»", "options": ["Том", "Бен"], "answer": 1}
+   ],
+   "note": {
+    "title": "I am, you are",
+    "text": "По-русски мы говорим «Я Анна» без глагола. По-английски глагол нужен всегда: I am Anna — «я (есть) Анна». После I ставится am, после you — are. В вопросе are встаёт вперёд: Are you Anna? — «Ты Анна?»"
+   }
+  },
+  {
+   "id": "u1-l2",
+   "title": "Как дела?",
+   "words": [
+    {"lemma": "how", "pos": "adverb", "ru": "как"},
+    {"lemma": "fine", "pos": "adjective", "ru": "хорошо, в порядке"},
+    {"lemma": "thank", "pos": "verb", "ru": "благодарить; thank you — спасибо"},
+    {"lemma": "and", "pos": "conjunction", "ru": "и, а"}
+   ],
+   "names": ["Anna", "Tom", "Ben"],
+   "sentences": [
+    {"speaker": "Tom", "en": "Hello, Anna! How are you?", "ru": "Привет, Анна! Как дела?"},
+    {"speaker": "Anna", "en": "I am fine, thank you. And you?", "ru": "Хорошо, спасибо. А у тебя?"},
+    {"speaker": "Tom", "en": "I am fine. Ben, how are you?", "ru": "У меня хорошо. Бен, а ты как?"},
+    {"speaker": "Ben", "en": "Fine, thank you!", "ru": "Хорошо, спасибо!"}
+   ],
+   "questions": [
+    {"prompt": "Как дела у Анны?", "options": ["Хорошо", "Плохо"], "answer": 0},
+    {"prompt": "Кто спрашивает «And you?»", "options": ["Том", "Анна", "Бен"], "answer": 1}
+   ],
+   "note": {
+    "title": "How are you?",
+    "text": "How are you? — «Как дела?» (дословно «Как ты есть?»). Обычный ответ: I am fine, thank you — «Хорошо, спасибо». Чтобы спросить в ответ, хватит двух слов: And you? — «А у тебя?»"
+   }
+  },
+  {
+   "id": "u1-l3",
+   "title": "Кто это?",
+   "words": [
+    {"lemma": "this", "pos": "pronoun", "ru": "это"},
+    {"lemma": "is", "pos": "be-verb", "ru": "есть (после he, she, it, this)"},
+    {"lemma": "my", "pos": "determiner", "ru": "мой, моя, моё"},
+    {"lemma": "your", "pos": "determiner", "ru": "твой, ваш"},
+    {"lemma": "friend", "pos": "noun", "ru": "друг, подруга"}
+   ],
+   "names": ["Anna", "Tom", "Ben", "Kate"],
+   "sentences": [
+    {"speaker": "Anna", "en": "Tom, this is Ben. Ben is my friend.", "ru": "Том, это Бен. Бен — мой друг."},
+    {"speaker": "Tom", "en": "Hello, Ben! How are you?", "ru": "Привет, Бен! Как дела?"},
+    {"speaker": "Ben", "en": "Fine, thank you. Is this your friend?", "ru": "Хорошо, спасибо. Это твоя подруга?"},
+    {"speaker": "Tom", "en": "This is Kate. Kate is my friend.", "ru": "Это Кейт. Кейт — моя подруга."}
+   ],
+   "questions": [
+    {"prompt": "Кто друг Анны?", "options": ["Бен", "Кейт"], "answer": 0},
+    {"prompt": "Кто такая Кейт?", "options": ["подруга Тома", "подруга Бена"], "answer": 0}
+   ],
+   "note": {
+    "title": "This is…",
+    "text": "This is Ben — «Это Бен». Так знакомят людей. Is ставится после this, he, she, it и после имени: Ben is my friend. Итого: I am, you are, this is. В вопросе is встаёт вперёд: Is this your friend? — «Это твой друг?»"
+   }
+  }
+ ]
+}

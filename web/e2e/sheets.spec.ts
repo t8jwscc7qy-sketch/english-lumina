@@ -16,7 +16,7 @@ test.describe('шпаргалки', () => {
     await page.getByRole('button', { name: '☆ Закрепить' }).click()
     await expect(page.getByRole('button', { name: '★ Закреплено' })).toBeVisible()
     expect(favorites[0]).toEqual({ id: 'irregular-verbs', favorite: true })
-    await page.goto('/')
+    await page.goto('/today')
     await expect(page.getByRole('heading', { name: 'Закреплённое' })).toBeVisible()
   })
 
@@ -59,7 +59,7 @@ test.describe('шпаргалки', () => {
 
   test('печать: боковая панель оболочки скрыта, а другие страницы не теряют aside', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
-    await page.goto('/')
+    await page.goto('/today')
     await expect(page.getByRole('complementary', { name: 'Серия и сессия' })).toBeVisible()
     await page.emulateMedia({ media: 'print' })
     await expect(page.getByRole('complementary', { name: 'Серия и сессия' })).toBeVisible()

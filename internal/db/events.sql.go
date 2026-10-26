@@ -71,10 +71,11 @@ func (q *Queries) GetEventByKey(ctx context.Context, arg GetEventByKeyParams) (E
 const listActivityEvents = `-- name: ListActivityEvents :many
 SELECT type,
        occurred_at,
-       COALESCE(CASE WHEN jsonb_typeof(payload -> 'correct') = 'boolean' THEN (payload ->> 'correct')::boolean END, false)::boolean AS correct
+       COALESCE(CASE WHEN jsonb_typeof(payload -> 'correct') = 'boolean' THEN (payload ->> 'correct')::boolean END, false)::boolean AS correct,
+       COALESCE(CASE WHEN type = 'lesson.completed' AND jsonb_typeof(payload -> 'seconds') = 'number' THEN LEAST(GREATEST((payload ->> 'seconds')::numeric, 0), 3600)::int END, 0)::int AS seconds
 FROM events
 WHERE user_id = $1
-  AND type IN ('exercise.answered', 'card.reviewed', 'mistake.opened', 'mistake.closed')
+  AND type IN ('exercise.answered', 'card.reviewed', 'mistake.opened', 'mistake.closed', 'lesson.completed')
   AND occurred_at >= $2::timestamptz
 ORDER BY occurred_at, id
 `
@@ -88,11 +89,13 @@ type ListActivityEventsRow struct {
 	Type       string
 	OccurredAt pgtype.Timestamptz
 	Correct    bool
+	Seconds    int32
 }
 
 // События занятий пользователя с момента since (для минут, серии и итога дня): ответы на упражнения,
-// оценки карточек и открытие/закрытие ошибок. correct берётся из булева поля payload.correct, без него false
-// (осмысленно только у exercise.answered).
+// оценки карточек, открытие/закрытие ошибок и пройденные уроки «Пути». correct берётся из булева поля payload.correct, без него false
+// (осмысленно только у exercise.answered). seconds — длительность урока «Пути» из payload.seconds (у остальных 0):
+// урок засчитывается своим временем, а не паузами между ответами.
 func (q *Queries) ListActivityEvents(ctx context.Context, arg ListActivityEventsParams) ([]ListActivityEventsRow, error) {
 	rows, err := q.db.Query(ctx, listActivityEvents, arg.UserID, arg.Since)
 	if err != nil {
@@ -102,7 +105,12 @@ func (q *Queries) ListActivityEvents(ctx context.Context, arg ListActivityEvents
 	items := []ListActivityEventsRow{}
 	for rows.Next() {
 		var i ListActivityEventsRow
-		if err := rows.Scan(&i.Type, &i.OccurredAt, &i.Correct); err != nil {
+		if err := rows.Scan(
+			&i.Type,
+			&i.OccurredAt,
+			&i.Correct,
+			&i.Seconds,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

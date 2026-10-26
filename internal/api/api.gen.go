@@ -41,6 +41,27 @@ func (e CefrLevel) Valid() bool {
 	}
 }
 
+// Defines values for CourseLessonRefState.
+const (
+	CourseLessonRefStateCurrent CourseLessonRefState = "current"
+	CourseLessonRefStateDone    CourseLessonRefState = "done"
+	CourseLessonRefStateLocked  CourseLessonRefState = "locked"
+)
+
+// Valid indicates whether the value is a known member of the CourseLessonRefState enum.
+func (e CourseLessonRefState) Valid() bool {
+	switch e {
+	case CourseLessonRefStateCurrent:
+		return true
+	case CourseLessonRefStateDone:
+		return true
+	case CourseLessonRefStateLocked:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorErrorCode.
 const (
 	ErrorErrorCodeAlreadyAnswered    ErrorErrorCode = "already_answered"
@@ -51,6 +72,7 @@ const (
 	ErrorErrorCodeInvalidAnswer      ErrorErrorCode = "invalid_answer"
 	ErrorErrorCodeInvalidCredentials ErrorErrorCode = "invalid_credentials"
 	ErrorErrorCodeInvalidRequest     ErrorErrorCode = "invalid_request"
+	ErrorErrorCodeLessonLocked       ErrorErrorCode = "lesson_locked"
 	ErrorErrorCodeLimitReached       ErrorErrorCode = "limit_reached"
 	ErrorErrorCodeNoExamples         ErrorErrorCode = "no_examples"
 	ErrorErrorCodeNoExercise         ErrorErrorCode = "no_exercise"
@@ -81,6 +103,8 @@ func (e ErrorErrorCode) Valid() bool {
 	case ErrorErrorCodeInvalidCredentials:
 		return true
 	case ErrorErrorCodeInvalidRequest:
+		return true
+	case ErrorErrorCodeLessonLocked:
 		return true
 	case ErrorErrorCodeLimitReached:
 		return true
@@ -583,6 +607,59 @@ type CardSentence struct {
 // CefrLevel Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
 type CefrLevel string
 
+// CompleteLessonRequest defines model for CompleteLessonRequest.
+type CompleteLessonRequest struct {
+	// Key Ключ идемпотентности
+	Key      string `json:"key"`
+	LessonId string `json:"lessonId"`
+
+	// Mistakes Сколько ответов в уроке было неверными
+	Mistakes *int `json:"mistakes,omitempty"`
+
+	// Seconds Сколько длился урок (обрезается до 3600)
+	Seconds int `json:"seconds"`
+}
+
+// CompleteLessonResponse defines model for CompleteLessonResponse.
+type CompleteLessonResponse struct {
+	CardsAdded int              `json:"cardsAdded"`
+	LessonId   string           `json:"lessonId"`
+	NewWords   int              `json:"newWords"`
+	Next       *CourseLessonRef `json:"next,omitempty"`
+
+	// Repeated Урок уже был пройден раньше
+	Repeated bool `json:"repeated"`
+	Seconds  int  `json:"seconds"`
+}
+
+// CourseLessonRef defines model for CourseLessonRef.
+type CourseLessonRef struct {
+	Id       string `json:"id"`
+	NewWords int    `json:"newWords"`
+
+	// Number Номер урока в блоке, с 1
+	Number int                  `json:"number"`
+	State  CourseLessonRefState `json:"state"`
+	Title  string               `json:"title"`
+	Unit   int                  `json:"unit"`
+}
+
+// CourseLessonRefState defines model for CourseLessonRef.State.
+type CourseLessonRefState string
+
+// CoursePath defines model for CoursePath.
+type CoursePath struct {
+	Next  *CourseLessonRef `json:"next,omitempty"`
+	Units []CourseUnit     `json:"units"`
+}
+
+// CourseUnit defines model for CourseUnit.
+type CourseUnit struct {
+	Lessons []CourseLessonRef `json:"lessons"`
+	Title   string            `json:"title"`
+	Unit    int               `json:"unit"`
+}
+
 // DailyPoint defines model for DailyPoint.
 type DailyPoint struct {
 	// CumulativeHours Часов занятий с самого начала до конца этих суток (одна тысячная)
@@ -789,6 +866,81 @@ type LearnWord struct {
 
 	// Translations Русские переводы (до двух), основной первым
 	Translations []string `json:"translations"`
+}
+
+// Lesson defines model for Lesson.
+type Lesson struct {
+	// Done Урок уже пройден (повторное прохождение)
+	Done   bool          `json:"done"`
+	Drills []LessonDrill `json:"drills"`
+
+	// Glossary Перевод каждой формы известных к этому уроку слов (ключ — форма в нижнем регистре)
+	Glossary  map[string]string `json:"glossary"`
+	Id        string            `json:"id"`
+	Note      *LessonNote       `json:"note,omitempty"`
+	Number    int               `json:"number"`
+	Questions []LessonQuestion  `json:"questions"`
+	Sentences []LessonSentence  `json:"sentences"`
+	Title     string            `json:"title"`
+	Unit      int               `json:"unit"`
+	UnitTitle string            `json:"unitTitle"`
+	Words     []LessonWord      `json:"words"`
+}
+
+// LessonDrill defines model for LessonDrill.
+type LessonDrill struct {
+	Answer *string `json:"answer,omitempty"`
+
+	// Kind Вид задания: gap (слово в пропуск), order (собрать предложение), match (пары)
+	Kind string `json:"kind"`
+
+	// Old Слово из прошлых уроков
+	Old     bool          `json:"old"`
+	Options *[]string     `json:"options,omitempty"`
+	Pairs   *[]LessonPair `json:"pairs,omitempty"`
+	Prompt  *string       `json:"prompt,omitempty"`
+	Text    *string       `json:"text,omitempty"`
+	Tiles   *[]string     `json:"tiles,omitempty"`
+}
+
+// LessonNote defines model for LessonNote.
+type LessonNote struct {
+	Text  string `json:"text"`
+	Title string `json:"title"`
+}
+
+// LessonPair defines model for LessonPair.
+type LessonPair struct {
+	En string `json:"en"`
+	Ru string `json:"ru"`
+}
+
+// LessonQuestion defines model for LessonQuestion.
+type LessonQuestion struct {
+	Answer  int      `json:"answer"`
+	Options []string `json:"options"`
+	Prompt  string   `json:"prompt"`
+}
+
+// LessonRef defines model for LessonRef.
+type LessonRef struct {
+	Id *string `json:"id,omitempty"`
+}
+
+// LessonSentence defines model for LessonSentence.
+type LessonSentence struct {
+	En      string  `json:"en"`
+	Ru      string  `json:"ru"`
+	Speaker *string `json:"speaker,omitempty"`
+}
+
+// LessonWord defines model for LessonWord.
+type LessonWord struct {
+	Example *LessonSentence `json:"example,omitempty"`
+	Forms   []string        `json:"forms"`
+	Lemma   string          `json:"lemma"`
+	Pos     string          `json:"pos"`
+	Ru      string          `json:"ru"`
 }
 
 // Level defines model for Level.
@@ -1382,6 +1534,12 @@ type AddCardJSONRequestBody = AddCardRequest
 // ReviewCardJSONRequestBody defines body for ReviewCard for application/json ContentType.
 type ReviewCardJSONRequestBody = ReviewCardRequest
 
+// CompleteLessonJSONRequestBody defines body for CompleteLesson for application/json ContentType.
+type CompleteLessonJSONRequestBody = CompleteLessonRequest
+
+// GetLessonJSONRequestBody defines body for GetLesson for application/json ContentType.
+type GetLessonJSONRequestBody = LessonRef
+
 // AnswerExerciseJSONRequestBody defines body for AnswerExercise for application/json ContentType.
 type AnswerExerciseJSONRequestBody = AnswerRequest
 
@@ -1432,6 +1590,15 @@ type ServerInterface interface {
 	// ReviewCard Оценить карточку
 	// (POST /api/v1/cards/review)
 	ReviewCard(w http.ResponseWriter, r *http.Request)
+	// GetCourse Путь — блоки и уроки курса с состоянием
+	// (GET /api/v1/course)
+	GetCourse(w http.ResponseWriter, r *http.Request)
+	// CompleteLesson Отметить урок пройденным
+	// (POST /api/v1/course/complete)
+	CompleteLesson(w http.ResponseWriter, r *http.Request)
+	// GetLesson Урок целиком
+	// (POST /api/v1/course/lesson)
+	GetLesson(w http.ResponseWriter, r *http.Request)
 	// AnswerExercise Ответить на упражнение
 	// (POST /api/v1/exercises/answer)
 	AnswerExercise(w http.ResponseWriter, r *http.Request)
@@ -1602,6 +1769,48 @@ func (siw *ServerInterfaceWrapper) ReviewCard(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReviewCard(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCourse operation middleware
+func (siw *ServerInterfaceWrapper) GetCourse(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCourse(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CompleteLesson operation middleware
+func (siw *ServerInterfaceWrapper) CompleteLesson(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CompleteLesson(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLesson operation middleware
+func (siw *ServerInterfaceWrapper) GetLesson(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLesson(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2138,6 +2347,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/exercises/answer", wrapper.AnswerExercise)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/learn/status", wrapper.GetLearnStatus)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/learn/block", wrapper.GetLearnBlock)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/course", wrapper.GetCourse)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/course/lesson", wrapper.GetLesson)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/course/complete", wrapper.CompleteLesson)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/learn/introduce", wrapper.IntroduceWords)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/learn/placement", wrapper.GetPlacement)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/learn/placement", wrapper.SubmitPlacement)

@@ -27,7 +27,7 @@ test.describe('Привал', () => {
 
   test('пункт меню «Привал» и ссылка на «Сегодня»', async ({ page }) => {
     await mockApi(page, { loggedIn: true, learn: { campWords: 12 } })
-    await page.goto('/')
+    await page.goto('/today')
     await expect(page.getByRole('link', { name: 'Привал (12 из 50)' })).toBeVisible()
     await page.getByRole('navigation', { name: 'Разделы' }).getByRole('link', { name: 'Привал' }).click()
     await expect(page).toHaveURL(/\/camp$/)

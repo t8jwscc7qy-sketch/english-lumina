@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { mockApi } from './mock-api'
 
 test.describe('вход и оболочка', () => {
-  test('неверный пароль, затем успешный вход ведёт на «Сегодня»', async ({ page }) => {
+  test('неверный пароль, затем успешный вход ведёт на «Путь»', async ({ page }) => {
     await mockApi(page, { loggedIn: false })
     await page.goto('/')
     await expect(page).toHaveURL(/\/login$/)
@@ -14,19 +14,20 @@ test.describe('вход и оболочка', () => {
 
     await page.getByLabel('Пароль').fill('right-password-1')
     await page.getByRole('button', { name: 'Войти' }).click()
-    await expect(page.getByRole('heading', { level: 1, name: 'Привет, firimon' })).toBeVisible()
+    await expect(page).toHaveURL(/\/path$/)
+    await expect(page.getByText('Урок 1: Привет')).toBeVisible()
   })
 
   test('выход возвращает на вход', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
-    await page.goto('/')
+    await page.goto('/today')
     await page.getByRole('button', { name: 'Выйти' }).click()
     await expect(page).toHaveURL(/\/login$/)
   })
 
   test('навигация доступна с клавиатуры, фокус виден', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
-    await page.goto('/')
+    await page.goto('/today')
     await page.getByRole('link', { name: 'Карточки', exact: true }).focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/cards$/)
@@ -58,7 +59,7 @@ for (const theme of ['light', 'dark'] as const) {
 
       await page.unroute('**/api/v1/auth/**')
       await mockApi(page, { loggedIn: true })
-      await page.goto('/')
+      await page.goto('/today')
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
       await page.screenshot({
         path: `test-results/screens/today-${theme}-${size.name}.png`,

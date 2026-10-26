@@ -9,7 +9,8 @@ import { useLogout, useMe } from '@/features/auth/auth'
 import { ThemeToggle } from './ThemeToggle'
 
 const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
-  { to: '/', label: 'Сегодня', icon: 'today', end: true },
+  { to: '/path', label: 'Путь', icon: 'path' },
+  { to: '/today', label: 'Сегодня', icon: 'today' },
   { to: '/cards', label: 'Карточки', icon: 'cards' },
   { to: '/exercises', label: 'Упражнения', icon: 'exercises' },
   { to: '/read', label: 'Читать', icon: 'read' },
@@ -53,7 +54,7 @@ export function AppShell() {
             <Post scale={3} className="lg:hidden" />
           </div>
 
-          <nav aria-label="Разделы" className="flex flex-1 flex-col gap-1">
+          <nav aria-label="Разделы" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
             {NAV.map(({ to, label, icon, end }) => (
               <NavLink
                 key={to}

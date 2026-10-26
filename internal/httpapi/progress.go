@@ -48,15 +48,27 @@ func (s *authServer) GetProgressToday(w http.ResponseWriter, r *http.Request) {
 }
 
 // buildProgress собирает ответ из событий; чистая функция (время и пояс приходят снаружи).
-func buildProgress(events []db.ListActivityEventsRow, now time.Time, tz string, goal int) api.ProgressToday {
+// studyMinutes — минуты занятий по суткам: ответы и оценки карточек считаются по паузам между ними, урок «Пути» —
+// своим временем (payload.seconds), прибавленным к суткам, когда урок завершён.
+func studyMinutes(events []db.ListActivityEventsRow, loc *time.Location) map[activity.Day]time.Duration {
 	var times []time.Time
 	for _, e := range events {
 		if e.Type == "exercise.answered" || e.Type == "card.reviewed" {
 			times = append(times, e.OccurredAt.Time)
 		}
 	}
-	loc := activity.Location(tz) // пояс разбираем один раз: на тысячах событий LoadLocation на каждое слишком дорог
 	perDay := activity.DayMinutes(times, loc)
+	for _, e := range events {
+		if e.Type == "lesson.completed" && e.Seconds > 0 {
+			perDay[activity.DayOf(e.OccurredAt.Time, loc)] += time.Duration(e.Seconds) * time.Second
+		}
+	}
+	return perDay
+}
+
+func buildProgress(events []db.ListActivityEventsRow, now time.Time, tz string, goal int) api.ProgressToday {
+	loc := activity.Location(tz) // пояс разбираем один раз: на тысячах событий LoadLocation на каждое слишком дорог
+	perDay := studyMinutes(events, loc)
 	today := activity.DayOf(now, loc)
 	todayDur := perDay[today]
 

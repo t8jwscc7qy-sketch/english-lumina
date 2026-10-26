@@ -23,6 +23,44 @@ export type SpeakHandlers = {
   onEnd?: () => void
 }
 
+/** Громкость по умолчанию ниже максимума: записи Tatoeba и синтез браузера бывают очень громкими. */
+export const DEFAULT_VOLUME = 0.4
+
+/*
+ * Голос синтеза. Браузер по умолчанию может взять «игрушечный» голос macOS (Albert, Bad News, Zarvox…) или резкий
+ * голос — выбираем спокойный английский голос из известных, иначе первый английский не из игрушечных.
+ */
+const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy|Grandma|Grandpa|Rocko|Shelley|Sandy|Flo|Eddy|Reed)\b/
+const PREFERRED = ['Samantha', 'Google US English', 'Microsoft Aria', 'Microsoft Jenny', 'Ava', 'Allison', 'Karen', 'Daniel', 'Serena', 'Moira', 'Tessa', 'Google UK English Female']
+
+export function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  const english = voices.filter((v) => v.lang.toLowerCase().startsWith('en') && !NOVELTY.test(v.name))
+  for (const name of PREFERRED) {
+    const v = english.find((x) => x.name.startsWith(name))
+    if (v) return v
+  }
+  return english.find((v) => v.lang === 'en-US' && v.localService) ?? english.find((v) => v.lang === 'en-US') ?? english[0]
+}
+
+function englishVoice(): SpeechSynthesisVoice | undefined {
+  if (!canSpeak()) return undefined
+  if (typeof window.speechSynthesis.getVoices !== 'function') return undefined
+  return pickVoice(window.speechSynthesis.getVoices())
+}
+
+/** Произнести одну фразу синтезом (тихо, приятным голосом). Прерывает прежнее чтение. */
+export function sayText(text: string, rate = 0.9): void {
+  stopSpeaking()
+  if (!canSpeak()) return
+  const u = new SpeechSynthesisUtterance(text)
+  u.lang = 'en-US'
+  u.rate = rate
+  u.volume = DEFAULT_VOLUME
+  const v = englishVoice()
+  if (v) u.voice = v
+  window.speechSynthesis.speak(u)
+}
+
 let session = 0
 let current: HTMLAudioElement | null = null
 
@@ -37,6 +75,9 @@ function synth(item: SpeakItem, i: number, rate: number, handlers: SpeakHandlers
   const u = new SpeechSynthesisUtterance(item.text)
   u.lang = 'en-US'
   u.rate = rate
+  u.volume = DEFAULT_VOLUME
+  const voice = englishVoice()
+  if (voice) u.voice = voice
   u.onstart = () => handlers.onSentence?.(i)
   u.onboundary = (e) => handlers.onWord?.(i, e.charIndex)
   live.add(u)
@@ -68,6 +109,7 @@ export function speak(items: SpeakItem[], rate: number, handlers: SpeakHandlers 
     if (item.audioUrl && typeof Audio !== 'undefined') {
       const a = new Audio(item.audioUrl)
       a.playbackRate = rate
+      a.volume = DEFAULT_VOLUME
       current = a
       a.onplay = () => handlers.onSentence?.(i)
       a.onended = () => next(i + 1)

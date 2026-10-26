@@ -46,7 +46,7 @@ test.describe('чтение и слушание', () => {
 
   test('пункт меню «Читать» и ссылка в карточке «Знакомство»', async ({ page }) => {
     await mockApi(page, { loggedIn: true, learn: { campWords: 12 } })
-    await page.goto('/')
+    await page.goto('/today')
     await page.getByRole('link', { name: 'Читать', exact: true }).first().click()
     await expect(page).toHaveURL(/\/read$/)
   })

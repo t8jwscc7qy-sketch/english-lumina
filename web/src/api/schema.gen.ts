@@ -273,6 +273,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/course": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Путь — блоки и уроки курса с состоянием
+         * @description Уроки курса по порядку: пройден (done), текущий (current — первый непройденный), закрыт (locked). Прогресс считается из событий lesson.completed. next — текущий урок (нет, если курс пройден).
+         */
+        get: operations["getCourse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/course/lesson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Урок целиком
+         * @description Урок с новыми словами, текстом, вопросами, заданиями закрепления и словариком для подсказок. Без id — текущий урок. Открыть можно пройденный или текущий урок; закрытый — 403 lesson_locked. Номер урока в теле, не в пути: параметр пути заставил бы генератор добавить зависимость.
+         */
+        post: operations["getLesson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/course/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отметить урок пройденным
+         * @description Новые слова урока становятся словами в изучении (карточки повторения FSRS), пишется событие lesson.completed. Повтор по ключу отдаёт прежний ответ; повторное прохождение уже пройденного урока ничего не добавляет. Закрытый урок — 403 lesson_locked.
+         */
+        post: operations["completeLesson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/learn/introduce": {
         parameters: {
             query?: never;
@@ -690,6 +750,101 @@ export interface components {
             limit: number;
             remaining: number;
             reason: components["schemas"]["LearnReason"];
+        };
+        CoursePath: {
+            units: components["schemas"]["CourseUnit"][];
+            next?: components["schemas"]["CourseLessonRef"];
+        };
+        CourseUnit: {
+            unit: number;
+            title: string;
+            lessons: components["schemas"]["CourseLessonRef"][];
+        };
+        CourseLessonRef: {
+            id: string;
+            title: string;
+            /** @description Номер урока в блоке, с 1 */
+            number: number;
+            unit: number;
+            /** @enum {string} */
+            state: "done" | "current" | "locked";
+            newWords: number;
+        };
+        LessonRef: {
+            id?: string;
+        };
+        Lesson: {
+            id: string;
+            title: string;
+            number: number;
+            unit: number;
+            unitTitle: string;
+            /** @description Урок уже пройден (повторное прохождение) */
+            done: boolean;
+            words: components["schemas"]["LessonWord"][];
+            sentences: components["schemas"]["LessonSentence"][];
+            questions: components["schemas"]["LessonQuestion"][];
+            drills: components["schemas"]["LessonDrill"][];
+            note?: components["schemas"]["LessonNote"];
+            /** @description Перевод каждой формы известных к этому уроку слов (ключ — форма в нижнем регистре) */
+            glossary: {
+                [key: string]: string;
+            };
+        };
+        LessonWord: {
+            lemma: string;
+            pos: string;
+            ru: string;
+            forms: string[];
+            example?: components["schemas"]["LessonSentence"];
+        };
+        LessonSentence: {
+            speaker?: string;
+            en: string;
+            ru: string;
+        };
+        LessonQuestion: {
+            prompt: string;
+            options: string[];
+            answer: number;
+        };
+        LessonNote: {
+            title: string;
+            text: string;
+        };
+        LessonDrill: {
+            /** @description Вид задания: gap (слово в пропуск), order (собрать предложение), match (пары) */
+            kind: string;
+            /** @description Слово из прошлых уроков */
+            old: boolean;
+            prompt?: string;
+            text?: string;
+            options?: string[];
+            tiles?: string[];
+            answer?: string;
+            pairs?: components["schemas"]["LessonPair"][];
+        };
+        LessonPair: {
+            en: string;
+            ru: string;
+        };
+        CompleteLessonRequest: {
+            lessonId: string;
+            /** @description Ключ идемпотентности */
+            key: string;
+            /** @description Сколько длился урок (обрезается до 3600) */
+            seconds: number;
+            /** @description Сколько ответов в уроке было неверными */
+            mistakes?: number;
+        };
+        CompleteLessonResponse: {
+            lessonId: string;
+            newWords: number;
+            cardsAdded: number;
+            seconds: number;
+            /** @description Урок уже был пройден раньше */
+            repeated: boolean;
+            next?: components["schemas"]["CourseLessonRef"];
         };
         IntroduceRequest: {
             lexemeIds: number[];
@@ -1260,7 +1415,7 @@ export interface components {
                  * @description Машинный код ошибки
                  * @enum {string}
                  */
-                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "no_words" | "no_text" | "camp_closed" | "limit_reached" | "already_answered" | "invalid_answer" | "internal";
+                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "no_words" | "no_text" | "camp_closed" | "limit_reached" | "already_answered" | "invalid_answer" | "lesson_locked" | "internal";
                 /** @description Текст для пользователя на русском */
                 message: string;
             };
@@ -1751,6 +1906,115 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             /** @description Подходящих слов нет (no_words) или настройки не заполнены (onboarding_required) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Путь */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoursePath"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LessonRef"];
+            };
+        };
+        responses: {
+            /** @description Урок */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lesson"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Урок ещё закрыт (lesson_locked) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Такого урока нет или курс пройден (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    completeLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteLessonRequest"];
+            };
+        };
+        responses: {
+            /** @description Итог урока */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompleteLessonResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Урок ещё закрыт (lesson_locked) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Такого урока нет (not_found) */
             404: {
                 headers: {
                     [name: string]: unknown;

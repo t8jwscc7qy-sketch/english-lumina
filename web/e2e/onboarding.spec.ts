@@ -16,7 +16,8 @@ test.describe('онбординг и настройки', () => {
     await expect(page.getByRole('status')).toContainText('6–8 месяцев')
     await page.getByRole('button', { name: 'Начать' }).click()
 
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/\/path$/)
+    await page.goto('/today')
     await expect(page.getByText(/Цель: B1 → B2/)).toBeVisible()
     await expect(page.getByText(/6–8 месяцев/)).toBeVisible()
     expect(puts).toHaveLength(1)
@@ -26,8 +27,8 @@ test.describe('онбординг и настройки', () => {
   test('с готовыми настройками онбординг недоступен', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
     await page.goto('/onboarding')
-    await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByRole('heading', { level: 1, name: 'Привет, firimon' })).toBeVisible()
+    await expect(page).toHaveURL(/\/path$/)
+    await expect(page.getByText('Урок 1: Привет')).toBeVisible()
   })
 
   test('настройки: смена минут сохраняется и показывает уведомление', async ({ page }) => {

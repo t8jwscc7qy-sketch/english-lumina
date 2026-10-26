@@ -76,7 +76,7 @@ test.describe('карточки слов', () => {
 
   test('«Сегодня» показывает число карточек к повторению и ведёт в раздел', async ({ page }) => {
     await mockApi(page, { loggedIn: true, dueCards: ['run', 'runner', 'runway'] })
-    await page.goto('/')
+    await page.goto('/today')
     const tile = page.getByRole('link', { name: /карточки к повторению/i })
     await expect(tile).toBeVisible({ timeout: 15_000 })
     await expect(tile).toContainText('3')

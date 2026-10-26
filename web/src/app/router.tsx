@@ -1,4 +1,6 @@
-import { createBrowserRouter, type RouteObject } from 'react-router'
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
+import { LessonPage } from '@/features/course/LessonPage'
+import { PathPage } from '@/features/course/PathPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { NotFoundPage } from '@/features/placeholder/ComingSoonPage'
 import { OnboardingPage } from '@/features/settings/OnboardingPage'
@@ -40,6 +42,17 @@ export const routes: RouteObject[] = [
     ),
   },
   {
+    // Урок — во весь экран, без левой панели: на шаге ничто не отвлекает.
+    path: '/lesson',
+    element: (
+      <RequireAuth>
+        <RequireOnboarded>
+          <LessonPage />
+        </RequireOnboarded>
+      </RequireAuth>
+    ),
+  },
+  {
     path: '/',
     element: (
       <RequireAuth>
@@ -49,7 +62,9 @@ export const routes: RouteObject[] = [
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <TodayPage /> },
+      { index: true, element: <Navigate to="/path" replace /> },
+      { path: 'path', element: <PathPage /> },
+      { path: 'today', element: <TodayPage /> },
       { path: 'cards', element: <CardsPage /> },
       { path: 'learn', element: <LearnPage /> },
       { path: 'learn/placement', element: <PlacementPage /> },

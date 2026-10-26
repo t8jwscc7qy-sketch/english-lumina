@@ -253,7 +253,7 @@ describe('SessionPage: минимум и итог', () => {
     expect(screen.getByText(/открыто 1/i)).toBeInTheDocument()
     expect(screen.getByText(/закрыто 2/i)).toBeInTheDocument()
     expect(screen.getByText(/3 дня/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/today')
   })
 
   it('итог называет день, который спасла заморозка', async () => {
@@ -283,7 +283,7 @@ describe('SessionPage: состояния', () => {
     expect(
       await screen.findByRole('heading', { name: 'Подходящих упражнений пока нет' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/today')
     await new Promise((r) => setTimeout(r, 300))
     expect(calls.nexts).toBe(1) // запрос один, а не цикл
   })

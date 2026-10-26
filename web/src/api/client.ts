@@ -295,3 +295,35 @@ export async function knowTextWord(lexemeId: number): Promise<boolean> {
   const res = await request('/api/v1/texts/know-word', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ lexemeId }) })
   return ((await res.json()) as components['schemas']['KnowWordResult']).marked
 }
+
+export type CoursePath = components['schemas']['CoursePath']
+export type CourseLessonRef = components['schemas']['CourseLessonRef']
+export type Lesson = components['schemas']['Lesson']
+export type LessonDrill = components['schemas']['LessonDrill']
+export type CompleteLessonResponse = components['schemas']['CompleteLessonResponse']
+
+/** Путь: блоки и уроки курса с состоянием. */
+export async function getCourse(): Promise<CoursePath> {
+  const res = await request('/api/v1/course')
+  return (await res.json()) as CoursePath
+}
+
+/** Урок целиком; без id — текущий. */
+export async function getLesson(id?: string): Promise<Lesson> {
+  const res = await request('/api/v1/course/lesson', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(id ? { id } : {}),
+  })
+  return (await res.json()) as Lesson
+}
+
+/** Отметить урок пройденным; повтор с тем же ключом отдаёт прежний итог. */
+export async function completeLesson(lessonId: string, key: string, seconds: number, mistakes: number): Promise<CompleteLessonResponse> {
+  const res = await request('/api/v1/course/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lessonId, key, seconds: Math.max(0, Math.round(seconds)), mistakes }),
+  })
+  return (await res.json()) as CompleteLessonResponse
+}
