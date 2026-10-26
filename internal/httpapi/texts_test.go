@@ -248,3 +248,32 @@ func TestTextKnowWord(t *testing.T) {
 		t.Fatalf("событий %d, ждали 1", n)
 	}
 }
+
+func TestTextTargetsSkipFunctionWords(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	payload, _ := json.Marshal(map[string]any{"lemma": "just", "translations": []string{"только"}})
+	e.store.textTargets = append([]db.TextTargetWordsRow{{LexemeID: 900, Lemma: "just", Pos: "adverb", Payload: payload}}, e.store.textTargets...)
+	text, code, body := nextText(t, e, token, "")
+	if code != http.StatusOK || slices.Contains(text.Targets, "just") {
+		t.Fatalf("служебное слово не бывает целевым: %d %v %s", code, text.Targets, body)
+	}
+}
+
+func TestTextTargetsAreDistinctLemmas(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	// right как прилагательное и наречие — два слова базы с одной леммой: целевым становится один раз.
+	dup := e.store.textTargets[0]
+	dup.LexemeID, dup.Pos = 901, "adjective"
+	e.store.textTargets = append([]db.TextTargetWordsRow{e.store.textTargets[0], dup}, e.store.textTargets[1:]...)
+	text, code, _ := nextText(t, e, token, "")
+	if code != http.StatusOK {
+		t.Fatal(code)
+	}
+	seen := map[string]bool{}
+	for _, tg := range text.Targets {
+		if seen[tg] {
+			t.Fatalf("лемма %s дважды среди целевых слов: %v", tg, text.Targets)
+		}
+		seen[tg] = true
+	}
+}

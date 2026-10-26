@@ -118,7 +118,7 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		forms := words.SingleWords(words.Forms(t.Lemma, t.Pos))
-		if len(forms) == 0 {
+		if _, dup := targetRow[t.Lemma]; dup || len(forms) == 0 || exercises.IsFunctionWord(t.Lemma) { // служебные слова и так считаются известными; одна лемма — одно целевое слово
 			continue
 		}
 		rows, err := s.store.ListExamples(ctx, db.ListExamplesParams{Query: words.TSQuery(words.Forms(t.Lemma, t.Pos)), MaxRows: textExampleRows})
