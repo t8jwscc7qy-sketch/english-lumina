@@ -154,7 +154,7 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	knownRows, err := s.store.LearnKnownWords(ctx, user.ID)
+	knownRows, err := s.store.TextKnownWords(ctx, user.ID)
 	if err != nil {
 		s.failTexts(w, fmt.Errorf("известные слова: %w", err))
 		return

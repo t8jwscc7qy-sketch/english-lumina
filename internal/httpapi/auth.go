@@ -90,6 +90,7 @@ type AuthStore interface {
 	LearnMarkLearned(ctx context.Context, arg db.LearnMarkLearnedParams) (int64, error)
 	LearnReviewStats(ctx context.Context, arg db.LearnReviewStatsParams) (db.LearnReviewStatsRow, error)
 	LearnKnownWords(ctx context.Context, userID int64) ([]db.LearnKnownWordsRow, error)
+	TextKnownWords(ctx context.Context, userID int64) ([]db.TextKnownWordsRow, error)
 	SheetStates(ctx context.Context, userID int64) ([]db.SheetStatesRow, error)
 	SheetSetFavorite(ctx context.Context, arg db.SheetSetFavoriteParams) (int64, error)
 	SheetClearFavorite(ctx context.Context, arg db.SheetClearFavoriteParams) (int64, error)

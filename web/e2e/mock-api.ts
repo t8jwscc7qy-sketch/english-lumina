@@ -245,6 +245,8 @@ export type LearnOpts = {
   introduced?: unknown[]
   placed?: unknown[]
   prefsPuts?: unknown[]
+  /** Слов в учёте для «Читать» (по умолчанию 6). */
+  tracked?: number
   /** Слов известно «Привалу» (по умолчанию 4: закрыт). */
   campWords?: number
   /** Сюда складываются запросы упражнений с mode=camp. */
@@ -621,6 +623,7 @@ export async function mockApi(
         learned: 3, introduced: 2, knownAtStart: 1, newToday: opts.learn?.exhausted ? 5 : 1, limit: 5, remaining: opts.learn?.exhausted ? 0 : 4,
         reason: learnReason, mode: 'auto', perDay: 12, kbReady: opts.learn !== undefined,
         campWords: opts.learn?.campWords ?? 4, campMinWords: 50, campOpen: (opts.learn?.campWords ?? 4) >= 50,
+        trackedWords: opts.learn?.tracked ?? 6, textMinWords: 20,
       },
     }),
   )

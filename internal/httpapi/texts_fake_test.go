@@ -62,7 +62,7 @@ func (f *fakeStore) TextRecentSentenceIDs(_ context.Context, a db.TextRecentSent
 func (f *fakeStore) TextTargetWords(_ context.Context, a db.TextTargetWordsParams) ([]db.TextTargetWordsRow, error) {
 	var out []db.TextTargetWordsRow
 	for _, r := range f.textTargets {
-		if w, ok := f.wl[r.LexemeID]; ok && (w.status == "learned" || w.status == "known_at_start") {
+		if w, ok := f.wl[r.LexemeID]; ok && (w.status == "learned" || w.status == "known_at_start" || w.status == "introduced") {
 			continue
 		}
 		out = append(out, r)

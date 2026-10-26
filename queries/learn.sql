@@ -1,18 +1,22 @@
 -- name: LearnCandidates :many
--- Слова для «Знакомства»: есть выбранный перевод в базе знаний, уровень из списка, нет ни карточки, ни строки
--- состояния изучения. По уровню (A1 раньше A2), затем по рангу частоты (нет ранга — в конце).
+-- Слова для «Знакомства»: есть выбранный перевод в базе знаний, нет ни карточки, ни строки состояния изучения.
+-- Сначала 1000 самых частотных слов строго по частоте (любой уровень CEFR-J), затем по уровню из списка и рангу частоты
+-- (нет ранга — в конце).
 SELECT l.id AS lexeme_id, l.lemma, l.pos, lv.level::text AS level, st.freq_rank, c.payload
 FROM lexemes l
 JOIN kb_teaching_card c ON c.lexeme_id = l.id
 JOIN LATERAL (SELECT min(level) AS level FROM lexeme_cefr WHERE lexeme_id = l.id) lv ON true
 LEFT JOIN kb_lexeme_stat st ON st.lexeme_id = l.id
-WHERE lv.level = ANY(sqlc.arg(levels)::text[])
+WHERE (lv.level = ANY(sqlc.arg(levels)::text[]) OR st.freq_rank <= 1000)
   AND l.lemma ~ '^[a-z]+$'
-  AND l.pos IN ('noun', 'verb', 'adjective', 'adverb')
+  AND (l.pos IN ('noun', 'verb', 'adjective', 'adverb') OR st.freq_rank <= 1000) -- у тысячи самых частых нужны и служебные слова
   AND COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof(c.payload->'translations') = 'array' THEN c.payload->'translations' END), 0) > 0
   AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = sqlc.arg(user_id) AND w.lexeme_id = l.id)
   AND NOT EXISTS (SELECT 1 FROM cards cd WHERE cd.user_id = sqlc.arg(user_id) AND cd.lexeme_id = l.id)
-ORDER BY lv.level, st.freq_rank NULLS LAST, l.id
+  -- Лемма, у которой другая часть речи уже в учёте (go глагол и go существительное), второй раз не предлагается.
+  AND NOT EXISTS (SELECT 1 FROM word_learning w2 JOIN lexemes l2 ON l2.id = w2.lexeme_id WHERE w2.user_id = sqlc.arg(user_id) AND l2.lemma = l.lemma)
+  AND NOT EXISTS (SELECT 1 FROM cards c2 JOIN lexemes l3 ON l3.id = c2.lexeme_id WHERE c2.user_id = sqlc.arg(user_id) AND l3.lemma = l.lemma)
+ORDER BY (st.freq_rank IS NULL OR st.freq_rank > 1000), CASE WHEN st.freq_rank <= 1000 THEN st.freq_rank END, lv.level, st.freq_rank NULLS LAST, l.id
 LIMIT sqlc.arg(max_rows)::int OFFSET sqlc.arg(row_offset)::int;
 
 -- name: LearnRelations :many
@@ -63,15 +67,16 @@ ON CONFLICT (user_id) DO UPDATE SET new_words_mode = EXCLUDED.new_words_mode, ne
 RETURNING *;
 
 -- name: LearnPlacementCandidates :many
--- Слова быстрого теста: самые частые слова уровня, которых нет ни в карточках, ни в состоянии изучения (страницы по offset).
+-- Слова быстрого теста: сначала 1000 самых частотных слов по частоте, затем самые частые слова уровня; тех, что уже в
+-- карточках или в состоянии изучения, нет (страницы по offset).
 SELECT l.id AS lexeme_id, l.lemma, l.pos
 FROM lexemes l
 JOIN LATERAL (SELECT min(level) AS level FROM lexeme_cefr WHERE lexeme_id = l.id) lv ON true
 LEFT JOIN kb_lexeme_stat st ON st.lexeme_id = l.id
-WHERE lv.level = ANY(sqlc.arg(levels)::text[])
+WHERE (lv.level = ANY(sqlc.arg(levels)::text[]) OR st.freq_rank <= 1000)
   AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = sqlc.arg(user_id) AND w.lexeme_id = l.id)
   AND NOT EXISTS (SELECT 1 FROM cards cd WHERE cd.user_id = sqlc.arg(user_id) AND cd.lexeme_id = l.id)
-ORDER BY lv.level, st.freq_rank NULLS LAST, l.id
+ORDER BY (st.freq_rank IS NULL OR st.freq_rank > 1000), CASE WHEN st.freq_rank <= 1000 THEN st.freq_rank END, lv.level, st.freq_rank NULLS LAST, l.id
 LIMIT sqlc.arg(max_rows)::int OFFSET sqlc.arg(row_offset)::int;
 
 -- name: LearnKnownWords :many
@@ -80,3 +85,10 @@ SELECT l.id AS lexeme_id, l.lemma, l.pos
 FROM word_learning w
 JOIN lexemes l ON l.id = w.lexeme_id
 WHERE w.user_id = $1 AND w.status IN ('learned', 'known_at_start');
+
+-- name: TextKnownWords :many
+-- Слова, понятные в тексте: изучено, «знаю» и уже показанные на «Знакомстве» (у них есть перевод и фраза).
+SELECT l.id AS lexeme_id, l.lemma, l.pos
+FROM word_learning w
+JOIN lexemes l ON l.id = w.lexeme_id
+WHERE w.user_id = $1 AND w.status IN ('learned', 'known_at_start', 'introduced');

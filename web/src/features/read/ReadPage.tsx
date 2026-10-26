@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { ApiError, type ReadMode, type Understood } from '@/api/client'
 import { FoxNote } from '@/components/brand/FoxNote'
 import { Button } from '@/components/ui/button'
+import { useLearnStatus } from '@/features/learn/learn'
 import { useFreshText, useNextText, useRateText } from './read'
 import { wordAtChar } from './segments'
 import { canSpeak, speak, stopSpeaking } from './speech'
@@ -234,6 +235,8 @@ export function ReadPage() {
   }, [])
 
   const noText = next.error instanceof ApiError && next.error.code === 'no_text'
+  const status = useLearnStatus()
+  const left = status.data ? Math.max(0, status.data.textMinWords - status.data.trackedWords) : null
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 xl:p-8">
@@ -261,6 +264,9 @@ export function ReadPage() {
           <FoxNote mood="thinking">
             <h2 className="text-title">Пока не из чего собрать текст</h2>
             <p className="text-muted-foreground">{next.error?.message}</p>
+            {status.data && left !== null && left > 0 && (
+              <p className="tabular-nums">{`В учёте слов: ${status.data.trackedWords} из ${status.data.textMinWords}. Осталось ${left}: первый блок «Знакомства» даёт до 7 слов.`}</p>
+            )}
           </FoxNote>
           <div className="flex flex-wrap gap-3">
             <Button asChild>

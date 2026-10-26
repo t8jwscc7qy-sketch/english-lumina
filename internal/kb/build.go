@@ -353,6 +353,21 @@ type cardPayload struct {
 	Synonyms     []string `json:"synonyms,omitempty"`
 }
 
+// statCount — сумма счётов форм слова. Сокращения (abbreviation) не считаются: «in» у inch — это не употребление слова
+// inch, иначе оно попадало в двадцатку самых частых.
+func statCount(forms []FormRow, lexemeID int64, enCount map[string]int64) int64 {
+	var total int64
+	counted := map[string]bool{}
+	for _, f := range forms {
+		if f.LexemeID != lexemeID || counted[f.Form] || strings.Contains(f.Tag, "abbreviation") {
+			continue
+		}
+		counted[f.Form] = true
+		total += enCount[f.Form]
+	}
+	return total
+}
+
 // Assemble сливает источники по правилам и возвращает строки таблиц kb_* и отчёт качества. Чистая функция:
 // результат не зависит от порядка входных срезов.
 func Assemble(in Inputs) (Output, Report) {
@@ -543,13 +558,7 @@ func Assemble(in Inputs) (Output, Report) {
 				addForm(f.Form, strings.Join(f.Tags, ","))
 			}
 		}
-		counted := map[string]bool{}
-		for _, f := range out.Forms {
-			if f.LexemeID == lex.ID && !counted[f.Form] {
-				counted[f.Form] = true
-				counts[lex.ID] += in.EnCount[f.Form]
-			}
-		}
+		counts[lex.ID] += statCount(out.Forms, lex.ID, in.EnCount)
 
 		// Связи слов: самые частые первыми (слова нашего словаря в первую очередь), до maxRelations каждого вида.
 		slices.SortStableFunc(rels, func(a, b RelationRow) int {

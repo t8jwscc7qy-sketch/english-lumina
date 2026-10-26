@@ -435,3 +435,19 @@ func TestAssembleShortSenseTextDoesNotMatchInsideWords(t *testing.T) {
 		}
 	}
 }
+
+func TestStatCountSkipsAbbreviations(t *testing.T) {
+	forms := []FormRow{
+		{Form: "inch", LexemeID: 1, Tag: "lemma"}, {Form: "inches", LexemeID: 1, Tag: "plural"},
+		{Form: "in", LexemeID: 1, Tag: "abbreviation"}, {Form: "in.", LexemeID: 1, Tag: "abbreviation"},
+		{Form: "inches", LexemeID: 1, Tag: "plural"}, // повтор формы не считается дважды
+		{Form: "foot", LexemeID: 2, Tag: "lemma"},
+	}
+	counts := map[string]int64{"inch": 10, "inches": 5, "in": 7000000, "foot": 99}
+	if got := statCount(forms, 1, counts); got != 15 {
+		t.Fatalf("счёт inch %d, ждали 15 (без сокращения «in»)", got)
+	}
+	if got := statCount(forms, 2, counts); got != 99 {
+		t.Fatalf("чужие формы не считаются: %d", got)
+	}
+}

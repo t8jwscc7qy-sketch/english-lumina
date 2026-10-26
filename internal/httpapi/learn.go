@@ -108,7 +108,16 @@ func (s *authServer) learnContext(w http.ResponseWriter, r *http.Request, userID
 		s.failLearn(w, fmt.Errorf("точность повторений: %w", err))
 		return learnSetup{}, false
 	}
-	in := pace.Input{
+	counts2, err := s.store.LearnStatusCounts(ctx, userID)
+	if err != nil {
+		s.failLearn(w, fmt.Errorf("слов в учёте: %w", err))
+		return learnSetup{}, false
+	}
+	tracked := 0
+	for _, c := range counts2 {
+		tracked += int(c.Count)
+	}
+	in := pace.Input{Tracked: tracked,
 		DailyMinutes: int(st.DailyMinMinutes), Due: int(counts.Due), IntroducedToday: int(introduced),
 		Mode: out.prefs.NewWordsMode, PerDay: int(out.prefs.NewWordsPerDay), Cap: int(out.prefs.NewWordsPerDay),
 	}
@@ -156,6 +165,8 @@ func (s *authServer) GetLearnStatus(w http.ResponseWriter, r *http.Request) {
 			out.KnownAtStart = int(c.Count)
 		}
 	}
+	out.TrackedWords = out.Learned + out.Introduced + out.KnownAtStart
+	out.TextMinWords = textMinKnown
 	out.CampWords = out.Learned + out.KnownAtStart
 	out.CampMinWords = campMinWords
 	out.CampOpen = out.CampWords >= campMinWords

@@ -207,7 +207,7 @@ WHERE st.freq_rank IS NOT NULL
   AND l.lemma ~ '^[a-z]+$'
   AND l.pos IN ('noun', 'verb', 'adjective', 'adverb')
   AND COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof(c.payload -> 'translations') = 'array' THEN c.payload -> 'translations' END), 0) > 0
-  AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = $1 AND w.lexeme_id = l.id AND w.status IN ('learned', 'known_at_start'))
+  AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = $1 AND w.lexeme_id = l.id AND w.status IN ('learned', 'known_at_start', 'introduced'))
 ORDER BY st.freq_rank, l.id
 LIMIT $2::int
 `
@@ -225,7 +225,7 @@ type TextTargetWordsRow struct {
 	Payload  json.RawMessage
 }
 
-// Следующие по частоте слова, которых пользователь ещё не знает (не изучено и не «знаю»): кандидаты в целевые слова
+// Следующие по частоте слова, которых пользователь ещё не видел (не изучено, не «знаю» и не показано на «Знакомстве»): кандидаты в целевые слова
 // текста. Нужны перевод в базе знаний и строчное написание из букв.
 func (q *Queries) TextTargetWords(ctx context.Context, arg TextTargetWordsParams) ([]TextTargetWordsRow, error) {
 	rows, err := q.db.Query(ctx, textTargetWords, arg.UserID, arg.MaxRows)

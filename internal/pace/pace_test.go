@@ -4,7 +4,7 @@ import "testing"
 
 func TestNewWordsToday(t *testing.T) {
 	auto := func(minutes, due int, acc float64, has bool, today int) Input {
-		return Input{DailyMinutes: minutes, Due: due, Accuracy7d: acc, HasAccuracy: has, IntroducedToday: today, Mode: "auto", Cap: 12}
+		return Input{DailyMinutes: minutes, Due: due, Accuracy7d: acc, HasAccuracy: has, IntroducedToday: today, Mode: "auto", Cap: 12, Tracked: 500}
 	}
 	tests := []struct {
 		name          string
@@ -29,8 +29,15 @@ func TestNewWordsToday(t *testing.T) {
 		{"ручной режим: число приводится к границам", Input{Mode: "manual", PerDay: 99}, 30, 30, "manual"},
 		{"ручной режим: ноль приводится к одному", Input{Mode: "manual", PerDay: 0}, 1, 1, "manual"},
 		{"ручной режим исчерпан", Input{Mode: "manual", PerDay: 3, IntroducedToday: 3}, 3, 0, "done"},
-		{"потолок не задан: 12", Input{DailyMinutes: 120, Mode: "auto"}, 12, 12, "base"},
-		{"неизвестный режим считается авто", Input{DailyMinutes: 15, Mode: "turbo", Cap: 12}, 5, 5, "base"},
+		{"потолок не задан: 12", Input{DailyMinutes: 120, Mode: "auto", Tracked: 500}, 12, 12, "base"},
+		{"неизвестный режим считается авто", Input{DailyMinutes: 15, Mode: "turbo", Cap: 12, Tracked: 500}, 5, 5, "base"},
+		{"холодный старт: слов в учёте 0 — не меньше 20", Input{DailyMinutes: 15, Mode: "auto", Cap: 12}, 20, 20, "cold"},
+		{"холодный старт: 99 слов в учёте", Input{DailyMinutes: 15, Mode: "auto", Cap: 12, Tracked: 99}, 20, 20, "cold"},
+		{"холодный старт кончился на 100 словах", Input{DailyMinutes: 15, Mode: "auto", Cap: 12, Tracked: 100}, 5, 5, "base"},
+		{"холодный старт: введено 7 из 20", Input{DailyMinutes: 15, Mode: "auto", Cap: 12, Tracked: 10, IntroducedToday: 7}, 20, 13, "cold"},
+		{"холодный старт не отменяет накопившихся повторений", Input{DailyMinutes: 15, Due: 36, Mode: "auto", Cap: 12, Tracked: 10}, 0, 0, "backlog"},
+		{"холодный старт не трогает ручной режим", Input{Mode: "manual", PerDay: 5, Tracked: 10}, 5, 5, "manual"},
+		{"холодный старт при большой базе не снижает лимит", Input{DailyMinutes: 120, Mode: "auto", Cap: 30, Tracked: 10}, 30, 30, "base"},
 	}
 	for _, tc := range tests {
 		got := NewWordsToday(tc.in)

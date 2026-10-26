@@ -101,6 +101,7 @@ type fakeStore struct {
 	nextTextID       int64
 	textTargets      []db.TextTargetWordsRow
 	textHints        []db.TextWordHintsRow
+	extraTracked     int                // добавочные слова «в учёте» для LearnStatusCounts (learn_fake_test.go)
 	wl               map[int64]fakeWord // состояние изучения слов одного пользователя (word_learning)
 	learnCands       []db.LearnCandidatesRow
 	learnPlacement   []db.LearnPlacementCandidatesRow
