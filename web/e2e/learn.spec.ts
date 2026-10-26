@@ -9,7 +9,7 @@ const WORDS = [
 test.describe('знакомство', () => {
   test('«Сегодня»: карточка знакомства ведёт на слова', async ({ page }) => {
     await mockApi(page, { loggedIn: true, learn: { words: WORDS } })
-    await page.goto('/')
+    await page.goto('/today')
     await expect(page.getByRole('heading', { name: 'Знакомство' })).toBeVisible()
     await expect(page.getByText('Новых слов сегодня: 1 из 5')).toBeVisible()
     await page.getByRole('link', { name: 'Начать знакомство' }).click()

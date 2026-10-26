@@ -3,16 +3,11 @@ import type { LearnWord } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { HighlightedText } from '@/features/words/HighlightedText'
 import { TatoebaCredit } from '@/features/words/TatoebaCredit'
-import { canPlay, DEFAULT_VOLUME, speak as playItems } from '@/features/read/speech'
+import { canPlay, DEFAULT_VOLUME, sayText, speak as playItems } from '@/features/read/speech'
 
 /** Произнести слово синтезом речи браузера: запасной путь, если записи нет или она не играет. */
 function speak(text: string) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang = 'en-US'
-  u.volume = DEFAULT_VOLUME
-  window.speechSynthesis.speak(u)
+  sayText(text)
 }
 
 function canSpeak(): boolean {

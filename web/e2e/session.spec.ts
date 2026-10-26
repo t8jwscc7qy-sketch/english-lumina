@@ -15,7 +15,7 @@ test.describe('«Сегодня» и сессия', () => {
   test('кнопка «Сегодня» называется по прогрессу и ведёт на /session', async ({ page }) => {
     for (const [minutes, name] of [[0, 'Начать сессию'], [4, 'Продолжить сессию'], [10, 'Позаниматься ещё']] as const) {
       await mockApi(page, { loggedIn: true, progress: { minutes } })
-      await page.goto('/')
+      await page.goto('/today')
       const link = page.getByRole('link', { name })
       await expect(link).toBeVisible()
       await expect(link).toHaveAttribute('href', '/session')
@@ -25,7 +25,7 @@ test.describe('«Сегодня» и сессия', () => {
 
   test('«Сегодня»: серия, заморозка и минуты из прогресса', async ({ page }) => {
     await mockApi(page, { loggedIn: true, progress: { minutes: 4.3, streakDays: 5, freezeUsedOn: '2026-10-24' } })
-    await page.goto('/')
+    await page.goto('/today')
     await expect(page.getByText('5 дней')).toBeVisible()
     await expect(page.getByText('Заморозка спасла 24 октября')).toBeVisible()
     await expect(page.getByText(/4,3\s+из\s+10\s+мин/)).toBeVisible()
@@ -33,7 +33,7 @@ test.describe('«Сегодня» и сессия', () => {
 
   test('сессия целиком: карточки → упражнения → минимум → итог', async ({ page }) => {
     const { reviews, answers } = await mockApi(page, { loggedIn: true, dueCards: ['run', 'runner'], progress: { step: 3 } })
-    await page.goto('/')
+    await page.goto('/today')
     await page.getByRole('link', { name: 'Начать сессию' }).click()
     await expect(page).toHaveURL(/\/session$/)
     await rateCard(page, 'Карточка 1 из 2')
@@ -99,7 +99,7 @@ test.describe('«Сегодня» и сессия', () => {
           expect(overflow, name).toBeLessThanOrEqual(0)
           await page.screenshot({ path: `test-results/screens/session-${name}-${theme}-${size.name}.png`, fullPage: true })
         }
-        await page.goto('/')
+        await page.goto('/today')
         await expect(page.getByText('3 дня')).toBeVisible()
         await shot('today')
         await page.getByRole('link', { name: 'Начать сессию' }).click()

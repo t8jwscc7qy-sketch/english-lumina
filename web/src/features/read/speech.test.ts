@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { canPlay, speak, stopSpeaking } from './speech'
+import { canPlay, speak, stopSpeaking, pickVoice } from './speech'
 
 type Handler = (() => void) | null
 
@@ -110,5 +110,14 @@ describe('speech', () => {
     expect(canPlay([{ text: 'x', audioUrl: 'https://x/1' }])).toBe(true)
     stubSynth([])
     expect(canPlay([{ text: 'x' }])).toBe(true)
+  })
+})
+
+describe('pickVoice', () => {
+  const v = (name: string, lang = 'en-US', localService = true) => ({ name, lang, localService }) as SpeechSynthesisVoice
+  it('берёт спокойный известный голос и не берёт игрушечные', () => {
+    expect(pickVoice([v('Albert'), v('Zarvox'), v('Samantha'), v('Milena', 'ru-RU')])?.name).toBe('Samantha')
+    expect(pickVoice([v('Bad News'), v('Some Voice')])?.name).toBe('Some Voice')
+    expect(pickVoice([v('Milena', 'ru-RU')])).toBeUndefined()
   })
 })

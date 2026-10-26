@@ -4,7 +4,7 @@ import { mockApi } from './mock-api'
 test.describe('страница «Прогресс»', () => {
   test('из меню: пока занятий нет — «Собираю данные», счётчик и пустой график', async ({ page }) => {
     await mockApi(page, { loggedIn: true })
-    await page.goto('/')
+    await page.goto('/today')
     await page.getByRole('link', { name: 'Прогресс', exact: true }).click()
     await expect(page).toHaveURL(/\/progress$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Прогресс' })).toBeVisible()

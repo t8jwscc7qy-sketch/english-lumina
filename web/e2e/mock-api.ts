@@ -270,6 +270,47 @@ export type ReadOpts = {
   modes?: string[]
 }
 
+/** Курс для подмены: два урока; второй открывается после первого. */
+export const COURSE_LESSONS = [
+  {
+    id: 'u1-l1',
+    title: 'Привет',
+    number: 1,
+    unit: 1,
+    unitTitle: 'Знакомство',
+    words: [
+      { lemma: 'hello', pos: 'noun', ru: 'привет', forms: [], example: { speaker: 'Anna', en: 'Hello! I am Anna.', ru: 'Привет! Я Анна.' } },
+      { lemma: 'I', pos: 'pronoun', ru: 'я', forms: [], example: { speaker: 'Anna', en: 'Hello! I am Anna.', ru: 'Привет! Я Анна.' } },
+    ],
+    sentences: [
+      { speaker: 'Anna', en: 'Hello! I am Anna.', ru: 'Привет! Я Анна.' },
+      { speaker: 'Tom', en: 'Hello, Anna! I am Tom.', ru: 'Привет, Анна! Я Том.' },
+    ],
+    questions: [{ prompt: 'Кто здоровается первым?', options: ['Анна', 'Том'], answer: 0 }],
+    drills: [
+      { kind: 'gap', old: false, prompt: 'Привет! Я Анна.', text: '___! I am Anna.', options: ['Hello', 'I', 'Am'], answer: 'Hello' },
+      { kind: 'order', old: false, prompt: 'Я Том.', tiles: ['Tom', 'am', 'I'], answer: 'I am Tom' },
+      { kind: 'match', old: false, pairs: [{ en: 'hello', ru: 'привет' }, { en: 'I', ru: 'я' }, { en: 'am', ru: 'есть' }] },
+    ],
+    note: { title: 'I am', text: 'По-английски глагол нужен всегда: I am Anna — «я (есть) Анна».' },
+    glossary: { hello: 'привет', i: 'я', am: 'есть' },
+  },
+  {
+    id: 'u1-l2',
+    title: 'Как дела?',
+    number: 2,
+    unit: 1,
+    unitTitle: 'Знакомство',
+    words: [{ lemma: 'how', pos: 'adverb', ru: 'как', forms: [] }],
+    sentences: [{ speaker: 'Tom', en: 'Hello, Anna! How are you?', ru: 'Привет, Анна! Как дела?' }],
+    questions: [{ prompt: 'Кто спрашивает?', options: ['Том', 'Анна'], answer: 0 }],
+    drills: [],
+    glossary: { hello: 'привет', how: 'как' },
+  },
+]
+
+export type LessonComplete = { lessonId: string; key: string; seconds: number; mistakes: number }
+
 export async function mockApi(
   page: Page,
   opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts; learn?: LearnOpts; sheets?: SheetsOpts; read?: ReadOpts },
@@ -277,6 +318,37 @@ export async function mockApi(
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
   const puts: Settings[] = []
+  const lessonCompletes: LessonComplete[] = []
+  const doneLessons = new Set<string>()
+  const lessonRef = (l: (typeof COURSE_LESSONS)[number], current: string | undefined) => ({
+    id: l.id,
+    title: l.title,
+    number: l.number,
+    unit: l.unit,
+    newWords: l.words.length,
+    state: doneLessons.has(l.id) ? 'done' : l.id === current ? 'current' : 'locked',
+  })
+  const coursePath = () => {
+    const current = COURSE_LESSONS.find((l) => !doneLessons.has(l.id))?.id
+    const lessons = COURSE_LESSONS.map((l) => lessonRef(l, current))
+    return { units: [{ unit: 1, title: 'Знакомство', lessons }], next: lessons.find((l) => l.state === 'current') }
+  }
+  await page.route('**/api/v1/course', (route) => route.fulfill({ json: coursePath() }))
+  await page.route('**/api/v1/course/lesson', (route) => {
+    const body = route.request().postDataJSON() as { id?: string }
+    const id = body.id ?? coursePath().next?.id
+    const l = COURSE_LESSONS.find((x) => x.id === id)
+    if (!l) return route.fulfill({ status: 404, json: { error: { code: 'not_found', message: 'Такого урока нет' } } })
+    return route.fulfill({ json: { ...l, done: doneLessons.has(l.id) } })
+  })
+  await page.route('**/api/v1/course/complete', (route) => {
+    const body = route.request().postDataJSON() as LessonComplete
+    lessonCompletes.push(body)
+    const repeated = doneLessons.has(body.lessonId)
+    doneLessons.add(body.lessonId)
+    const l = COURSE_LESSONS.find((x) => x.id === body.lessonId)!
+    return route.fulfill({ json: { lessonId: l.id, newWords: l.words.length, cardsAdded: repeated ? 0 : l.words.length, seconds: body.seconds, repeated, next: coursePath().next } })
+  })
 
   await page.route('**/api/v1/auth/**', async (route) => {
     const url = new URL(route.request().url())
@@ -738,5 +810,5 @@ export async function mockApi(
     })
   })
 
-  return { puts, reviews, answers, exState, cardAdds }
+  return { puts, reviews, answers, exState, cardAdds, lessonCompletes }
 }

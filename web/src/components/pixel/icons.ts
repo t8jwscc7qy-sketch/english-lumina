@@ -12,11 +12,26 @@ export type IconName =
   | 'camp'
   | 'sheets'
   | 'read'
+  | 'path'
 
 export const ICON_SIZE = 12
 
 /** Иконки 12×12 одного цвета: «X» закрашено цветом текста (currentColor), «.» пусто. */
 const ROWS: Record<IconName, string[]> = {
+  path: [
+    '..XXXXXXX...',
+    '..XXXXXXXX..',
+    '..XXXXXXX...',
+    '..X.........',
+    '..X.........',
+    '..X......X..',
+    '..X.....XXX.',
+    '..X......X..',
+    '..X......X..',
+    '.XXX.....X..',
+    'XXXXX...XXX.',
+    '............',
+  ],
   today: [
     '.....XX.....',
     '.X...XX...X.',
