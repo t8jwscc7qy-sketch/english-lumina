@@ -25,6 +25,9 @@ export function LearnCard() {
             <Link to="/learn/placement">Быстрый тест</Link>
           </Button>
           <Button asChild variant="secondary">
+            <Link to="/read">Читать</Link>
+          </Button>
+          <Button asChild variant="secondary">
             <Link to="/camp">{s.campOpen ? 'Привал' : `Привал (${s.campWords} из ${s.campMinWords})`}</Link>
           </Button>
         </div>

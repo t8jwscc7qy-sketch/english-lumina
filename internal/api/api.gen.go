@@ -54,6 +54,7 @@ const (
 	ErrorErrorCodeLimitReached       ErrorErrorCode = "limit_reached"
 	ErrorErrorCodeNoExamples         ErrorErrorCode = "no_examples"
 	ErrorErrorCodeNoExercise         ErrorErrorCode = "no_exercise"
+	ErrorErrorCodeNoText             ErrorErrorCode = "no_text"
 	ErrorErrorCodeNoWords            ErrorErrorCode = "no_words"
 	ErrorErrorCodeNotFound           ErrorErrorCode = "not_found"
 	ErrorErrorCodeOnboardingRequired ErrorErrorCode = "onboarding_required"
@@ -86,6 +87,8 @@ func (e ErrorErrorCode) Valid() bool {
 	case ErrorErrorCodeNoExamples:
 		return true
 	case ErrorErrorCodeNoExercise:
+		return true
+	case ErrorErrorCodeNoText:
 		return true
 	case ErrorErrorCodeNoWords:
 		return true
@@ -275,6 +278,63 @@ func (e PlacementResultNext) Valid() bool {
 	case More:
 		return true
 	case Stop:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RateTextRequestMode.
+const (
+	RateTextRequestModeListen RateTextRequestMode = "listen"
+	RateTextRequestModeRead   RateTextRequestMode = "read"
+)
+
+// Valid indicates whether the value is a known member of the RateTextRequestMode enum.
+func (e RateTextRequestMode) Valid() bool {
+	switch e {
+	case RateTextRequestModeListen:
+		return true
+	case RateTextRequestModeRead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RateTextRequestUnderstood.
+const (
+	RateTextRequestUnderstoodEasy RateTextRequestUnderstood = "easy"
+	RateTextRequestUnderstoodHard RateTextRequestUnderstood = "hard"
+	RateTextRequestUnderstoodOk   RateTextRequestUnderstood = "ok"
+)
+
+// Valid indicates whether the value is a known member of the RateTextRequestUnderstood enum.
+func (e RateTextRequestUnderstood) Valid() bool {
+	switch e {
+	case RateTextRequestUnderstoodEasy:
+		return true
+	case RateTextRequestUnderstoodHard:
+		return true
+	case RateTextRequestUnderstoodOk:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReadTextMode.
+const (
+	ReadTextModeListen ReadTextMode = "listen"
+	ReadTextModeRead   ReadTextMode = "read"
+)
+
+// Valid indicates whether the value is a known member of the ReadTextMode enum.
+func (e ReadTextMode) Valid() bool {
+	switch e {
+	case ReadTextModeListen:
+		return true
+	case ReadTextModeRead:
 		return true
 	default:
 		return false
@@ -616,6 +676,16 @@ type IntroduceResponse struct {
 	Introduced int     `json:"introduced"`
 }
 
+// KnowWordRequest defines model for KnowWordRequest.
+type KnowWordRequest struct {
+	LexemeId int64 `json:"lexemeId"`
+}
+
+// KnowWordResult defines model for KnowWordResult.
+type KnowWordResult struct {
+	Marked bool `json:"marked"`
+}
+
 // LearnBlock defines model for LearnBlock.
 type LearnBlock struct {
 	Limit     int         `json:"limit"`
@@ -932,12 +1002,90 @@ type QueueCard struct {
 	State int `json:"state"`
 }
 
+// RateTextRequest defines model for RateTextRequest.
+type RateTextRequest struct {
+	Mode       RateTextRequestMode       `json:"mode"`
+	TextId     int64                     `json:"textId"`
+	Understood RateTextRequestUnderstood `json:"understood"`
+}
+
+// RateTextRequestMode defines model for RateTextRequest.Mode.
+type RateTextRequestMode string
+
+// RateTextRequestUnderstood defines model for RateTextRequest.Understood.
+type RateTextRequestUnderstood string
+
+// RateTextResult defines model for RateTextResult.
+type RateTextResult struct {
+	// Changed Оценка принята впервые (false — текст уже оценён)
+	Changed bool `json:"changed"`
+
+	// Goal Цель понимания после ответа
+	Goal float32 `json:"goal"`
+}
+
 // Rating defines model for Rating.
 type Rating struct {
 	Attempts  int     `json:"attempts"`
 	Deviation float64 `json:"deviation"`
 	Rating    float64 `json:"rating"`
 	Topic     string  `json:"topic"`
+}
+
+// ReadSentence defines model for ReadSentence.
+type ReadSentence struct {
+	// Author Автор английского предложения на Tatoeba (атрибуция CC BY)
+	Author string `json:"author"`
+	En     string `json:"en"`
+	Ru     string `json:"ru"`
+
+	// RuAuthor Автор русского перевода (атрибуция CC BY)
+	RuAuthor string `json:"ruAuthor"`
+
+	// RuTatoebaId Номер русского перевода на Tatoeba
+	RuTatoebaId int64 `json:"ruTatoebaId"`
+	TatoebaId   int64 `json:"tatoebaId"`
+
+	// Tokens Слова предложения в исходном регистре, в порядке появления
+	Tokens []string `json:"tokens"`
+}
+
+// ReadText defines model for ReadText.
+type ReadText struct {
+	// Cohesion Доля пар соседних предложений с общим словом
+	Cohesion float32 `json:"cohesion"`
+
+	// Coverage Настоящее понимание этого текста (доля известных слов)
+	Coverage float32 `json:"coverage"`
+
+	// Goal Цель понимания (0,80–0,90)
+	Goal      float32        `json:"goal"`
+	Hints     []ReadWordHint `json:"hints"`
+	Id        int64          `json:"id"`
+	Mode      ReadTextMode   `json:"mode"`
+	Sentences []ReadSentence `json:"sentences"`
+
+	// Targets Новые слова текста (леммы)
+	Targets []string `json:"targets"`
+	Title   string   `json:"title"`
+}
+
+// ReadTextMode defines model for ReadText.Mode.
+type ReadTextMode string
+
+// ReadWordHint defines model for ReadWordHint.
+type ReadWordHint struct {
+	Ipa      *string `json:"ipa,omitempty"`
+	Lemma    string  `json:"lemma"`
+	LexemeId int64   `json:"lexemeId"`
+	Pos      string  `json:"pos"`
+
+	// Target Новое слово этого текста
+	Target bool `json:"target"`
+
+	// Token Слово в нижнем регистре, как оно встречается в тексте
+	Token        string   `json:"token"`
+	Translations []string `json:"translations"`
 }
 
 // ReviewCardRequest defines model for ReviewCardRequest.
@@ -1216,6 +1364,12 @@ type OpenSheetJSONRequestBody = SheetRef
 // ReviewSheetJSONRequestBody defines body for ReviewSheet for application/json ContentType.
 type ReviewSheetJSONRequestBody = SheetRef
 
+// KnowTextWordJSONRequestBody defines body for KnowTextWord for application/json ContentType.
+type KnowTextWordJSONRequestBody = KnowWordRequest
+
+// RateTextJSONRequestBody defines body for RateText for application/json ContentType.
+type RateTextJSONRequestBody = RateTextRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Login Вход по логину и паролю
@@ -1305,6 +1459,15 @@ type ServerInterface interface {
 	// ListSources Загруженные источники данных с лицензиями и атрибуцией
 	// (GET /api/v1/sources)
 	ListSources(w http.ResponseWriter, r *http.Request)
+	// KnowTextWord Отметить слово из текста известным
+	// (POST /api/v1/texts/know-word)
+	KnowTextWord(w http.ResponseWriter, r *http.Request)
+	// GetNextText Следующий текст для чтения или слушания
+	// (GET /api/v1/texts/next)
+	GetNextText(w http.ResponseWriter, r *http.Request)
+	// RateText Как понял текст
+	// (POST /api/v1/texts/rate)
+	RateText(w http.ResponseWriter, r *http.Request)
 	// SearchWords Поиск слова по началу (без учёта регистра)
 	// (GET /api/v1/words)
 	SearchWords(w http.ResponseWriter, r *http.Request)
@@ -1728,6 +1891,48 @@ func (siw *ServerInterfaceWrapper) ListSources(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// KnowTextWord operation middleware
+func (siw *ServerInterfaceWrapper) KnowTextWord(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.KnowTextWord(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetNextText operation middleware
+func (siw *ServerInterfaceWrapper) GetNextText(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetNextText(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RateText operation middleware
+func (siw *ServerInterfaceWrapper) RateText(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RateText(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SearchWords operation middleware
 func (siw *ServerInterfaceWrapper) SearchWords(w http.ResponseWriter, r *http.Request) {
 
@@ -1902,6 +2107,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/sheets/open", wrapper.OpenSheet)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/sheets/favorite", wrapper.SetSheetFavorite)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/sheets/review", wrapper.ReviewSheet)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/texts/next", wrapper.GetNextText)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/texts/rate", wrapper.RateText)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/texts/know-word", wrapper.KnowTextWord)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/level/suggestion", wrapper.GetLevelSuggestion)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/level/suggestion/dismiss", wrapper.DismissLevelSuggestion)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/today", wrapper.GetProgressToday)

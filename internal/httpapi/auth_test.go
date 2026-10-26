@@ -96,7 +96,12 @@ type fakeStore struct {
 	candidatesErr    error                            // LearnCandidates отвечает этой ошибкой
 	markLearnedErr   error                            // LearnMarkLearned отвечает этой ошибкой
 	sheetStates      map[string]db.SheetStatesRow     // состояния шпаргалок одного пользователя
-	wl               map[int64]fakeWord               // состояние изучения слов одного пользователя (word_learning)
+	texts            map[int64]db.TextGetRow          // собранные тексты (texts_fake_test.go)
+	textRated        map[int64]bool
+	nextTextID       int64
+	textTargets      []db.TextTargetWordsRow
+	textHints        []db.TextWordHintsRow
+	wl               map[int64]fakeWord // состояние изучения слов одного пользователя (word_learning)
 	learnCands       []db.LearnCandidatesRow
 	learnPlacement   []db.LearnPlacementCandidatesRow
 	learnRelations   []db.LearnRelationsRow

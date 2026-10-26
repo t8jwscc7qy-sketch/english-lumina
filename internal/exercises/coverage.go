@@ -110,3 +110,26 @@ func CoverageOK(tokens []string, known map[string]bool, threshold float64) bool 
 	}
 	return unknown <= allowed
 }
+
+// IsFunctionWord — служебное слово (в нижнем регистре): считается известным всегда.
+func IsFunctionWord(lower string) bool { return functionWords[lower] }
+
+// CountKnown возвращает число учитываемых слов предложения и сколько среди них неизвестных (правила как у Coverage).
+func CountKnown(tokens []string, known map[string]bool) (total, unknown int) {
+	return counts(tokens, known)
+}
+
+// UnknownTokens — неизвестные слова предложения в нижнем регистре, в порядке появления.
+func UnknownTokens(tokens []string, known map[string]bool) []string {
+	var out []string
+	for i, t := range tokens {
+		r := []rune(t)
+		if len(r) == 0 || unicode.IsDigit(r[0]) || (i > 0 && unicode.IsUpper(r[0])) {
+			continue
+		}
+		if lower := strings.ToLower(t); !isKnown(lower, known) {
+			out = append(out, lower)
+		}
+	}
+	return out
+}

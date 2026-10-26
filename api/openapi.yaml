@@ -606,6 +606,89 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /api/v1/texts/next:
+    get:
+      operationId: getNextText
+      summary: Следующий текст для чтения или слушания
+      description: >
+        Собирает текст из предложений Tatoeba так, чтобы ученик понимал около goal слов (по умолчанию 85 %, настройка
+        80–90 %), с несколькими (обычно 3–6) новыми словами, каждое минимум дважды. Пока предыдущий текст не оценён
+        (и ему меньше 12 часов), отдаётся он же; параметр new=1 в строке запроса собирает новый. Режим mode=read или mode=listen читается из строки запроса
+        без объявления в контракте (параметр запроса заставил бы генератор добавить новую зависимость); любое другое
+        значение — read. Собрать текст нельзя (мало известных слов или предложений) — 404 no_text.
+      responses:
+        "200":
+          description: Текст
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadText"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Текст собрать нельзя (no_text)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/texts/rate:
+    post:
+      operationId: rateText
+      summary: Как понял текст
+      description: >
+        Ответ easy («почти всё»), ok или hard («трудно») двигает цель понимания на 2 п. п. в границах 80–90 %.
+        Текст оценивается один раз: повтор запроса цель не двигает.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateTextRequest"
+      responses:
+        "200":
+          description: Оценка принята
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateTextResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Такого текста нет (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/texts/know-word:
+    post:
+      operationId: knowTextWord
+      summary: Отметить слово из текста известным
+      description: Слово получает состояние known_at_start. Слово, у которого уже есть карточка или состояние изучения, не меняется (marked = false).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowWordRequest"
+      responses:
+        "200":
+          description: Результат
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowWordResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Такого слова нет в базе знаний (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/v1/level/suggestion:
     get:
       operationId: getLevelSuggestion
@@ -1592,6 +1675,127 @@ components:
           type: string
         ru:
           type: string
+    ReadText:
+      type: object
+      required: [id, mode, title, goal, coverage, cohesion, sentences, targets, hints]
+      properties:
+        id:
+          type: integer
+          format: int64
+        mode:
+          type: string
+          enum: [read, listen]
+        title:
+          type: string
+        goal:
+          type: number
+          description: Цель понимания (0,80–0,90)
+        coverage:
+          type: number
+          description: Настоящее понимание этого текста (доля известных слов)
+        cohesion:
+          type: number
+          description: Доля пар соседних предложений с общим словом
+        sentences:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadSentence"
+        targets:
+          type: array
+          items:
+            type: string
+          description: Новые слова текста (леммы)
+        hints:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadWordHint"
+    ReadSentence:
+      type: object
+      required: [tatoebaId, author, ruTatoebaId, ruAuthor, en, ru, tokens]
+      properties:
+        tatoebaId:
+          type: integer
+          format: int64
+        author:
+          type: string
+          description: Автор английского предложения на Tatoeba (атрибуция CC BY)
+        ruTatoebaId:
+          type: integer
+          format: int64
+          description: Номер русского перевода на Tatoeba
+        ruAuthor:
+          type: string
+          description: Автор русского перевода (атрибуция CC BY)
+        en:
+          type: string
+        ru:
+          type: string
+        tokens:
+          type: array
+          items:
+            type: string
+          description: Слова предложения в исходном регистре, в порядке появления
+    ReadWordHint:
+      type: object
+      required: [token, lexemeId, lemma, pos, translations, target]
+      properties:
+        token:
+          type: string
+          description: Слово в нижнем регистре, как оно встречается в тексте
+        lexemeId:
+          type: integer
+          format: int64
+        lemma:
+          type: string
+        pos:
+          type: string
+        translations:
+          type: array
+          items:
+            type: string
+        ipa:
+          type: string
+        target:
+          type: boolean
+          description: Новое слово этого текста
+    RateTextRequest:
+      type: object
+      additionalProperties: false
+      required: [textId, understood, mode]
+      properties:
+        textId:
+          type: integer
+          format: int64
+        understood:
+          type: string
+          enum: [easy, ok, hard]
+        mode:
+          type: string
+          enum: [read, listen]
+    RateTextResult:
+      type: object
+      required: [goal, changed]
+      properties:
+        goal:
+          type: number
+          description: Цель понимания после ответа
+        changed:
+          type: boolean
+          description: Оценка принята впервые (false — текст уже оценён)
+    KnowWordRequest:
+      type: object
+      additionalProperties: false
+      required: [lexemeId]
+      properties:
+        lexemeId:
+          type: integer
+          format: int64
+    KnowWordResult:
+      type: object
+      required: [marked]
+      properties:
+        marked:
+          type: boolean
     LevelSuggestionResponse:
       type: object
       properties:
@@ -1722,7 +1926,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, no_words, camp_closed, limit_reached, already_answered, invalid_answer, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, no_words, no_text, camp_closed, limit_reached, already_answered, invalid_answer, internal]
             message:
               type: string
               description: Текст для пользователя на русском

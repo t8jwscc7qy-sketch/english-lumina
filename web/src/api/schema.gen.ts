@@ -455,6 +455,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/texts/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Следующий текст для чтения или слушания
+         * @description Собирает текст из предложений Tatoeba так, чтобы ученик понимал около goal слов (по умолчанию 85 %, настройка 80–90 %), с несколькими (обычно 3–6) новыми словами, каждое минимум дважды. Пока предыдущий текст не оценён (и ему меньше 12 часов), отдаётся он же; параметр new=1 в строке запроса собирает новый. Режим mode=read или mode=listen читается из строки запроса без объявления в контракте (параметр запроса заставил бы генератор добавить новую зависимость); любое другое значение — read. Собрать текст нельзя (мало известных слов или предложений) — 404 no_text.
+         */
+        get: operations["getNextText"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/texts/rate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Как понял текст
+         * @description Ответ easy («почти всё»), ok или hard («трудно») двигает цель понимания на 2 п. п. в границах 80–90 %. Текст оценивается один раз: повтор запроса цель не двигает.
+         */
+        post: operations["rateText"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/texts/know-word": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отметить слово из текста известным
+         * @description Слово получает состояние known_at_start. Слово, у которого уже есть карточка или состояние изучения, не меняется (marked = false).
+         */
+        post: operations["knowTextWord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/level/suggestion": {
         parameters: {
             query?: never;
@@ -1035,6 +1095,73 @@ export interface components {
             en: string;
             ru: string;
         };
+        ReadText: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            mode: "read" | "listen";
+            title: string;
+            /** @description Цель понимания (0,80–0,90) */
+            goal: number;
+            /** @description Настоящее понимание этого текста (доля известных слов) */
+            coverage: number;
+            /** @description Доля пар соседних предложений с общим словом */
+            cohesion: number;
+            sentences: components["schemas"]["ReadSentence"][];
+            /** @description Новые слова текста (леммы) */
+            targets: string[];
+            hints: components["schemas"]["ReadWordHint"][];
+        };
+        ReadSentence: {
+            /** Format: int64 */
+            tatoebaId: number;
+            /** @description Автор английского предложения на Tatoeba (атрибуция CC BY) */
+            author: string;
+            /**
+             * Format: int64
+             * @description Номер русского перевода на Tatoeba
+             */
+            ruTatoebaId: number;
+            /** @description Автор русского перевода (атрибуция CC BY) */
+            ruAuthor: string;
+            en: string;
+            ru: string;
+            /** @description Слова предложения в исходном регистре, в порядке появления */
+            tokens: string[];
+        };
+        ReadWordHint: {
+            /** @description Слово в нижнем регистре, как оно встречается в тексте */
+            token: string;
+            /** Format: int64 */
+            lexemeId: number;
+            lemma: string;
+            pos: string;
+            translations: string[];
+            ipa?: string;
+            /** @description Новое слово этого текста */
+            target: boolean;
+        };
+        RateTextRequest: {
+            /** Format: int64 */
+            textId: number;
+            /** @enum {string} */
+            understood: "easy" | "ok" | "hard";
+            /** @enum {string} */
+            mode: "read" | "listen";
+        };
+        RateTextResult: {
+            /** @description Цель понимания после ответа */
+            goal: number;
+            /** @description Оценка принята впервые (false — текст уже оценён) */
+            changed: boolean;
+        };
+        KnowWordRequest: {
+            /** Format: int64 */
+            lexemeId: number;
+        };
+        KnowWordResult: {
+            marked: boolean;
+        };
         LevelSuggestionResponse: {
             suggestion?: components["schemas"]["LevelSuggestion"];
         };
@@ -1105,7 +1232,7 @@ export interface components {
                  * @description Машинный код ошибки
                  * @enum {string}
                  */
-                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "no_words" | "camp_closed" | "limit_reached" | "already_answered" | "invalid_answer" | "internal";
+                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "no_words" | "no_text" | "camp_closed" | "limit_reached" | "already_answered" | "invalid_answer" | "internal";
                 /** @description Текст для пользователя на русском */
                 message: string;
             };
@@ -1906,6 +2033,106 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             /** @description Такой шпаргалки нет (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getNextText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Текст */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadText"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Текст собрать нельзя (no_text) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    rateText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RateTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Оценка принята */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateTextResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Такого текста нет (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    knowTextWord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowWordRequest"];
+            };
+        };
+        responses: {
+            /** @description Результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowWordResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Такого слова нет в базе знаний (not_found) */
             404: {
                 headers: {
                     [name: string]: unknown;

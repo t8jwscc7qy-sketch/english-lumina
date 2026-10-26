@@ -259,9 +259,18 @@ export type SheetsOpts = {
   hard?: number
 }
 
+export type ReadOpts = {
+  /** GET /texts/next отвечает 404 no_text. */
+  noText?: boolean
+  /** Сюда складываются тела POST /texts/rate и /texts/know-word и режимы запросов /texts/next. */
+  rates?: unknown[]
+  knows?: unknown[]
+  modes?: string[]
+}
+
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts; learn?: LearnOpts; sheets?: SheetsOpts },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts; learn?: LearnOpts; sheets?: SheetsOpts; read?: ReadOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -565,6 +574,39 @@ export async function mockApi(
       opts.sheets?.reviews?.push(body)
       sheetState.set(def.id, { ...stateOf(def.id), reviewed: true })
       return route.fulfill({ json: { id: def.id, status: 'reviewed' } })
+    }
+    return route.fulfill({ status: 404 })
+  })
+
+  let textSeq = 6
+  await page.route('**/api/v1/texts/**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/texts/next')) {
+      const mode = new URL(route.request().url()).searchParams.get('mode') ?? 'read'
+      opts.read?.modes?.push(new URL(route.request().url()).searchParams.get('new') === '1' ? `${mode}+new` : mode)
+      if (opts.read?.noText) return route.fulfill(apiError(404, 'no_text', 'Пока не из чего собрать текст. Сначала познакомься со словами или пройди быстрый тест'))
+      textSeq += 1
+      return route.fulfill({
+        json: {
+          id: textSeq, mode, title: 'Новые слова: dog, run', goal: 0.85, coverage: 0.86, cohesion: 0.5, targets: ['dog', 'run'],
+          sentences: [
+            { tatoebaId: 101, author: 'tom', ruTatoebaId: 201, ruAuthor: 'ivan', en: "The dog can't run fast.", ru: 'Собака не может быстро бегать.', tokens: ['The', 'dog', "can't", 'run', 'fast'] },
+            { tatoebaId: 102, author: 'ann', ruTatoebaId: 202, ruAuthor: 'olga', en: 'I like my dog.', ru: 'Я люблю свою собаку.', tokens: ['I', 'like', 'my', 'dog'] },
+          ],
+          hints: [
+            { token: 'dog', lexemeId: 11, lemma: 'dog', pos: 'noun', translations: ['собака'], ipa: 'dɔɡ', target: true },
+            { token: 'run', lexemeId: 12, lemma: 'run', pos: 'verb', translations: ['бежать'], target: true },
+          ],
+        },
+      })
+    }
+    if (path.endsWith('/texts/rate')) {
+      opts.read?.rates?.push(route.request().postDataJSON())
+      return route.fulfill({ json: { goal: 0.83, changed: true } })
+    }
+    if (path.endsWith('/texts/know-word')) {
+      opts.read?.knows?.push(route.request().postDataJSON())
+      return route.fulfill({ json: { marked: true } })
     }
     return route.fulfill({ status: 404 })
   })
