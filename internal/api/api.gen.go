@@ -1032,6 +1032,22 @@ type Rating struct {
 	Topic     string  `json:"topic"`
 }
 
+// ReadConstruction defines model for ReadConstruction.
+type ReadConstruction struct {
+	ExampleEn   string `json:"exampleEn"`
+	ExampleRu   string `json:"exampleRu"`
+	Explanation string `json:"explanation"`
+	Form        string `json:"form"`
+	Id          string `json:"id"`
+
+	// Sentences Номера предложений текста (с нуля), где конструкция найдена
+	Sentences []int `json:"sentences"`
+
+	// SheetId Шпаргалка по теме, если она есть
+	SheetId *string `json:"sheetId,omitempty"`
+	Title   string  `json:"title"`
+}
+
 // ReadSentence defines model for ReadSentence.
 type ReadSentence struct {
 	// Author Автор английского предложения на Tatoeba (атрибуция CC BY)
@@ -1054,6 +1070,9 @@ type ReadSentence struct {
 type ReadText struct {
 	// Cohesion Доля пар соседних предложений с общим словом
 	Cohesion float32 `json:"cohesion"`
+
+	// Constructions Грамматические конструкции, найденные в тексте, с короткими пояснениями (считаются при выдаче, не хранятся)
+	Constructions []ReadConstruction `json:"constructions"`
 
 	// Coverage Настоящее понимание этого текста (доля известных слов)
 	Coverage float32 `json:"coverage"`

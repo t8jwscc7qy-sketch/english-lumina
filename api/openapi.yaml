@@ -1677,7 +1677,7 @@ components:
           type: string
     ReadText:
       type: object
-      required: [id, mode, title, goal, coverage, cohesion, sentences, targets, hints]
+      required: [id, mode, title, goal, coverage, cohesion, sentences, targets, hints, constructions]
       properties:
         id:
           type: integer
@@ -1709,6 +1709,35 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ReadWordHint"
+        constructions:
+          type: array
+          description: Грамматические конструкции, найденные в тексте, с короткими пояснениями (считаются при выдаче, не хранятся)
+          items:
+            $ref: "#/components/schemas/ReadConstruction"
+    ReadConstruction:
+      type: object
+      required: [id, title, form, explanation, exampleEn, exampleRu, sentences]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        form:
+          type: string
+        explanation:
+          type: string
+        exampleEn:
+          type: string
+        exampleRu:
+          type: string
+        sheetId:
+          type: string
+          description: Шпаргалка по теме, если она есть
+        sentences:
+          type: array
+          items:
+            type: integer
+          description: Номера предложений текста (с нуля), где конструкция найдена
     ReadSentence:
       type: object
       required: [tatoebaId, author, ruTatoebaId, ruAuthor, en, ru, tokens]

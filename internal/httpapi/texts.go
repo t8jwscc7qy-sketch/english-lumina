@@ -9,10 +9,13 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/t8jwscc7qy-sketch/english-lumina/content"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/constructions"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/exercises"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/texts"
@@ -73,11 +76,45 @@ type storedText struct {
 	Cohesion  float64            `json:"cohesion"`
 }
 
+// constructionInfos — пояснения к конструкциям (встроены в сервер, проверяются тестом `go test ./content`).
+var constructionInfos = sync.OnceValue(func() map[string]constructions.Info {
+	infos, err := constructions.LoadAll(content.Constructions)
+	if err != nil {
+		slog.Error("пояснения к конструкциям не загружены", "err", err)
+		return nil
+	}
+	return infos
+})
+
+// constructionsOf находит конструкции в предложениях текста и подкладывает пояснения; без пояснения конструкция не показывается.
+func constructionsOf(sentences []storedSentence) []api.ReadConstruction {
+	in := make([]constructions.Sentence, len(sentences))
+	for i, s := range sentences {
+		in[i] = constructions.Sentence{Text: s.En, Tokens: s.Tokens}
+	}
+	out := []api.ReadConstruction{}
+	infos := constructionInfos()
+	for _, m := range constructions.Detect(in) {
+		info, ok := infos[m.ID]
+		if !ok {
+			continue
+		}
+		c := api.ReadConstruction{Id: info.ID, Title: info.Title, Form: info.Form, Explanation: info.Explanation, ExampleEn: info.ExampleEn, ExampleRu: info.ExampleRu, Sentences: m.Sentences}
+		if info.SheetID != "" {
+			sheet := info.SheetID
+			c.SheetId = &sheet
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
 func readTextOf(id int64, mode api.ReadTextMode, title string, goal, coverage float64, body storedText) api.ReadText {
 	out := api.ReadText{
 		Id: id, Mode: mode, Title: title, Goal: float32(goal), Coverage: float32(coverage), Cohesion: float32(body.Cohesion),
 		Targets: body.Targets, Hints: body.Hints, Sentences: make([]api.ReadSentence, len(body.Sentences)),
 	}
+	out.Constructions = constructionsOf(body.Sentences)
 	if out.Hints == nil {
 		out.Hints = []api.ReadWordHint{}
 	}
