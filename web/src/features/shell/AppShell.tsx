@@ -12,6 +12,7 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/', label: 'Сегодня', icon: 'today', end: true },
   { to: '/cards', label: 'Карточки', icon: 'cards' },
   { to: '/exercises', label: 'Упражнения', icon: 'exercises' },
+  { to: '/read', label: 'Читать', icon: 'read' },
   { to: '/sheets', label: 'Шпаргалки', icon: 'sheets' },
   { to: '/camp', label: 'Привал', icon: 'camp' },
   { to: '/words', label: 'Слова', icon: 'words' },

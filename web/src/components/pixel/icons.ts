@@ -11,6 +11,7 @@ export type IconName =
   | 'sources'
   | 'camp'
   | 'sheets'
+  | 'read'
 
 export const ICON_SIZE = 12
 
@@ -141,6 +142,20 @@ const ROWS: Record<IconName, string[]> = {
     '.X.......X.X',
     '.XXXXXXXXX.X',
     '..........XX',
+  ],
+  read: [
+    '............',
+    '.XXXXX.XXXXX',
+    'XX...XXX...X',
+    'X.XXX.X.XXX.',
+    'X.....X.....',
+    'X.XXX.X.XXX.',
+    'X.....X.....',
+    'X.XXX.X.XXX.',
+    'X.....X.....',
+    'XXXXXXXXXXXX',
+    '............',
+    '............',
   ],
   sources: [
     '.XXXXXXX....',

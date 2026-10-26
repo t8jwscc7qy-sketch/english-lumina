@@ -273,3 +273,25 @@ export async function setSheetFavorite(id: string, favorite: boolean): Promise<v
 export async function reviewSheet(id: string): Promise<void> {
   await request('/api/v1/sheets/review', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ id }) })
 }
+
+export type ReadText = components['schemas']['ReadText']
+export type ReadWordHint = components['schemas']['ReadWordHint']
+export type ReadSentence = components['schemas']['ReadSentence']
+export type ReadMode = 'read' | 'listen'
+export type Understood = 'easy' | 'ok' | 'hard'
+
+/** Следующий текст для чтения или слушания; 404 no_text — собрать нечего. */
+export async function getNextText(mode: ReadMode): Promise<ReadText> {
+  const res = await request(`/api/v1/texts/next?mode=${mode}`)
+  return (await res.json()) as ReadText
+}
+
+export async function rateText(textId: number, understood: Understood, mode: ReadMode): Promise<components['schemas']['RateTextResult']> {
+  const res = await request('/api/v1/texts/rate', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ textId, understood, mode }) })
+  return (await res.json()) as components['schemas']['RateTextResult']
+}
+
+export async function knowTextWord(lexemeId: number): Promise<boolean> {
+  const res = await request('/api/v1/texts/know-word', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ lexemeId }) })
+  return ((await res.json()) as components['schemas']['KnowWordResult']).marked
+}

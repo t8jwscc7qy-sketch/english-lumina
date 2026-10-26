@@ -4,8 +4,8 @@ import { ICON_NAMES, ICON_SIZE, iconArt } from './icons'
 import { PixelIcon } from './PixelIcon'
 
 describe('пиксельные иконки', () => {
-  it('их десять, все 12×12 и не пустые', () => {
-    expect(ICON_NAMES).toHaveLength(10)
+  it('их одиннадцать, все 12×12 и не пустые', () => {
+    expect(ICON_NAMES).toHaveLength(11)
     for (const name of ICON_NAMES) {
       const { rows } = iconArt(name)
       expect(rows, name).toHaveLength(ICON_SIZE)
