@@ -503,6 +503,109 @@ paths:
                 $ref: "#/components/schemas/MistakeList"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /api/v1/sheets:
+    get:
+      operationId: listSheets
+      summary: Список шпаргалок
+      description: >
+        Все шпаргалки с признаком избранного, статусом (draft — не проверена пользователем, reviewed — он нажал
+        «Проверено») и числом «моих слабых» строк (трудные слова и слабые темы).
+      responses:
+        "200":
+          description: Список
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheetList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/v1/sheets/open:
+    post:
+      operationId: openSheet
+      summary: Открыть шпаргалку
+      description: >
+        Тело шпаргалки с подмешанными данными пользователя: статусы слов и тем в привязанных таблицах, для
+        mine-mistakes строки из банка ошибок. Запоминает время открытия. Номер шпаргалки в теле, не в пути:
+        параметр пути заставил бы генератор добавить новую зависимость.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SheetRef"
+      responses:
+        "200":
+          description: Шпаргалка
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sheet"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Такой шпаргалки нет (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/sheets/favorite:
+    put:
+      operationId: setSheetFavorite
+      summary: Закрепить или открепить шпаргалку
+      description: Повтор с тем же значением ничего не меняет.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SheetFavoriteRequest"
+      responses:
+        "200":
+          description: Состояние после запроса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheetFavoriteRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Такой шпаргалки нет (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/sheets/review:
+    post:
+      operationId: reviewSheet
+      summary: Отметить шпаргалку проверенной
+      description: Пользователь сверил текст и подтверждает его. Отметка ставится один раз; повтор ничего не меняет.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SheetRef"
+      responses:
+        "200":
+          description: Шпаргалка теперь проверена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheetReviewed"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Такой шпаргалки нет (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/v1/level/suggestion:
     get:
       operationId: getLevelSuggestion
@@ -1316,6 +1419,179 @@ components:
         total:
           type: integer
           description: Сколько последних ответов учтено (30)
+    SheetRef:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+    SheetFavoriteRequest:
+      type: object
+      additionalProperties: false
+      required: [id, favorite]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+        favorite:
+          type: boolean
+    SheetReviewed:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+        status:
+          $ref: "#/components/schemas/SheetStatus"
+    SheetStatus:
+      type: string
+      enum: [draft, reviewed]
+      description: draft — текст не проверен пользователем, reviewed — он нажал «Проверено»
+    SheetSummary:
+      type: object
+      required: [id, title, summary, level, tags, favorite, status, weakCount]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        level:
+          type: string
+          enum: [A1, A2, B1, B2, C1]
+        tags:
+          type: array
+          items:
+            type: string
+        favorite:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/SheetStatus"
+        weakCount:
+          type: integer
+          description: Строк «моих слабых» (трудные слова и слабые темы)
+        openedAt:
+          type: string
+          format: date-time
+          description: Когда шпаргалку открывали последний раз; нет, если не открывали
+    SheetList:
+      type: object
+      required: [sheets]
+      properties:
+        sheets:
+          type: array
+          items:
+            $ref: "#/components/schemas/SheetSummary"
+    Sheet:
+      type: object
+      required: [id, title, summary, level, tags, favorite, status, weakCount, sources, blocks]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        level:
+          type: string
+          enum: [A1, A2, B1, B2, C1]
+        tags:
+          type: array
+          items:
+            type: string
+        favorite:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/SheetStatus"
+        weakCount:
+          type: integer
+        sources:
+          type: array
+          items:
+            type: string
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SheetBlock"
+    SheetBlock:
+      type: object
+      required: [type]
+      description: Заполнены только поля, нужные типу блока (text, table, tip, mistakes, examples).
+      properties:
+        type:
+          type: string
+          enum: [text, table, tip, mistakes, examples]
+        title:
+          type: string
+        text:
+          type: string
+        bind:
+          type: string
+          enum: [word, topic, mistake]
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/SheetColumn"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/SheetRow"
+        pairs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SheetPair"
+        examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/SheetExample"
+    SheetColumn:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+    SheetRow:
+      type: object
+      required: [cells]
+      properties:
+        key:
+          type: string
+        cells:
+          type: array
+          items:
+            type: string
+        needsCheck:
+          type: boolean
+        status:
+          type: string
+          enum: [unseen, introduced, learning, learned, known_at_start, hard, weak, ok]
+          description: Для привязки word — статус слова; для topic — weak, ok или unseen
+        rating:
+          type: number
+          description: Рейтинг темы (только привязка topic)
+    SheetPair:
+      type: object
+      required: [wrong, right, note]
+      properties:
+        wrong:
+          type: string
+        right:
+          type: string
+        note:
+          type: string
+    SheetExample:
+      type: object
+      required: [en, ru]
+      properties:
+        en:
+          type: string
+        ru:
+          type: string
     LevelSuggestionResponse:
       type: object
       properties:

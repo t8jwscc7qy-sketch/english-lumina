@@ -249,3 +249,27 @@ export async function putLearnPreferences(p: LearnPreferences): Promise<LearnPre
   const res = await request('/api/v1/learn/preferences', { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify(p) })
   return (await res.json()) as LearnPreferences
 }
+
+export type SheetSummary = components['schemas']['SheetSummary']
+export type Sheet = components['schemas']['Sheet']
+export type SheetBlock = components['schemas']['SheetBlock']
+export type SheetRow = components['schemas']['SheetRow']
+
+export async function listSheets(): Promise<SheetSummary[]> {
+  const res = await request('/api/v1/sheets')
+  return ((await res.json()) as components['schemas']['SheetList']).sheets
+}
+
+/** Открыть шпаргалку: тело с данными пользователя; сервер запоминает время открытия. */
+export async function openSheet(id: string): Promise<Sheet> {
+  const res = await request('/api/v1/sheets/open', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ id }) })
+  return (await res.json()) as Sheet
+}
+
+export async function setSheetFavorite(id: string, favorite: boolean): Promise<void> {
+  await request('/api/v1/sheets/favorite', { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ id, favorite }) })
+}
+
+export async function reviewSheet(id: string): Promise<void> {
+  await request('/api/v1/sheets/review', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ id }) })
+}

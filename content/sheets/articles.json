@@ -1,0 +1,135 @@
+{
+  "id": "articles",
+  "title": "Артикли a / an / the",
+  "summary": "Как выбрать a, an, the или никакого артикля.",
+  "level": "A1",
+  "tags": [
+    "артикли",
+    "основы"
+  ],
+  "blocks": [
+    {
+      "type": "text",
+      "text": "Артикль ставится перед существительным и показывает, знаем ли мы, о каком предмете речь. В русском артиклей нет, поэтому их легко пропустить."
+    },
+    {
+      "type": "table",
+      "title": "Схема выбора",
+      "columns": [
+        {
+          "title": "Ситуация"
+        },
+        {
+          "title": "Артикль"
+        },
+        {
+          "title": "Пример"
+        }
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Один предмет из многих (исчисляемое, единственное число), называем впервые",
+            "a / an",
+            "I have **a** dog."
+          ]
+        },
+        {
+          "cells": [
+            "Уже упоминали или понятно из ситуации",
+            "the",
+            "**The** dog is big."
+          ]
+        },
+        {
+          "cells": [
+            "Единственный в своём роде",
+            "the",
+            "**The** sun is hot."
+          ]
+        },
+        {
+          "cells": [
+            "Превосходная степень",
+            "the",
+            "She is **the** best."
+          ]
+        },
+        {
+          "cells": [
+            "Множественное число и неисчисляемое «вообще»",
+            "без артикля",
+            "I like music."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tip",
+      "text": "A или an зависит от звука, а не от буквы: a university, an hour."
+    },
+    {
+      "type": "table",
+      "bind": "topic",
+      "title": "Твоя тренировка",
+      "columns": [
+        {
+          "title": "Тема"
+        },
+        {
+          "title": "Что тренируется"
+        }
+      ],
+      "rows": [
+        {
+          "key": "grammar:articles",
+          "cells": [
+            "Артикли",
+            "выбор a / an / the в предложении"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "mistakes",
+      "pairs": [
+        {
+          "wrong": "I am student.",
+          "right": "I am a student.",
+          "note": "перед существительным в единственном числе, которое говорит, кто ты, нужен артикль a."
+        },
+        {
+          "wrong": "I like the music in general.",
+          "right": "I like music in general.",
+          "note": "когда говорим о музыке вообще, артикль не нужен; the нужен, если речь о конкретной музыке: I like the music in this cafe."
+        },
+        {
+          "wrong": "She is an university teacher.",
+          "right": "She is a university teacher.",
+          "note": "university начинается со звука [j], поэтому a."
+        }
+      ]
+    },
+    {
+      "type": "examples",
+      "examples": [
+        {
+          "en": "I saw **a** film yesterday. **The** film was great.",
+          "ru": "Вчера я видел фильм. Фильм был отличным."
+        },
+        {
+          "en": "He is **an** engineer.",
+          "ru": "Он инженер."
+        },
+        {
+          "en": "**The** moon is bright tonight.",
+          "ru": "Луна сегодня яркая."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "собственные знания автора; сверить с CEFR-J Grammar Profile (A1–A2)"
+  ],
+  "status": "draft"
+}

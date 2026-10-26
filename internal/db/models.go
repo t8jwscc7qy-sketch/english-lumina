@@ -213,6 +213,15 @@ type Setting struct {
 	UpdatedAt       pgtype.Timestamptz
 }
 
+type SheetState struct {
+	UserID       int64
+	SheetID      string
+	FavoriteAt   pgtype.Timestamptz
+	ReviewedAt   pgtype.Timestamptz
+	ReviewedHash *string
+	OpenedAt     pgtype.Timestamptz
+}
+
 type TopicRating struct {
 	UserID     int64
 	Topic      string

@@ -329,3 +329,29 @@
 .m-flash, .m-spark, .m-confetti, .m-ring { opacity: 0; }
 .t-blink { animation: t-blink 400ms steps(2, end) 2; }
 .fox-jump { animation: fox-jump 500ms steps(2, end) 1; }
+
+/* Печать шпаргалок: чёрное на белом в любой теме, без меню и кнопок, таблица на всю ширину. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body,
+  body * {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+  [role='region'] {
+    overflow: visible !important;
+    border: 0 !important;
+  }
+  table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  th,
+  td {
+    border: 1px solid #000 !important;
+  }
+}

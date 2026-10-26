@@ -1,0 +1,542 @@
+{
+  "id": "irregular-verbs",
+  "title": "Неправильные глаголы: 50 частых",
+  "summary": "Три формы самых частых неправильных глаголов; таблица показывает, какие из них ты уже учишь.",
+  "level": "A2",
+  "tags": [
+    "глаголы",
+    "таблицы"
+  ],
+  "blocks": [
+    {
+      "type": "text",
+      "text": "У неправильных глаголов форма прошедшего времени (Past Simple) и причастия (Past Participle) не образуется добавлением -ed. Их нужно запомнить. Фильтр «Мои слабые» оставит трудные."
+    },
+    {
+      "type": "table",
+      "bind": "word",
+      "title": "Формы",
+      "columns": [
+        {
+          "title": "Глагол"
+        },
+        {
+          "title": "Past Simple"
+        },
+        {
+          "title": "Past Participle"
+        },
+        {
+          "title": "Перевод"
+        }
+      ],
+      "rows": [
+        {
+          "key": "be",
+          "cells": [
+            "be",
+            "was / were",
+            "been",
+            "быть"
+          ]
+        },
+        {
+          "key": "have",
+          "cells": [
+            "have",
+            "had",
+            "had",
+            "иметь"
+          ]
+        },
+        {
+          "key": "do",
+          "cells": [
+            "do",
+            "did",
+            "done",
+            "делать"
+          ]
+        },
+        {
+          "key": "say",
+          "cells": [
+            "say",
+            "said",
+            "said",
+            "говорить, сказать"
+          ]
+        },
+        {
+          "key": "go",
+          "cells": [
+            "go",
+            "went",
+            "gone",
+            "идти, ехать"
+          ]
+        },
+        {
+          "key": "get",
+          "cells": [
+            "get",
+            "got",
+            "got / gotten (США)",
+            "получать, становиться"
+          ]
+        },
+        {
+          "key": "make",
+          "cells": [
+            "make",
+            "made",
+            "made",
+            "делать, создавать"
+          ]
+        },
+        {
+          "key": "know",
+          "cells": [
+            "know",
+            "knew",
+            "known",
+            "знать"
+          ]
+        },
+        {
+          "key": "think",
+          "cells": [
+            "think",
+            "thought",
+            "thought",
+            "думать"
+          ]
+        },
+        {
+          "key": "take",
+          "cells": [
+            "take",
+            "took",
+            "taken",
+            "брать"
+          ]
+        },
+        {
+          "key": "see",
+          "cells": [
+            "see",
+            "saw",
+            "seen",
+            "видеть"
+          ]
+        },
+        {
+          "key": "come",
+          "cells": [
+            "come",
+            "came",
+            "come",
+            "приходить"
+          ]
+        },
+        {
+          "key": "give",
+          "cells": [
+            "give",
+            "gave",
+            "given",
+            "давать"
+          ]
+        },
+        {
+          "key": "find",
+          "cells": [
+            "find",
+            "found",
+            "found",
+            "находить"
+          ]
+        },
+        {
+          "key": "tell",
+          "cells": [
+            "tell",
+            "told",
+            "told",
+            "рассказывать"
+          ]
+        },
+        {
+          "key": "become",
+          "cells": [
+            "become",
+            "became",
+            "become",
+            "становиться"
+          ]
+        },
+        {
+          "key": "leave",
+          "cells": [
+            "leave",
+            "left",
+            "left",
+            "уходить, оставлять"
+          ]
+        },
+        {
+          "key": "feel",
+          "cells": [
+            "feel",
+            "felt",
+            "felt",
+            "чувствовать"
+          ]
+        },
+        {
+          "key": "put",
+          "cells": [
+            "put",
+            "put",
+            "put",
+            "класть"
+          ]
+        },
+        {
+          "key": "bring",
+          "cells": [
+            "bring",
+            "brought",
+            "brought",
+            "приносить"
+          ]
+        },
+        {
+          "key": "begin",
+          "cells": [
+            "begin",
+            "began",
+            "begun",
+            "начинать"
+          ]
+        },
+        {
+          "key": "keep",
+          "cells": [
+            "keep",
+            "kept",
+            "kept",
+            "держать, хранить"
+          ]
+        },
+        {
+          "key": "hold",
+          "cells": [
+            "hold",
+            "held",
+            "held",
+            "держать"
+          ]
+        },
+        {
+          "key": "write",
+          "cells": [
+            "write",
+            "wrote",
+            "written",
+            "писать"
+          ]
+        },
+        {
+          "key": "stand",
+          "cells": [
+            "stand",
+            "stood",
+            "stood",
+            "стоять"
+          ]
+        },
+        {
+          "key": "hear",
+          "cells": [
+            "hear",
+            "heard",
+            "heard",
+            "слышать"
+          ]
+        },
+        {
+          "key": "let",
+          "cells": [
+            "let",
+            "let",
+            "let",
+            "позволять"
+          ]
+        },
+        {
+          "key": "mean",
+          "cells": [
+            "mean",
+            "meant",
+            "meant",
+            "значить"
+          ]
+        },
+        {
+          "key": "set",
+          "cells": [
+            "set",
+            "set",
+            "set",
+            "ставить, устанавливать"
+          ]
+        },
+        {
+          "key": "meet",
+          "cells": [
+            "meet",
+            "met",
+            "met",
+            "встречать"
+          ]
+        },
+        {
+          "key": "run",
+          "cells": [
+            "run",
+            "ran",
+            "run",
+            "бежать"
+          ]
+        },
+        {
+          "key": "pay",
+          "cells": [
+            "pay",
+            "paid",
+            "paid",
+            "платить"
+          ]
+        },
+        {
+          "key": "sit",
+          "cells": [
+            "sit",
+            "sat",
+            "sat",
+            "сидеть"
+          ]
+        },
+        {
+          "key": "speak",
+          "cells": [
+            "speak",
+            "spoke",
+            "spoken",
+            "говорить"
+          ]
+        },
+        {
+          "key": "lead",
+          "cells": [
+            "lead",
+            "led",
+            "led",
+            "вести"
+          ]
+        },
+        {
+          "key": "read",
+          "cells": [
+            "read",
+            "read [red]",
+            "read [red]",
+            "читать"
+          ]
+        },
+        {
+          "key": "grow",
+          "cells": [
+            "grow",
+            "grew",
+            "grown",
+            "расти"
+          ]
+        },
+        {
+          "key": "lose",
+          "cells": [
+            "lose",
+            "lost",
+            "lost",
+            "терять"
+          ]
+        },
+        {
+          "key": "fall",
+          "cells": [
+            "fall",
+            "fell",
+            "fallen",
+            "падать"
+          ]
+        },
+        {
+          "key": "send",
+          "cells": [
+            "send",
+            "sent",
+            "sent",
+            "отправлять"
+          ]
+        },
+        {
+          "key": "build",
+          "cells": [
+            "build",
+            "built",
+            "built",
+            "строить"
+          ]
+        },
+        {
+          "key": "understand",
+          "cells": [
+            "understand",
+            "understood",
+            "understood",
+            "понимать"
+          ]
+        },
+        {
+          "key": "draw",
+          "cells": [
+            "draw",
+            "drew",
+            "drawn",
+            "рисовать"
+          ]
+        },
+        {
+          "key": "break",
+          "cells": [
+            "break",
+            "broke",
+            "broken",
+            "ломать"
+          ]
+        },
+        {
+          "key": "spend",
+          "cells": [
+            "spend",
+            "spent",
+            "spent",
+            "тратить"
+          ]
+        },
+        {
+          "key": "cut",
+          "cells": [
+            "cut",
+            "cut",
+            "cut",
+            "резать"
+          ]
+        },
+        {
+          "key": "drive",
+          "cells": [
+            "drive",
+            "drove",
+            "driven",
+            "водить машину"
+          ]
+        },
+        {
+          "key": "buy",
+          "cells": [
+            "buy",
+            "bought",
+            "bought",
+            "покупать"
+          ]
+        },
+        {
+          "key": "wear",
+          "cells": [
+            "wear",
+            "wore",
+            "worn",
+            "носить (одежду)"
+          ]
+        },
+        {
+          "key": "choose",
+          "cells": [
+            "choose",
+            "chose",
+            "chosen",
+            "выбирать"
+          ]
+        }
+      ],
+      "pos": [
+        "verb",
+        "be-verb",
+        "do-verb",
+        "have-verb"
+      ]
+    },
+    {
+      "type": "tip",
+      "text": "У get в британском английском третья форма got, в американском gotten."
+    },
+    {
+      "type": "tip",
+      "text": "Past Simple: «I wrote», Past Participle после have: «I have written»."
+    },
+    {
+      "type": "mistakes",
+      "pairs": [
+        {
+          "wrong": "I goed to school.",
+          "right": "I went to school.",
+          "note": "go — неправильный глагол, -ed не добавляют."
+        },
+        {
+          "wrong": "I have saw him.",
+          "right": "I have seen him.",
+          "note": "после have нужна третья форма (seen), не вторая."
+        },
+        {
+          "wrong": "She buyed a bag.",
+          "right": "She bought a bag.",
+          "note": "buy → bought."
+        }
+      ]
+    },
+    {
+      "type": "examples",
+      "examples": [
+        {
+          "en": "I **went** home early.",
+          "ru": "Я рано ушёл домой."
+        },
+        {
+          "en": "She has **written** a letter.",
+          "ru": "Она написала письмо."
+        },
+        {
+          "en": "We **bought** new shoes.",
+          "ru": "Мы купили новые туфли."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "собственные знания автора; частотный порядок приблизительный, сверить с FrequencyWords и CEFR-J"
+  ],
+  "status": "draft"
+}
