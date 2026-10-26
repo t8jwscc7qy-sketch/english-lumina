@@ -9,6 +9,8 @@ import { ProgressPage } from '@/features/progress/ProgressPage'
 import { SessionPage } from '@/features/session/SessionPage'
 import { ExercisesPage } from '@/features/exercises/ExercisesPage'
 import { MistakesPage } from '@/features/mistakes/MistakesPage'
+import { LearnPage } from '@/features/learn/LearnPage'
+import { PlacementPage } from '@/features/learn/PlacementPage'
 import { CardsPage } from '@/features/cards/CardsPage'
 import { AppShell } from '@/features/shell/AppShell'
 import { TodayPage } from '@/features/today/TodayPage'
@@ -45,6 +47,8 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <TodayPage /> },
       { path: 'cards', element: <CardsPage /> },
+      { path: 'learn', element: <LearnPage /> },
+      { path: 'learn/placement', element: <PlacementPage /> },
       { path: 'exercises', element: <ExercisesPage /> },
       { path: 'session', element: <SessionPage /> },
       { path: 'words', element: <WordsPage /> },

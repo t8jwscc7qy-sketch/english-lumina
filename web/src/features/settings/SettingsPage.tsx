@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { LearnPrefs } from '@/features/learn/LearnPrefs'
 import { SettingsForm } from './SettingsForm'
 import { useSettings } from './settings'
 
@@ -20,6 +21,7 @@ export function SettingsPage() {
       ) : (
         <p role="status">Загружаем настройки…</p>
       )}
+      <LearnPrefs />
     </div>
   )
 }

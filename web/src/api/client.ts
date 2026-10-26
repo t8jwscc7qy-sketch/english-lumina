@@ -201,3 +201,51 @@ export async function getLevelSuggestion(): Promise<LevelSuggestionResponse> {
 export async function dismissLevelSuggestion(): Promise<void> {
   await request('/api/v1/level/suggestion/dismiss', { method: 'POST' })
 }
+
+export type LearnStatus = components['schemas']['LearnStatus']
+export type LearnBlock = components['schemas']['LearnBlock']
+export type LearnWord = components['schemas']['LearnWord']
+export type LearnPreferences = components['schemas']['LearnPreferences']
+export type IntroduceResponse = components['schemas']['IntroduceResponse']
+export type PlacementPage = components['schemas']['PlacementPage']
+export type PlacementResult = components['schemas']['PlacementResult']
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
+
+export async function getLearnStatus(): Promise<LearnStatus> {
+  const res = await request('/api/v1/learn/status')
+  return (await res.json()) as LearnStatus
+}
+
+/** Блок новых слов. 404 no_words — слов для знакомства нет; пустой список слов — лимит дня исчерпан. */
+export async function getLearnBlock(): Promise<LearnBlock> {
+  const res = await request('/api/v1/learn/block')
+  return (await res.json()) as LearnBlock
+}
+
+/** Ввести слова блока (создаются карточки). key — ключ идемпотентности. */
+export async function introduceWords(lexemeIds: number[], key: string): Promise<IntroduceResponse> {
+  const res = await request('/api/v1/learn/introduce', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ lexemeIds, key }) })
+  return (await res.json()) as IntroduceResponse
+}
+
+/** Страница быстрого теста; skip — сколько слов пропустить. */
+export async function getPlacement(skip: number): Promise<PlacementPage> {
+  const res = await request(`/api/v1/learn/placement?skip=${skip}`)
+  return (await res.json()) as PlacementPage
+}
+
+export async function submitPlacement(known: number[], shown: number[], key: string): Promise<PlacementResult> {
+  const res = await request('/api/v1/learn/placement', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ known, shown, key }) })
+  return (await res.json()) as PlacementResult
+}
+
+export async function getLearnPreferences(): Promise<LearnPreferences> {
+  const res = await request('/api/v1/learn/preferences')
+  return (await res.json()) as LearnPreferences
+}
+
+export async function putLearnPreferences(p: LearnPreferences): Promise<LearnPreferences> {
+  const res = await request('/api/v1/learn/preferences', { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify(p) })
+  return (await res.json()) as LearnPreferences
+}
