@@ -1,0 +1,12 @@
+{
+  "id": "present_perfect",
+  "title": "Present Perfect",
+  "form": "have / has + третья форма глагола",
+  "explanation": "Present Perfect связывает прошлое с настоящим: действие случилось раньше, но важен результат сейчас или опыт. Точное время (вчера, в 2010) не называют, тогда нужен Past Simple. Часто встречаются already, yet, ever, never, just.",
+  "exampleEn": "I have lost my keys.",
+  "exampleRu": "Я потерял ключи (и их нет сейчас).",
+  "sheetId": "irregular-verbs",
+  "sources": [
+    "собственные знания автора; сверить с CEFR-J Grammar Profile"
+  ]
+}

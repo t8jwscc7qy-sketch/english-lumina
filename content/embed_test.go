@@ -3,10 +3,12 @@ package content
 import (
 	"context"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/constructions"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sheets"
 )
 
@@ -73,6 +75,36 @@ func TestSheetWordKeysExistInLexemes(t *testing.T) {
 		}
 		if len(missing) > 0 {
 			t.Errorf("шпаргалка %s: нет в словах: %v", s.ID, missing)
+		}
+	}
+}
+
+// Каждая конструкция, которую умеет находить `constructions.Detect`, имеет пояснение, а ссылки ведут на настоящие шпаргалки.
+func TestEmbeddedConstructionsAreValidAndComplete(t *testing.T) {
+	infos, err := constructions.LoadAll(Constructions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range constructions.Order {
+		if _, ok := infos[id]; !ok {
+			t.Errorf("у конструкции %s нет пояснения", id)
+		}
+	}
+	for id := range infos {
+		if !slices.Contains(constructions.Order, id) {
+			t.Errorf("пояснение %s без правила поиска", id)
+		}
+	}
+	all, err := sheets.LoadAll(Sheets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, info := range infos {
+		if info.SheetID == "" {
+			continue
+		}
+		if !slices.ContainsFunc(all, func(s sheets.Sheet) bool { return s.ID == info.SheetID }) {
+			t.Errorf("%s: шпаргалки %q нет", id, info.SheetID)
 		}
 	}
 }

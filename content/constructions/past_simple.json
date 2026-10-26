@@ -1,0 +1,12 @@
+{
+  "id": "past_simple",
+  "title": "Past Simple",
+  "form": "глагол + -ed или вторая форма",
+  "explanation": "Past Simple описывает законченное действие в прошлом, обычно со временем: yesterday, last week, in 2010. У правильных глаголов окончание -ed, у неправильных своя форма. В вопросе и отрицании нужен did, а глагол возвращается в начальную форму: Did you go? I didn't go.",
+  "exampleEn": "She visited her aunt last week.",
+  "exampleRu": "На прошлой неделе она навестила тётю.",
+  "sheetId": "irregular-verbs",
+  "sources": [
+    "собственные знания автора; сверить с CEFR-J Grammar Profile"
+  ]
+}
