@@ -20,7 +20,7 @@ import (
 
 // Bands — уровни по размеру словаря из частотного списка: в тексте этого уровня все слова, кроме целевых, входят в
 // самые частотные Band слов (лемм).
-var Bands = []int{100, 300, 600, 1000, 2000}
+var Bands = []int{100, 200, 300, 600, 1000, 2000}
 
 // Границы длины текста в словах и числа целевых слов.
 const (
@@ -32,6 +32,9 @@ const (
 	microMaxBand  = 100 // микро-истории: короткие, с повторами
 	microMinWords = 30
 	microMaxWords = 60
+	shortBand     = 200 // переходный уровень: рассказ покороче
+	shortMinWords = 60
+	shortMaxWords = 120
 	minWords      = 80
 	maxWords      = 150
 )
@@ -42,6 +45,8 @@ var idPattern = regexp.MustCompile(`^t[0-9]+-[0-9]{3}$`)
 type Target struct {
 	Lemma string `json:"lemma"`
 	Pos   string `json:"pos"`
+	// Mass — неисчисляемое существительное (milk, water, music): артикль перед ним не нужен.
+	Mass bool `json:"mass,omitempty"`
 }
 
 // Sentence — предложение: английский и русский.
@@ -52,11 +57,13 @@ type Sentence struct {
 
 // Text — авторский текст.
 type Text struct {
-	ID        string     `json:"id"`
-	Title     string     `json:"title"`
-	Band      int        `json:"band"`
-	Targets   []Target   `json:"targets"`
-	Names     []string   `json:"names,omitempty"` // имена героев: в словарь не входят и не проверяются
+	ID      string   `json:"id"`
+	Title   string   `json:"title"`
+	Band    int      `json:"band"`
+	Targets []Target `json:"targets"`
+	Names   []string `json:"names,omitempty"` // имена героев: в словарь не входят и не проверяются
+	// Allow — осознанные исключения из проверки стиля («артикль:6»: правило и номер предложения), например «Bad puppy!».
+	Allow     []string   `json:"allow,omitempty"`
 	Sentences []Sentence `json:"sentences"`
 	Sources   []string   `json:"sources"`
 }
@@ -134,8 +141,11 @@ func (t Text) Validate() error {
 	}
 	n := t.WordCount()
 	lo, hi := minWords, maxWords
-	if t.Band <= microMaxBand {
+	switch {
+	case t.Band <= microMaxBand:
 		lo, hi = microMinWords, microMaxWords
+	case t.Band == shortBand:
+		lo, hi = shortMinWords, shortMaxWords
 	}
 	if n < lo || n > hi {
 		return fmt.Errorf("слов %d, для уровня %d нужно от %d до %d", n, t.Band, lo, hi)
@@ -223,6 +233,10 @@ func (t Text) CheckVocabulary(allowed map[string]bool) []Problem {
 			if base, ok := contractionBase(w); ok && (allowed[base] || targetForms[base]) {
 				continue
 			}
+			// Любая форма слова из словаря уровня допустима: found → find, was → be, went → go, walked → walk.
+			if inflectedFromAllowed(w, allowed, targetForms) {
+				continue
+			}
 			out = append(out, Problem{Sentence: si + 1, Word: w})
 		}
 	}
@@ -260,4 +274,15 @@ func LoadAll(fsys fs.FS) ([]Text, error) {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
+}
+
+// inflectedFromAllowed — слово является формой слова из словаря уровня (или целевого слова): по таблицам неправильных слов
+// и правилам окончаний. Неверные формы («goed», «finded») не проходят.
+func inflectedFromAllowed(w string, allowed, targetForms map[string]bool) bool {
+	for _, base := range words.InflectionBases(w) {
+		if allowed[base] || targetForms[base] {
+			return true
+		}
+	}
+	return false
 }

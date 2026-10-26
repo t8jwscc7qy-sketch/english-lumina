@@ -85,7 +85,8 @@
    },
    {
     "lemma": "milk",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "girl",
@@ -126,8 +127,8 @@
     "ru": "Девочка рада. Кошка любит девочку."
    },
    {
-    "en": "The milk is all out. The cat is happy.",
-    "ru": "Молоко всё выпито. Кошка довольна."
+    "en": "There is no milk now. The cat is happy.",
+    "ru": "Молока больше нет. Кошка довольна."
    }
   ],
   "sources": [
@@ -166,8 +167,8 @@
     "ru": "Дом старый."
    },
    {
-    "en": "The door of the house is old, and the house is old.",
-    "ru": "Дверь дома старая, и дом старый."
+    "en": "The door is old.",
+    "ru": "Дверь старая."
    },
    {
     "en": "Anna wants to see the house.",
@@ -204,7 +205,8 @@
   "targets": [
    {
     "lemma": "bread",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "table",
@@ -347,8 +349,8 @@
     "ru": "Кейт грустит."
    },
    {
-    "en": "She is here with no friend.",
-    "ru": "Она здесь без друга."
+    "en": "She has no friend here.",
+    "ru": "У неё здесь нет друга."
    },
    {
     "en": "Tom comes to Kate. \"Hey, I am your friend,\" he says.",
@@ -390,7 +392,8 @@
   "targets": [
    {
     "lemma": "water",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "drink",
@@ -456,7 +459,7 @@
     "pos": "verb"
    },
    {
-    "lemma": "answer",
+    "lemma": "want",
     "pos": "verb"
    },
    {
@@ -486,16 +489,16 @@
     "ru": "«Мама, это я, Бен!» — говорит он."
    },
    {
-    "en": "His mother answers the phone. \"Hey, Ben! How are you?\"",
-    "ru": "Мама отвечает на звонок. «Привет, Бен! Как ты?»"
-   },
-   {
-    "en": "Ben says, \"I want you to answer, and you answer!\"",
-    "ru": "Бен говорит: «Я хочу, чтобы ты ответила, и ты отвечаешь!»"
+    "en": "His mother takes the phone. \"Hey, Ben! How are you?\"",
+    "ru": "Мама берёт трубку. «Привет, Бен! Как ты?»"
    },
    {
     "en": "\"I am good,\" says Ben. \"I want to see you.\"",
     "ru": "«У меня всё хорошо, — говорит Бен. — Я хочу тебя увидеть.»"
+   },
+   {
+    "en": "\"Come here,\" says his mother. \"I want to see you, Ben.\"",
+    "ru": "«Приезжай, — говорит мама. — Я хочу тебя увидеть, Бен.»"
    }
   ],
   "sources": [
@@ -557,7 +560,7 @@
     "ru": "Но она хочет читать и читать."
    },
    {
-    "en": "Kate reads all night, and she can not sleep.",
+    "en": "Kate reads all night, and she cannot sleep.",
     "ru": "Кейт читает всю ночь и не может уснуть."
    }
   ],
@@ -566,6 +569,9 @@
   ],
   "names": [
    "Kate"
+  ],
+  "allow": [
+   "артикль:2"
   ]
  },
  {
@@ -692,6 +698,9 @@
   ],
   "names": [
    "Max"
+  ],
+  "allow": [
+   "артикль:2"
   ]
  },
  {
@@ -701,7 +710,8 @@
   "targets": [
    {
     "lemma": "rain",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "wet",
@@ -726,7 +736,7 @@
     "ru": "Но идёт дождь."
    },
    {
-    "en": "\"I can not walk in the rain,\" says Anna.",
+    "en": "\"I cannot walk in the rain,\" says Anna.",
     "ru": "«Я не могу гулять под дождём», — говорит Анна."
    },
    {
@@ -848,8 +858,8 @@
     "ru": "Том хочет устроить для Кейт вечеринку."
    },
    {
-    "en": "The party is here, with all.",
-    "ru": "Вечеринка здесь, со всеми."
+    "en": "All are here for the party.",
+    "ru": "Все пришли на вечеринку."
    },
    {
     "en": "Tom gets a cake for the party.",
@@ -920,7 +930,7 @@
     "ru": "Он ищет и ищет."
    },
    {
-    "en": "He can not find the key.",
+    "en": "He cannot find the key.",
     "ru": "Он не может найти ключ."
    },
    {
@@ -932,7 +942,7 @@
     "ru": "Ключ в кармане!"
    },
    {
-    "en": "\"I find it!\" says Max. \"The key is not lost.\"",
+    "en": "\"I found it!\" says Max. \"The key is not lost.\"",
     "ru": "«Я нашёл его! — говорит Макс. — Ключ не потерян.»"
    }
   ],
@@ -1004,6 +1014,9 @@
   ],
   "names": [
    "Tom"
+  ],
+  "allow": [
+   "артикль:2"
   ]
  },
  {
@@ -1140,7 +1153,8 @@
    },
    {
     "lemma": "coffee",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "hot",
@@ -1186,6 +1200,10 @@
   ],
   "names": [
    "Tom"
+  ],
+  "allow": [
+   "артикль:1",
+   "артикль:7"
   ]
  },
  {

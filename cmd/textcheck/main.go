@@ -79,6 +79,14 @@ func run(files []string) error {
 			}
 			allowed[t.Band] = library.AllowedForms(ws)
 		}
+		if issues := t.CheckStyle(); len(issues) > 0 {
+			bad = true
+			fmt.Printf("СТИЛЬ %s:", t.ID)
+			for _, is := range issues {
+				fmt.Print(" ", is.String())
+			}
+			fmt.Println()
+		}
 		if probs := t.CheckVocabulary(allowed[t.Band]); len(probs) > 0 {
 			bad = true
 			fmt.Printf("СЛОВАРЬ %s (уровень %d, слов %d):", t.ID, t.Band, t.WordCount())

@@ -156,3 +156,15 @@ func TestEmbeddedTextsMatchBandVocabulary(t *testing.T) {
 		}
 	}
 }
+
+func TestEmbeddedTextsHaveNoStyleIssues(t *testing.T) {
+	texts, err := library.LoadAll(Texts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tx := range texts {
+		for _, is := range tx.CheckStyle() {
+			t.Errorf("%s: %s", tx.ID, is)
+		}
+	}
+}

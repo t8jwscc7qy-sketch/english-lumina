@@ -51,7 +51,7 @@
     "ru": "Он идёт в полицию и отдаёт кошелёк. «Пожалуйста, верните его ей», — говорит он."
    },
    {
-    "en": "\"We will return it,\" says the police man.",
+    "en": "\"We will return it,\" says a man from the police.",
     "ru": "«Мы вернём его», — говорит полицейский."
    },
    {
@@ -86,7 +86,8 @@
    },
    {
     "lemma": "music",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "loud",
@@ -115,7 +116,7 @@
     "ru": "Каждый вечер Кейт включает музыку."
    },
    {
-    "en": "The music is very loud, and Max can not sleep.",
+    "en": "The music is very loud, and Max cannot sleep.",
     "ru": "Музыка очень громкая, и Макс не может спать."
    },
    {
@@ -131,12 +132,12 @@
     "ru": "Никто не выходит. Он стучит и стучит."
    },
    {
-    "en": "Then Kate opens the door. \"Sorry, I can not hear you. The music is so loud!\"",
+    "en": "Then Kate opens the door. \"Sorry, I cannot hear you. The music is so loud!\"",
     "ru": "Потом Кейт открывает дверь. «Простите, я вас не слышу. Музыка такая громкая!»"
    },
    {
-    "en": "\"That is my problem,\" says Max. \"Your music is too loud for the night.\"",
-    "ru": "«В этом и дело, — говорит Макс. — Ваша музыка слишком громкая для ночи.»"
+    "en": "\"That is the problem,\" says Max. \"Your music is too loud at night.\"",
+    "ru": "«В этом и дело, — говорит Макс. — Ваша музыка слишком громкая ночью.»"
    },
    {
     "en": "Kate laughs. \"Sorry, neighbor. I will try to keep it down.\"",
@@ -175,6 +176,10 @@
    {
     "lemma": "ticket",
     "pos": "noun"
+   },
+   {
+    "lemma": "driver",
+    "pos": "noun"
    }
   ],
   "sentences": [
@@ -191,11 +196,11 @@
     "ru": "Бен бежит к автобусу. «Мне надо торопиться!» — говорит он."
    },
    {
-    "en": "He gets on the bus. \"Your ticket, please,\" says the man.",
-    "ru": "Он садится в автобус. «Ваш билет, пожалуйста», — говорит мужчина."
+    "en": "He gets on the bus. \"Your ticket, please,\" says the driver.",
+    "ru": "Он садится в автобус. «Ваш билет, пожалуйста», — говорит водитель."
    },
    {
-    "en": "Ben looks for his ticket. He can not find it.",
+    "en": "Ben looks for his ticket. He cannot find it.",
     "ru": "Бен ищет билет. Он не может его найти."
    },
    {
@@ -203,8 +208,8 @@
     "ru": "«Поторопитесь! — говорит женщина. — Мы все опаздываем.»"
    },
    {
-    "en": "At last Ben finds the ticket in his hand.",
-    "ru": "Наконец Бен находит билет в своей руке."
+    "en": "At last Ben finds the ticket in his hand and gives it to the driver.",
+    "ru": "Наконец Бен находит билет в своей руке и отдаёт его водителю."
    },
    {
     "en": "The bus goes and goes. Ben gets to work.",
@@ -426,8 +431,8 @@
     "ru": "Она звонит другу Максу. «Пожалуйста, помоги мне искать!»"
    },
    {
-    "en": "They search the house and the park.",
-    "ru": "Они ищут по дому и в парке."
+    "en": "They search the house. Then they go to the park.",
+    "ru": "Они ищут по дому. Потом идут в парк."
    },
    {
     "en": "They go to the park. They search and search.",
@@ -456,6 +461,9 @@
   "names": [
    "Anna",
    "Max"
+  ],
+  "allow": [
+   "артикль:10"
   ]
  },
  {
@@ -741,7 +749,7 @@
     "ru": "Через некоторое время мужчина отдаёт ему телефон."
    },
    {
-    "en": "The screen is good as new. \"Thank you!\" says Ben.",
+    "en": "The screen is as good as new. \"Thank you!\" says Ben.",
     "ru": "Экран как новый. «Спасибо!» — говорит Бен."
    }
   ],
@@ -792,7 +800,7 @@
     "ru": "Учитель — женщина. «Здравствуй, Том. Начнём», — говорит она."
    },
    {
-    "en": "The lesson is hard. Tom can not play the guitar well.",
+    "en": "The lesson is hard. Tom cannot play the guitar well.",
     "ru": "Урок трудный. Том не умеет хорошо играть на гитаре."
    },
    {
@@ -800,7 +808,7 @@
     "ru": "«Тебе надо заниматься каждый день», — говорит учитель."
    },
    {
-    "en": "Tom practices at home. He practices in the morning and in the night.",
+    "en": "Tom practices at home. He practices in the morning and at night.",
     "ru": "Том занимается дома. Он занимается и утром, и ночью."
    },
    {
@@ -834,11 +842,13 @@
   "targets": [
    {
     "lemma": "coffee",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "news",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "secret",
@@ -863,8 +873,8 @@
     "ru": "«Какие новости? — спрашивает Анна. — Расскажи!»"
    },
    {
-    "en": "\"It is a secret,\" says Kate. \"You can not tell a person.\"",
-    "ru": "«Это секрет, — говорит Кейт. — Ты не можешь никому рассказать.»"
+    "en": "\"It is a secret,\" says Kate. \"Do not tell.\"",
+    "ru": "«Это секрет, — говорит Кейт. — Не рассказывай.»"
    },
    {
     "en": "Anna looks around. Then she whispers, \"I will keep the secret.\"",
@@ -927,7 +937,7 @@
   ],
   "sentences": [
    {
-    "en": "Max and Ben play in the same team.",
+    "en": "Max and Ben play on the same team.",
     "ru": "Макс и Бен играют в одной команде."
    },
    {
@@ -955,7 +965,7 @@
     "ru": "Макс отправляет мяч в ворота."
    },
    {
-    "en": "\"Goal!\" says the team. Now the game is the same.",
+    "en": "\"Goal!\" says the team. Now the score is the same.",
     "ru": "«Гол!» — кричит команда. Теперь счёт равный."
    },
    {
@@ -1023,16 +1033,16 @@
     "ru": "Она пишет на конверте его имя и адрес."
    },
    {
-    "en": "She takes the letter to the mail.",
-    "ru": "Она относит письмо на почту."
+    "en": "She goes out and puts the letter in the mail.",
+    "ru": "Она выходит и опускает письмо в почтовый ящик."
    },
    {
-    "en": "\"Please send this letter,\" she says to the man at the mail.",
-    "ru": "«Пожалуйста, отправьте это письмо», — говорит она мужчине на почте."
+    "en": "Then she waits for a letter from him.",
+    "ru": "Потом она ждёт письма от него."
    },
    {
-    "en": "After a few days, a letter comes for Kate.",
-    "ru": "Через несколько дней Кейт приходит письмо."
+    "en": "After a few days, a letter comes in the mail for Kate.",
+    "ru": "Через несколько дней Кейт приходит письмо по почте."
    },
    {
     "en": "It is from her brother. \"Thank you for your letter,\" he writes.",
@@ -1275,7 +1285,8 @@
   "targets": [
    {
     "lemma": "snow",
-    "pos": "noun"
+    "pos": "noun",
+    "mass": true
    },
    {
     "lemma": "winter",
@@ -1338,6 +1349,10 @@
   "names": [
    "Anna",
    "Ben"
+  ],
+  "allow": [
+   "артикль:1",
+   "артикль:9"
   ]
  },
  {
@@ -1400,16 +1415,16 @@
     "ru": "«Как думаешь, ты сдашь?» — спрашивает подруга."
    },
    {
-    "en": "\"I hope so,\" says Kate. \"I am not worried now.\"",
-    "ru": "«Надеюсь, — говорит Кейт. — Теперь я не волнуюсь.»"
+    "en": "\"I hope so,\" says Kate.",
+    "ru": "«Надеюсь», — говорит Кейт."
    },
    {
-    "en": "Then Kate hears: she can pass the exam!",
-    "ru": "Потом Кейт узнаёт: она сдала экзамен!"
+    "en": "A day later, Kate hears the good news: she passed the exam!",
+    "ru": "Через день Кейт слышит хорошую новость: она сдала экзамен!"
    },
    {
-    "en": "She is not worried now. She is happy.",
-    "ru": "Теперь она не волнуется. Она рада."
+    "en": "Now she is happy, not worried.",
+    "ru": "Теперь она рада и не волнуется."
    }
   ],
   "sources": [
@@ -1492,6 +1507,10 @@
   ],
   "names": [
    "Ben"
+  ],
+  "allow": [
+   "артикль:6",
+   "артикль:9"
   ]
  }
 ]
