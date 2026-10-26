@@ -4,6 +4,9 @@ import { RichText } from './richText'
 
 type Filter = 'all' | 'weak' | 'unseen'
 
+/** Текст без разметки **выделения**: сортировка и поиск не должны зависеть от звёздочек. */
+const plain = (t: string) => t.replace(/\*\*/g, '')
+
 const STATUS: Record<string, { icon: string; label: string }> = {
   unseen: { icon: '○', label: 'не встречал' },
   introduced: { icon: '◐', label: 'показано' },
@@ -15,8 +18,8 @@ const STATUS: Record<string, { icon: string; label: string }> = {
   ok: { icon: '✓', label: 'в порядке' },
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const s = STATUS[status] ?? STATUS.unseen
+function StatusBadge({ status, topic }: { status: string; topic: boolean }) {
+  const s = topic && status === 'unseen' ? { icon: '○', label: 'не тренировал' } : (STATUS[status] ?? STATUS.unseen)
   const alert = status === 'hard' || status === 'weak'
   return (
     <span className={alert ? 'font-semibold text-coral-text' : 'text-muted-foreground'}>
@@ -46,10 +49,10 @@ export function SmartTable({ block }: { block: SheetBlock }) {
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
     let out = rows.filter((r) => (filter === 'weak' ? isWeak(r) : filter === 'unseen' ? r.status === 'unseen' : true))
-    if (q) out = out.filter((r) => r.cells.some((c) => c.toLowerCase().includes(q)))
+    if (q) out = out.filter((r) => r.cells.some((c) => plain(c).toLowerCase().includes(q)))
     if (sort) {
       const k = sort.col
-      out = [...out].sort((a, b) => a.cells[k].localeCompare(b.cells[k]) * (sort.dir === 'asc' ? 1 : -1))
+      out = [...out].sort((a, b) => plain(a.cells[k]).localeCompare(plain(b.cells[k])) * (sort.dir === 'asc' ? 1 : -1))
     }
     return out
   }, [rows, query, filter, sort])
@@ -62,7 +65,7 @@ export function SmartTable({ block }: { block: SheetBlock }) {
       {block.title && <h2 className="text-title">{block.title}</h2>}
 
       {(bound || rows.length > 8) && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="no-print flex flex-wrap items-center gap-3">
           {rows.length > 8 && (
             <label className="flex items-center gap-2 text-sm">
               <span className="sr-only">Поиск по таблице</span>
@@ -108,7 +111,7 @@ export function SmartTable({ block }: { block: SheetBlock }) {
                 <th
                   key={i}
                   scope="col"
-                  aria-sort={sort?.col === i ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  aria-sort={sort?.col === i ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
                   className="px-3 py-2 font-semibold"
                 >
                   <button
@@ -140,7 +143,7 @@ export function SmartTable({ block }: { block: SheetBlock }) {
                 ))}
                 {bound && (
                   <td className="px-3 py-2 align-top whitespace-nowrap">
-                    <StatusBadge status={r.status ?? 'unseen'} />
+                    <StatusBadge status={r.status ?? 'unseen'} topic={block.bind === 'topic'} />
                     {r.rating != null && <span className="ml-2 text-xs text-muted-foreground tabular-nums">{Math.round(r.rating)}</span>}
                   </td>
                 )}
@@ -150,13 +153,17 @@ export function SmartTable({ block }: { block: SheetBlock }) {
         </table>
       </div>
 
+      {shown.length > 0 && shown.length < rows.length && (
+        <p className="hidden text-sm print:block">{`Показаны не все строки: ${shown.length} из ${rows.length} (включён фильтр или поиск).`}</p>
+      )}
+
       {shown.length === 0 && (
         <p role="status" className="text-muted-foreground">
-          {block.bind === 'mistake'
-            ? 'Открытых ошибок нет. Они появятся здесь, когда ответишь неверно.'
-            : rows.length === 0
-              ? 'Строк нет.'
-              : 'Ничего не нашлось: поменяй поиск или фильтр.'}
+          {rows.length === 0
+            ? block.bind === 'mistake'
+              ? 'Открытых ошибок нет. Они появятся здесь, когда ответишь неверно.'
+              : 'Строк нет.'
+            : 'Ничего не нашлось: поменяй поиск или фильтр.'}
         </p>
       )}
     </section>

@@ -51,6 +51,18 @@ test.describe('шпаргалки', () => {
     await expect(page.getByRole('navigation', { name: 'Разделы' })).toBeHidden()
     await expect(page.getByRole('button', { name: 'Печать' })).toBeHidden()
     await expect(page.getByRole('table')).toBeVisible()
+    // Любой цвет текста при печати чёрный (в тёмной теме приглушённый цвет не должен остаться светлым).
+    const colors = await page.evaluate(() => [...document.querySelectorAll('main p, main td')].map((e) => getComputedStyle(e).color))
+    expect(colors.length).toBeGreaterThan(0)
+    expect(new Set(colors)).toEqual(new Set(['rgb(0, 0, 0)']))
+  })
+
+  test('печать: боковая панель оболочки скрыта, а другие страницы не теряют aside', async ({ page }) => {
+    await mockApi(page, { loggedIn: true })
+    await page.goto('/')
+    await expect(page.getByRole('complementary', { name: 'Серия и сессия' })).toBeVisible()
+    await page.emulateMedia({ media: 'print' })
+    await expect(page.getByRole('complementary', { name: 'Серия и сессия' })).toBeVisible()
   })
 
   test('клавиатура: фильтр переключается Пробелом', async ({ page }) => {

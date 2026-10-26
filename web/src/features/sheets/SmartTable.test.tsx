@@ -74,3 +74,39 @@ describe('SmartTable', () => {
     expect(screen.getByText('1200')).toBeInTheDocument()
   })
 })
+
+describe('SmartTable: мелочи', () => {
+  it('сортировка и поиск не видят звёздочек выделения', async () => {
+    const user = userEvent.setup()
+    const block = {
+      type: 'table' as const,
+      columns: [{ title: 'A' }, { title: 'B' }],
+      rows: [{ cells: ['**The** dog', 'x'] }, { cells: ['I have **a** dog', 'y'] }],
+    }
+    render(<SmartTable block={block} />)
+    await user.click(screen.getByRole('button', { name: /Сортировать по столбцу «A»/ }))
+    expect(bodyCells()).toEqual(['I have a dog', 'The dog'])
+  })
+
+  it('aria-sort только у отсортированного столбца', async () => {
+    const user = userEvent.setup()
+    render(<SmartTable block={table} />)
+    expect(screen.getByRole('columnheader', { name: /Past/ })).not.toHaveAttribute('aria-sort')
+    await user.click(screen.getByRole('button', { name: /Сортировать по столбцу «Past»/ }))
+    expect(screen.getByRole('columnheader', { name: /Past/ })).toHaveAttribute('aria-sort', 'ascending')
+  })
+
+  it('«Мои ошибки» при пустом поиске по непустой таблице — не «ошибок нет»', async () => {
+    const user = userEvent.setup()
+    const rows = Array.from({ length: 9 }, (_, i) => ({ cells: [`task${i}`, 'a', 'b'] }))
+    render(<SmartTable block={{ type: 'table', bind: 'mistake', columns: [{ title: 'Задание' }, { title: 'Ответ' }, { title: 'Верно' }], rows }} />)
+    await user.type(screen.getByRole('searchbox', { name: 'Поиск по таблице' }), 'нет такого')
+    expect(screen.getByText(/Ничего не нашлось/)).toBeInTheDocument()
+    expect(screen.queryByText(/Открытых ошибок нет/)).not.toBeInTheDocument()
+  })
+
+  it('тема без рейтинга: «не тренировал»', () => {
+    render(<SmartTable block={{ type: 'table', bind: 'topic', columns: [{ title: 'Тема' }, { title: 'Что' }], rows: [{ key: 'grammar:articles', cells: ['Артикли', 'x'], status: 'unseen' }] }} />)
+    expect(screen.getByText('не тренировал')).toBeInTheDocument()
+  })
+})

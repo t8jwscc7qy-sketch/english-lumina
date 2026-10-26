@@ -539,6 +539,7 @@ export async function mockApi(
     const path = new URL(route.request().url()).pathname
     const method = route.request().method()
     if (path.endsWith('/sheets') && method === 'GET') return route.fulfill({ json: { sheets: sheetDefs.map(summaryOf) } })
+    if (method === 'GET') return route.fulfill({ status: 404 })
     const body = route.request().postDataJSON() as { id: string; favorite?: boolean }
     const def = sheetDefs.find((d) => d.id === body.id)
     if (!def) return route.fulfill(apiError(404, 'not_found', 'Такой шпаргалки нет'))

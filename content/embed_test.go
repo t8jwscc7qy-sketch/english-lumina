@@ -46,7 +46,13 @@ func TestSheetWordKeysExistInLexemes(t *testing.T) {
 		if len(keys) == 0 {
 			continue
 		}
-		rows, err := pool.Query(ctx, `SELECT DISTINCT lemma FROM lexemes WHERE lemma = ANY($1)`, keys)
+		poss := []string{}
+		for _, b := range s.Blocks {
+			if b.Type == sheets.BlockTable && b.Bind == sheets.BindWord {
+				poss = append(poss, b.Pos...)
+			}
+		}
+		rows, err := pool.Query(ctx, `SELECT DISTINCT lemma FROM lexemes WHERE lemma = ANY($1) AND (cardinality($2::text[]) = 0 OR pos = ANY($2::text[]))`, keys, poss)
 		if err != nil {
 			t.Fatal(err)
 		}

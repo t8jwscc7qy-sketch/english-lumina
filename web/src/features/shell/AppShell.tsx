@@ -45,7 +45,7 @@ export function AppShell() {
         Перейти к содержимому
       </a>
 
-      <aside className="w-20 shrink-0 bg-rail text-rail-foreground [--focus:var(--sky)] lg:w-60">
+      <aside className="no-print w-20 shrink-0 bg-rail text-rail-foreground [--focus:var(--sky)] lg:w-60">
         <div className="sticky top-0 flex h-dvh flex-col gap-6 p-4">
           <div className="flex justify-center lg:justify-start">
             <Wordmark scale={3} className="hidden max-w-full lg:block" />

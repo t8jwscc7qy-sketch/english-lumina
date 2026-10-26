@@ -64,7 +64,7 @@
             "say",
             "said",
             "said",
-            "сказать"
+            "говорить, сказать"
           ]
         },
         {
@@ -81,7 +81,7 @@
           "cells": [
             "get",
             "got",
-            "got / gotten",
+            "got / gotten (США)",
             "получать, становиться"
           ]
         },
@@ -350,8 +350,8 @@
           "key": "read",
           "cells": [
             "read",
-            "read",
-            "read",
+            "read [red]",
+            "read [red]",
             "читать"
           ]
         },
@@ -481,7 +481,17 @@
             "выбирать"
           ]
         }
+      ],
+      "pos": [
+        "verb",
+        "be-verb",
+        "do-verb",
+        "have-verb"
       ]
+    },
+    {
+      "type": "tip",
+      "text": "У get в британском английском третья форма got, в американском gotten."
     },
     {
       "type": "tip",
@@ -512,7 +522,7 @@
       "examples": [
         {
           "en": "I **went** home early.",
-          "ru": "Я рано пошёл домой."
+          "ru": "Я рано ушёл домой."
         },
         {
           "en": "She has **written** a letter.",

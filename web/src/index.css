@@ -330,19 +330,14 @@
 .t-blink { animation: t-blink 400ms steps(2, end) 2; }
 .fox-jump { animation: fox-jump 500ms steps(2, end) 1; }
 
-/* Печать шпаргалок: чёрное на белом, без меню и кнопок, таблица на всю ширину. */
+/* Печать шпаргалок: чёрное на белом в любой теме, без меню и кнопок, таблица на всю ширину. */
 @media print {
-  .no-print,
-  nav,
-  aside,
-  [data-sidebar] {
+  .no-print {
     display: none !important;
   }
+  html,
   body,
-  .surface,
-  table,
-  th,
-  td {
+  body * {
     background: #fff !important;
     color: #000 !important;
     box-shadow: none !important;

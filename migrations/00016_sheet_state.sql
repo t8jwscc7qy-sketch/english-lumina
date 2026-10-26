@@ -6,6 +6,7 @@ CREATE TABLE sheet_state (
     sheet_id    text        NOT NULL CHECK (length(sheet_id) BETWEEN 1 AND 64),
     favorite_at timestamptz,
     reviewed_at timestamptz,
+    reviewed_hash text,   -- хеш текста шпаргалки на момент проверки: правка текста сбрасывает «проверено»
     opened_at   timestamptz,
     PRIMARY KEY (user_id, sheet_id)
 );

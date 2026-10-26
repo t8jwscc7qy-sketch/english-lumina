@@ -54,19 +54,20 @@ func BestStatus(statuses ...string) string {
 	return statusPriority[best]
 }
 
-// TopicWeak — рейтинг темы в нижней трети среди всех тем пользователя. Тем меньше трёх — «слабой» не бывает:
-// сравнивать не с чем.
+// TopicWeak — рейтинг темы в нижней трети среди всех тем пользователя: темы с таким рейтингом и ниже целиком
+// помещаются в нижнюю треть. Одинаковые рейтинги не делают слабыми всех: у трёх равных тем слабой нет. Тем меньше
+// трёх — «слабой» не бывает: сравнивать не с чем.
 func TopicWeak(rating float64, all []float64) bool {
 	if len(all) < 3 {
 		return false
 	}
-	below := 0
+	notAbove := 0
 	for _, r := range all {
-		if r < rating {
-			below++
+		if r <= rating {
+			notAbove++
 		}
 	}
-	return below < len(all)/3
+	return notAbove <= len(all)/3
 }
 
 // MistakeRow — открытая ошибка для шпаргалки «Мои ошибки».

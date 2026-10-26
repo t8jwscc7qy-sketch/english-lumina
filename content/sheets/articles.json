@@ -29,7 +29,7 @@
       "rows": [
         {
           "cells": [
-            "Один из многих, называем впервые",
+            "Один предмет из многих (исчисляемое, единственное число), называем впервые",
             "a / an",
             "I have **a** dog."
           ]
@@ -96,12 +96,12 @@
         {
           "wrong": "I am student.",
           "right": "I am a student.",
-          "note": "перед профессией в единственном числе нужен a."
+          "note": "перед существительным в единственном числе, которое говорит, кто ты, нужен артикль a."
         },
         {
-          "wrong": "I like the music.",
-          "right": "I like music.",
-          "note": "говорим вообще — артикль не нужен."
+          "wrong": "I like the music in general.",
+          "right": "I like music in general.",
+          "note": "когда говорим о музыке вообще, артикль не нужен; the нужен, если речь о конкретной музыке: I like the music in this cafe."
         },
         {
           "wrong": "She is an university teacher.",

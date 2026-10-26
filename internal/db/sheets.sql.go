@@ -50,20 +50,27 @@ func (q *Queries) SheetSetFavorite(ctx context.Context, arg SheetSetFavoritePara
 }
 
 const sheetSetReviewed = `-- name: SheetSetReviewed :execrows
-INSERT INTO sheet_state (user_id, sheet_id, reviewed_at)
-VALUES ($1, $2, $3::timestamptz)
-ON CONFLICT (user_id, sheet_id) DO UPDATE SET reviewed_at = EXCLUDED.reviewed_at WHERE sheet_state.reviewed_at IS NULL
+INSERT INTO sheet_state (user_id, sheet_id, reviewed_at, reviewed_hash)
+VALUES ($1, $2, $3::timestamptz, $4::text)
+ON CONFLICT (user_id, sheet_id) DO UPDATE SET reviewed_at = EXCLUDED.reviewed_at, reviewed_hash = EXCLUDED.reviewed_hash
+WHERE sheet_state.reviewed_at IS NULL OR sheet_state.reviewed_hash IS DISTINCT FROM EXCLUDED.reviewed_hash
 `
 
 type SheetSetReviewedParams struct {
 	UserID  int64
 	SheetID string
 	At      pgtype.Timestamptz
+	Hash    string
 }
 
-// Отметка «проверено» ставится один раз.
+// Отметка ставится, пока её нет или проверялся другой текст (хеш изменился); та же проверка повторно ничего не меняет.
 func (q *Queries) SheetSetReviewed(ctx context.Context, arg SheetSetReviewedParams) (int64, error) {
-	result, err := q.db.Exec(ctx, sheetSetReviewed, arg.UserID, arg.SheetID, arg.At)
+	result, err := q.db.Exec(ctx, sheetSetReviewed,
+		arg.UserID,
+		arg.SheetID,
+		arg.At,
+		arg.Hash,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -71,14 +78,15 @@ func (q *Queries) SheetSetReviewed(ctx context.Context, arg SheetSetReviewedPara
 }
 
 const sheetStates = `-- name: SheetStates :many
-SELECT sheet_id, favorite_at, reviewed_at, opened_at FROM sheet_state WHERE user_id = $1
+SELECT sheet_id, favorite_at, reviewed_at, reviewed_hash, opened_at FROM sheet_state WHERE user_id = $1
 `
 
 type SheetStatesRow struct {
-	SheetID    string
-	FavoriteAt pgtype.Timestamptz
-	ReviewedAt pgtype.Timestamptz
-	OpenedAt   pgtype.Timestamptz
+	SheetID      string
+	FavoriteAt   pgtype.Timestamptz
+	ReviewedAt   pgtype.Timestamptz
+	ReviewedHash *string
+	OpenedAt     pgtype.Timestamptz
 }
 
 func (q *Queries) SheetStates(ctx context.Context, userID int64) ([]SheetStatesRow, error) {
@@ -94,6 +102,7 @@ func (q *Queries) SheetStates(ctx context.Context, userID int64) ([]SheetStatesR
 			&i.SheetID,
 			&i.FavoriteAt,
 			&i.ReviewedAt,
+			&i.ReviewedHash,
 			&i.OpenedAt,
 		); err != nil {
 			return nil, err
@@ -129,11 +138,13 @@ FROM lexemes l
 LEFT JOIN word_learning w ON w.lexeme_id = l.id AND w.user_id = $1
 LEFT JOIN cards cd ON cd.lexeme_id = l.id AND cd.user_id = $1
 WHERE l.lemma = ANY($2::text[])
+  AND (cardinality($3::text[]) = 0 OR l.pos = ANY($3::text[]))
 `
 
 type SheetWordStatusesParams struct {
 	UserID int64
 	Lemmas []string
+	Poss   []string
 }
 
 type SheetWordStatusesRow struct {
@@ -144,9 +155,9 @@ type SheetWordStatusesRow struct {
 }
 
 // Данные пользователя по словам шпаргалки (по лемме, в любой части речи): состояние изучения, есть ли карточка,
-// сколько раз забыл. У леммы может быть несколько слов (run: глагол и существительное): Go берёт самое «живое».
+// сколько раз забыл. poss — допустимые части речи (пусто — любые). У леммы может быть несколько слов (run: глагол и существительное): Go берёт самое «живое».
 func (q *Queries) SheetWordStatuses(ctx context.Context, arg SheetWordStatusesParams) ([]SheetWordStatusesRow, error) {
-	rows, err := q.db.Query(ctx, sheetWordStatuses, arg.UserID, arg.Lemmas)
+	rows, err := q.db.Query(ctx, sheetWordStatuses, arg.UserID, arg.Lemmas, arg.Poss)
 	if err != nil {
 		return nil, err
 	}

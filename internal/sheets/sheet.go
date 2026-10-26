@@ -4,6 +4,8 @@ package sheets
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,6 +78,7 @@ type Block struct {
 	Title    string    `json:"title,omitempty"`
 	Text     string    `json:"text,omitempty"`
 	Bind     string    `json:"bind,omitempty"`
+	Pos      []string  `json:"pos,omitempty"` // для привязки word: допустимые части речи (в lexemes be/have/do — be-verb и т. п.)
 	Columns  []Column  `json:"columns,omitempty"`
 	Rows     []Row     `json:"rows,omitempty"`
 	Pairs    []Pair    `json:"pairs,omitempty"`
@@ -92,6 +95,8 @@ type Sheet struct {
 	Blocks  []Block  `json:"blocks"`
 	Sources []string `json:"sources"`
 	Status  string   `json:"status"`
+	// Hash — sha256 текста файла: отметка «проверено» действует, пока текст не менялся.
+	Hash string `json:"-"`
 }
 
 func words(s string) int { return len(strings.Fields(s)) }
@@ -205,6 +210,8 @@ func Parse(data []byte) (Sheet, error) {
 	if err := s.Validate(); err != nil {
 		return Sheet{}, fmt.Errorf("шпаргалка %q: %w", s.ID, err)
 	}
+	sum := sha256.Sum256(data)
+	s.Hash = hex.EncodeToString(sum[:])
 	return s, nil
 }
 

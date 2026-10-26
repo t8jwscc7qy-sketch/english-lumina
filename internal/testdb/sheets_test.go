@@ -37,12 +37,17 @@ func TestSheetQueries(t *testing.T) {
 
 	// «Проверено» ставится один раз, время не перезаписывается.
 	first := now.Add(-time.Minute)
-	if n, err := q.SheetSetReviewed(ctx, db.SheetSetReviewedParams{UserID: user.ID, SheetID: "to-be", At: ts(first)}); err != nil || n != 1 {
+	if n, err := q.SheetSetReviewed(ctx, db.SheetSetReviewedParams{UserID: user.ID, SheetID: "to-be", At: ts(first), Hash: "h1"}); err != nil || n != 1 {
 		t.Fatalf("проверено: %d %v", n, err)
 	}
-	if n, err := q.SheetSetReviewed(ctx, db.SheetSetReviewedParams{UserID: user.ID, SheetID: "to-be", At: ts(now)}); err != nil || n != 0 {
+	if n, err := q.SheetSetReviewed(ctx, db.SheetSetReviewedParams{UserID: user.ID, SheetID: "to-be", At: ts(now), Hash: "h1"}); err != nil || n != 0 {
 		t.Fatalf("проверено повторно: %d %v", n, err)
 	}
+	// Текст изменился (другой хеш): проверка ставится заново.
+	if n, err := q.SheetSetReviewed(ctx, db.SheetSetReviewedParams{UserID: user.ID, SheetID: "to-be", At: ts(now), Hash: "h2"}); err != nil || n != 1 {
+		t.Fatalf("проверено после правки текста: %d %v", n, err)
+	}
+	first = now
 	if err := q.SheetTouchOpened(ctx, db.SheetTouchOpenedParams{UserID: user.ID, SheetID: "articles", At: ts(now)}); err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +85,7 @@ func TestSheetQueries(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO word_learning (user_id, lexeme_id, status, source, learned_at) VALUES ($1, $2, 'learned', 'lesson', now())`, user.ID, runN); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := q.SheetWordStatuses(ctx, db.SheetWordStatusesParams{UserID: user.ID, Lemmas: []string{"go", "run", "see", "missing"}})
+	rows, err := q.SheetWordStatuses(ctx, db.SheetWordStatusesParams{UserID: user.ID, Lemmas: []string{"go", "run", "see", "missing"}, Poss: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,6 +106,11 @@ func TestSheetQueries(t *testing.T) {
 	}
 	if s := byLemma["see"]; len(s) != 1 || s[0].card || s[0].learning != nil {
 		t.Fatalf("see: %+v", s)
+	}
+	// Фильтр по части речи: у run остаётся только существительное с состоянием «изучено».
+	only, err := q.SheetWordStatuses(ctx, db.SheetWordStatusesParams{UserID: user.ID, Lemmas: []string{"run"}, Poss: []string{"noun"}})
+	if err != nil || len(only) != 1 || only[0].LearningStatus == nil || *only[0].LearningStatus != "learned" {
+		t.Fatalf("run/noun: %+v %v", only, err)
 	}
 	if _, ok := byLemma["missing"]; ok {
 		t.Fatal("несуществующей леммы нет")

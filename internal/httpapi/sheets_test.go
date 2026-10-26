@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -240,9 +241,17 @@ func TestSheetUnknownAndBadInput(t *testing.T) {
 			t.Errorf("%s %s: %d %s", c.method, c.path, rec.Code, rec.Body)
 		}
 	}
-	for _, body := range []string{``, `{}`, `не json`, `{"id":"to-be","extra":1}`, `{"id":""}`} {
-		if rec := e.do(http.MethodPost, sheetOpenPath, body, withCookie(token)); rec.Code != http.StatusBadRequest && rec.Code != http.StatusNotFound {
-			t.Errorf("%q: %d", body, rec.Code)
+	long := strings.Repeat("x", 65)
+	for _, body := range []string{``, `{}`, `не json`, `{"id":"to-be","extra":1}`, `{"id":""}`, `{"id":"` + long + `"}`, `{"id":"to-be"} хвост`} {
+		for _, path := range []string{sheetOpenPath, sheetRevPath} {
+			if rec := e.do(http.MethodPost, path, body, withCookie(token)); rec.Code != http.StatusBadRequest {
+				t.Errorf("%s %q: %d", path, body, rec.Code)
+			}
+		}
+	}
+	for _, body := range []string{`{"id":"to-be"}`, `{"favorite":true}`, `{"id":"","favorite":true}`, `{"id":"to-be","favorite":"yes"}`} {
+		if rec := e.do(http.MethodPut, sheetFavPath, body, withCookie(token)); rec.Code != http.StatusBadRequest {
+			t.Errorf("favorite %q: %d", body, rec.Code)
 		}
 	}
 	if len(e.store.sheetStates) != 0 {
@@ -250,5 +259,55 @@ func TestSheetUnknownAndBadInput(t *testing.T) {
 	}
 	if rec := e.do(http.MethodPut, sheetFavPath, `{"id":"to-be","favorite":true}`, withHeader("Origin", "https://evil.example"), withCookie(token)); rec.Code != http.StatusForbidden {
 		t.Fatalf("чужой источник: %d", rec.Code)
+	}
+}
+
+func TestSheetWordStatusUsesOnlyVerbs(t *testing.T) {
+	e, token := sheetsEnv(t)
+	e.store.addLexeme(1, "fall", "noun", "A2") // существительное «осень»: у него три забывания
+	e.store.addLexeme(2, "fall", "verb", "A2")
+	e.store.addLexeme(3, "run", "noun", "A1")
+	id := seed(t, e, 1, time.Now().Add(time.Hour))
+	c := e.store.cards[id]
+	c.Lapses = 5
+	e.store.cards[id] = c
+	e.store.wl = map[int64]fakeWord{3: {status: "learned", source: "lesson"}}
+	s := openSheet(t, e, token, "irregular-verbs")
+	rows := tableRows(t, s, api.SheetBlockBindWord)
+	if got := rowStatus(rows, "fall"); got != "unseen" {
+		t.Fatalf("fall: %s, глагол не должен наследовать статус существительного", got)
+	}
+	if got := rowStatus(rows, "run"); got != "unseen" {
+		t.Fatalf("run: %s", got)
+	}
+	if s.WeakCount != 0 {
+		t.Fatalf("слабых %d", s.WeakCount)
+	}
+}
+
+func TestSheetEditedTextResetsReviewed(t *testing.T) {
+	e, token := sheetsEnv(t)
+	if rec := e.do(http.MethodPost, sheetRevPath, `{"id":"articles"}`, withCookie(token)); rec.Code != http.StatusOK {
+		t.Fatalf("review: %d", rec.Code)
+	}
+	if got := listSheets(t, e, token)["articles"].Status; got != "reviewed" {
+		t.Fatalf("после проверки: %s", got)
+	}
+	// Текст шпаргалки изменился с момента проверки: хеш другой.
+	st := e.store.sheetStates["articles"]
+	old := "хеш-старого-текста"
+	st.ReviewedHash = &old
+	e.store.sheetStates["articles"] = st
+	if got := listSheets(t, e, token)["articles"].Status; got != "draft" {
+		t.Fatalf("правка текста возвращает черновик: %s", got)
+	}
+	if rec := e.do(http.MethodPost, sheetRevPath, `{"id":"articles"}`, withCookie(token)); rec.Code != http.StatusOK {
+		t.Fatalf("повторная проверка: %d", rec.Code)
+	}
+	if got := listSheets(t, e, token)["articles"].Status; got != "reviewed" {
+		t.Fatalf("после повторной проверки: %s", got)
+	}
+	if n := len(eventsOfType(e, "sheet.reviewed")); n != 2 {
+		t.Fatalf("событий %d, ждали 2 (две реальные проверки)", n)
 	}
 }

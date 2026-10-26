@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
@@ -63,23 +65,27 @@ func (s *authServer) loadSheetData(ctx context.Context, userID int64, which []sh
 	for _, r := range rows {
 		d.states[r.SheetID] = r
 	}
-	var lemmas []string
-	seen := map[string]bool{}
+	// Леммы таблиц с привязкой word группируются по допустимым частям речи: один запрос на группу.
+	groups := map[string][]string{}
+	poss := map[string][]string{}
 	for _, sh := range which {
-		for _, k := range sh.WordKeys() {
-			if !seen[k] {
-				seen[k] = true
-				lemmas = append(lemmas, k)
-			}
-		}
 		for _, b := range sh.Blocks {
-			if b.Type == sheets.BlockTable && b.Bind == sheets.BindMistake {
+			switch {
+			case b.Type == sheets.BlockTable && b.Bind == sheets.BindMistake:
 				d.needMiner = true
+			case b.Type == sheets.BlockTable && b.Bind == sheets.BindWord:
+				pk := posKey(b.Pos)
+				poss[pk] = b.Pos
+				for _, r := range b.Rows {
+					if !slices.Contains(groups[pk], r.Key) {
+						groups[pk] = append(groups[pk], r.Key)
+					}
+				}
 			}
 		}
 	}
-	if len(lemmas) > 0 {
-		ws, err := s.store.SheetWordStatuses(ctx, db.SheetWordStatusesParams{UserID: userID, Lemmas: lemmas})
+	for pk, lemmas := range groups {
+		ws, err := s.store.SheetWordStatuses(ctx, db.SheetWordStatusesParams{UserID: userID, Lemmas: lemmas, Poss: nonNil(poss[pk])})
 		if err != nil {
 			return d, fmt.Errorf("статусы слов: %w", err)
 		}
@@ -88,7 +94,7 @@ func (s *authServer) loadSheetData(ctx context.Context, userID int64, which []sh
 			per[w.Lemma] = append(per[w.Lemma], sheets.WordStatus(w.LearningStatus, w.HasCard, int(w.Lapses)))
 		}
 		for lemma, st := range per {
-			d.words[lemma] = sheets.BestStatus(st...)
+			d.words[wordKey(lemma, pk)] = sheets.BestStatus(st...)
 		}
 	}
 	ratings, err := s.store.ListTopicRatings(ctx, userID)
@@ -111,8 +117,22 @@ func (s *authServer) loadSheetData(ctx context.Context, userID int64, which []sh
 	return d, nil
 }
 
+// posKey — ключ группы допустимых частей речи; пустой набор — любые.
+func posKey(pos []string) string { return strings.Join(pos, ",") }
+
+func wordKey(lemma, pk string) string { return lemma + "|" + pk }
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// status: «проверено» действует, пока текст шпаргалки такой же, как при проверке (по хешу файла). Правка текста
+// возвращает шпаргалку в черновик: сервис не выдаёт непроверенное за проверенное.
 func (d sheetData) status(sh sheets.Sheet) api.SheetStatus {
-	if st, ok := d.states[sh.ID]; ok && st.ReviewedAt.Valid {
+	if st, ok := d.states[sh.ID]; ok && st.ReviewedAt.Valid && st.ReviewedHash != nil && *st.ReviewedHash == sh.Hash {
 		return "reviewed"
 	}
 	return "draft"
@@ -144,7 +164,7 @@ func (d sheetData) rowsFor(b sheets.Block) (rows []api.SheetRow, weak int) {
 		}
 		switch b.Bind {
 		case sheets.BindWord:
-			st, ok := d.words[r.Key]
+			st, ok := d.words[wordKey(r.Key, posKey(b.Pos))]
 			if !ok {
 				st = sheets.WordUnseen
 			}
@@ -264,16 +284,24 @@ func (s *authServer) ListSheets(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// sheetIDFromBody читает тело {id} (или {id, ...}) и находит шпаргалку; ok = false — ответ уже записан.
+// decodeSheetBody читает тело запроса строго: неизвестные поля и лишний текст после объекта — ошибка 400.
 func decodeSheetBody(w http.ResponseWriter, r *http.Request, into any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxSheetBody)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(into); err != nil {
+	if err := dec.Decode(into); err != nil || dec.More() {
 		writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidRequest, "Некорректный запрос")
 		return false
 	}
 	return true
+}
+
+const maxSheetID = 64
+
+func validSheetID(id string) bool { return id != "" && len(id) <= maxSheetID }
+
+func badSheetRequest(w http.ResponseWriter) {
+	writeError(w, http.StatusBadRequest, api.ErrorErrorCodeInvalidRequest, "Нужны id шпаргалки (до 64 символов) и все поля запроса")
 }
 
 func sheetNotFound(w http.ResponseWriter) {
@@ -289,6 +317,10 @@ func (s *authServer) OpenSheet(w http.ResponseWriter, r *http.Request) {
 	}
 	var req api.SheetRef
 	if !decodeSheetBody(w, r, &req) {
+		return
+	}
+	if !validSheetID(req.Id) {
+		badSheetRequest(w)
 		return
 	}
 	sh, ok := findSheet(req.Id)
@@ -328,10 +360,18 @@ func (s *authServer) SetSheetFavorite(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, err)
 		return
 	}
-	var req api.SheetFavoriteRequest
+	var req struct {
+		Id       string `json:"id"`
+		Favorite *bool  `json:"favorite"`
+	}
 	if !decodeSheetBody(w, r, &req) {
 		return
 	}
+	if !validSheetID(req.Id) || req.Favorite == nil {
+		badSheetRequest(w)
+		return
+	}
+	favorite := *req.Favorite
 	sh, ok := findSheet(req.Id)
 	if !ok {
 		sheetNotFound(w)
@@ -341,7 +381,7 @@ func (s *authServer) SetSheetFavorite(w http.ResponseWriter, r *http.Request) {
 	err = s.store.InTx(ctx, func(tx AuthStore) error {
 		var n int64
 		var err error
-		if req.Favorite {
+		if favorite {
 			n, err = tx.SheetSetFavorite(ctx, db.SheetSetFavoriteParams{UserID: user.ID, SheetID: sh.ID, At: ts(s.now())})
 		} else {
 			n, err = tx.SheetClearFavorite(ctx, db.SheetClearFavoriteParams{UserID: user.ID, SheetID: sh.ID})
@@ -349,13 +389,13 @@ func (s *authServer) SetSheetFavorite(w http.ResponseWriter, r *http.Request) {
 		if err != nil || n == 0 {
 			return err
 		}
-		return s.sheetEvent(ctx, tx, user.ID, "sheet.favorited", map[string]any{"sheetId": sh.ID, "favorite": req.Favorite})
+		return s.sheetEvent(ctx, tx, user.ID, "sheet.favorited", map[string]any{"sheetId": sh.ID, "favorite": favorite})
 	})
 	if err != nil {
 		s.failSheets(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, api.SheetFavoriteRequest{Id: sh.ID, Favorite: req.Favorite})
+	writeJSON(w, http.StatusOK, api.SheetFavoriteRequest{Id: sh.ID, Favorite: favorite})
 }
 
 // ReviewSheet отмечает шпаргалку проверенной самим пользователем (один раз).
@@ -369,6 +409,10 @@ func (s *authServer) ReviewSheet(w http.ResponseWriter, r *http.Request) {
 	if !decodeSheetBody(w, r, &req) {
 		return
 	}
+	if !validSheetID(req.Id) {
+		badSheetRequest(w)
+		return
+	}
 	sh, ok := findSheet(req.Id)
 	if !ok {
 		sheetNotFound(w)
@@ -376,7 +420,7 @@ func (s *authServer) ReviewSheet(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	err = s.store.InTx(ctx, func(tx AuthStore) error {
-		n, err := tx.SheetSetReviewed(ctx, db.SheetSetReviewedParams{UserID: user.ID, SheetID: sh.ID, At: ts(s.now())})
+		n, err := tx.SheetSetReviewed(ctx, db.SheetSetReviewedParams{UserID: user.ID, SheetID: sh.ID, At: ts(s.now()), Hash: sh.Hash})
 		if err != nil || n == 0 {
 			return err
 		}

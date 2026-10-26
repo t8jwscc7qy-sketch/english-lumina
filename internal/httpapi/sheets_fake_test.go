@@ -12,7 +12,7 @@ import (
 func (f *fakeStore) SheetStates(_ context.Context, userID int64) ([]db.SheetStatesRow, error) {
 	var out []db.SheetStatesRow
 	for id, st := range f.sheetStates {
-		out = append(out, db.SheetStatesRow{SheetID: id, FavoriteAt: st.FavoriteAt, ReviewedAt: st.ReviewedAt, OpenedAt: st.OpenedAt})
+		out = append(out, db.SheetStatesRow{SheetID: id, FavoriteAt: st.FavoriteAt, ReviewedAt: st.ReviewedAt, ReviewedHash: st.ReviewedHash, OpenedAt: st.OpenedAt})
 	}
 	_ = userID
 	return out, nil
@@ -49,10 +49,10 @@ func (f *fakeStore) SheetClearFavorite(_ context.Context, a db.SheetClearFavorit
 
 func (f *fakeStore) SheetSetReviewed(_ context.Context, a db.SheetSetReviewedParams) (int64, error) {
 	st := f.sheetState(a.SheetID)
-	if st.ReviewedAt.Valid {
+	if st.ReviewedAt.Valid && st.ReviewedHash != nil && *st.ReviewedHash == a.Hash {
 		return 0, nil
 	}
-	st.ReviewedAt = a.At
+	st.ReviewedAt, st.ReviewedHash = a.At, &a.Hash
 	f.sheetStates[a.SheetID] = st
 	return 1, nil
 }
@@ -68,7 +68,7 @@ func (f *fakeStore) SheetTouchOpened(_ context.Context, a db.SheetTouchOpenedPar
 func (f *fakeStore) SheetWordStatuses(_ context.Context, a db.SheetWordStatusesParams) ([]db.SheetWordStatusesRow, error) {
 	var out []db.SheetWordStatusesRow
 	for id, lx := range f.lexemesByID {
-		if !slices.Contains(a.Lemmas, lx.Lemma) {
+		if !slices.Contains(a.Lemmas, lx.Lemma) || (len(a.Poss) > 0 && !slices.Contains(a.Poss, lx.Pos)) {
 			continue
 		}
 		row := db.SheetWordStatusesRow{Lemma: lx.Lemma}

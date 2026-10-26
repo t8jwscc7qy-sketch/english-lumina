@@ -53,6 +53,12 @@ func TestTopicWeak(t *testing.T) {
 	if TopicWeak(1000, []float64{1000, 2000}) {
 		t.Fatal("тем меньше трёх — слабой не бывает")
 	}
+	if TopicWeak(1500, []float64{1500, 1500, 1500}) {
+		t.Fatal("три равных рейтинга: слабой нет")
+	}
+	if TopicWeak(1400, []float64{1400, 1400, 1600}) {
+		t.Fatal("две равные ниже всех не помещаются в треть")
+	}
 	six := []float64{1, 2, 3, 4, 5, 6}
 	if !TopicWeak(1, six) || !TopicWeak(2, six) || TopicWeak(3, six) {
 		t.Fatal("нижняя треть из шести — две темы")

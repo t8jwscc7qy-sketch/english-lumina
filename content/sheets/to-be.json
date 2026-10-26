@@ -10,7 +10,7 @@
   "blocks": [
     {
       "type": "text",
-      "text": "Be — самый частый глагол. В настоящем времени у него три формы: am, is, are. Они меняются по лицу, а в речи обычно сокращаются."
+      "text": "Be — самый частый глагол. В настоящем времени у него три формы: am, is, are. Они меняются по лицу и числу, а в речи обычно сокращаются."
     },
     {
       "type": "table",
@@ -77,6 +77,10 @@
       "text": "Be нельзя опустить: не «I student», а «I am a student»."
     },
     {
+      "type": "tip",
+      "text": "В вопросе с отрицанием для I говорят aren't I?, а не amn't I."
+    },
+    {
       "type": "text",
       "text": "Краткий ответ повторяет be и не сокращается в утверждении: Yes, I am. No, I'm not. Не «Yes, I'm»."
     },
@@ -93,9 +97,9 @@
           "note": "agree — уже глагол, be перед ним не нужен."
         },
         {
-          "wrong": "He have a car.",
-          "right": "He has a car.",
-          "note": "это про have, не be: у he/she/it форма has."
+          "wrong": "They is happy.",
+          "right": "They are happy.",
+          "note": "для they, we, you нужна форма are, а is — только для he, she, it."
         },
         {
           "wrong": "I student.",

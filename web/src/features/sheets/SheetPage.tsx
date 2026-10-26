@@ -28,10 +28,12 @@ function Block({ block }: { block: SheetBlock }) {
             {(block.pairs ?? []).map((p, i) => (
               <li key={i} className="surface flex flex-col gap-1 p-4">
                 <p lang="en">
-                  <span className="text-coral-text">✗ </span>
+                  <span className="sr-only">Неверно: </span>
+                  <span aria-hidden="true" className="text-coral-text">✗ </span>
                   <s>{p.wrong}</s>
                 </p>
                 <p lang="en" className="font-semibold">
+                  <span className="sr-only">Верно: </span>
                   <span aria-hidden="true">✓ </span>
                   {p.right}
                 </p>
