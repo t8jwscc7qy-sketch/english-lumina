@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/constructions"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/course"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/library"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sheets"
@@ -165,6 +166,21 @@ func TestEmbeddedTextsHaveNoStyleIssues(t *testing.T) {
 	for _, tx := range texts {
 		for _, is := range tx.CheckStyle() {
 			t.Errorf("%s: %s", tx.ID, is)
+		}
+	}
+}
+
+func TestEmbeddedCourseIsValid(t *testing.T) {
+	c, err := course.Load(Course)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(c.Ordered()); n < 3 {
+		t.Fatalf("уроков %d, ждали не меньше 3", n)
+	}
+	for i := range c.Ordered() {
+		if len(course.Drills(c, i)) < 4 {
+			t.Errorf("урок %d: заданий меньше 4", i+1)
 		}
 	}
 }
