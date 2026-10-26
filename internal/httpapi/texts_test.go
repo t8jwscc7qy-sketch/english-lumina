@@ -332,3 +332,59 @@ func TestTextNotEnoughSentencesIsNoText(t *testing.T) {
 		t.Fatalf("мало предложений: %d %s", code, body)
 	}
 }
+
+func TestTextIncludesConstructionsWithExplanations(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	var rows []db.ListExamplesRow
+	templates := []string{"There is a kw01 and %s with kw02.", "Do you kw03 %s kw04?", "She can %s kw05 and kw06."}
+	for w := 0; w < 6; w++ {
+		target := fmt.Sprintf("tw%02d", w)
+		for s, tpl := range templates {
+			id := int64(w*10 + s + 1)
+			text := fmt.Sprintf(tpl, target)
+			rows = append(rows, db.ListExamplesRow{EnID: id, EnTatoebaID: id + 1000, EnText: text, EnAuthor: "tom", RuTatoebaID: id + 2000, RuText: "перевод", RuAuthor: "ivan"})
+		}
+	}
+	e.store.examplesFor = func(q string) []db.ListExamplesRow {
+		var out []db.ListExamplesRow
+		for _, r := range rows {
+			for w := 0; w < 6; w++ {
+				if strings.Contains(q, fmt.Sprintf("'tw%02d'", w)) && strings.Contains(r.EnText, fmt.Sprintf("tw%02d", w)) {
+					out = append(out, r)
+				}
+			}
+		}
+		return out
+	}
+	text, code, body := nextText(t, e, token, "")
+	if code != http.StatusOK {
+		t.Fatalf("%d %s", code, body)
+	}
+	byID := map[string]api.ReadConstruction{}
+	for _, c := range text.Constructions {
+		byID[c.Id] = c
+	}
+	for _, id := range []string{"there_is", "question_do", "modals"} {
+		c, ok := byID[id]
+		if !ok || c.Title == "" || c.Explanation == "" || c.ExampleEn == "" || len(c.Sentences) == 0 {
+			t.Fatalf("конструкция %s: %+v (все: %v)", id, c, text.Constructions)
+		}
+		for _, i := range c.Sentences {
+			if i < 0 || i >= len(text.Sentences) {
+				t.Fatalf("%s: номер предложения %d вне текста", id, i)
+			}
+		}
+	}
+	again, _, _ := nextText(t, e, token, "")
+	if again.Id != text.Id || len(again.Constructions) != len(text.Constructions) {
+		t.Fatal("повторно выданный текст тоже получает конструкции")
+	}
+}
+
+func TestTextWithoutConstructionsGetsEmptyList(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	text, _, body := nextText(t, e, token, "")
+	if text.Constructions == nil || !strings.Contains(body, `"constructions":[`) {
+		t.Fatalf("constructions должен быть массивом, а не null: %s", body)
+	}
+}

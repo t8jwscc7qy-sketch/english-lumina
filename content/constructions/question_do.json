@@ -1,0 +1,11 @@
+{
+  "id": "question_do",
+  "title": "Вопрос с do / does / did",
+  "form": "Do / Does / Did + подлежащее + глагол?",
+  "explanation": "В вопросе с обычным глаголом (не be и не модальным) перед подлежащим ставят do, для he/she/it — does, для прошлого — did. Основной глагол после него в начальной форме: Does she like tea? А не Does she likes.",
+  "exampleEn": "Do you like tea?",
+  "exampleRu": "Ты любишь чай?",
+  "sources": [
+    "собственные знания автора; сверить с CEFR-J Grammar Profile"
+  ]
+}

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useFreshText, useNextText, useRateText } from './read'
 import { wordAtChar } from './segments'
 import { canSpeak, speak, stopSpeaking } from './speech'
+import { ConstructionPanel } from './ConstructionPanel'
 import { TextView } from './TextView'
 import { WordPanel } from './WordPanel'
 
@@ -23,6 +24,7 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
   const [speed, setSpeed] = useState<number>(1)
   const [playing, setPlaying] = useState<{ sentence: number; word: number } | null>(null)
   const [talking, setTalking] = useState(false)
+  const [construction, setConstruction] = useState<string | null>(null)
   const [answer, setAnswer] = useState<{ understood: Understood; goal: number } | null>(null)
   const rated = useRef(false)
 
@@ -109,6 +111,33 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
             {canSpeak() ? 'Сначала послушай текст, потом открой его и проверь себя.' : 'В этом браузере нет синтеза речи: открой текст и читай.'}
           </p>
           <Button onClick={() => setRevealed(true)}>Показать текст</Button>
+        </section>
+      )}
+
+      {revealed && text.constructions.length > 0 && (
+        <section aria-label="Встретилось" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-sans text-sm font-semibold text-muted-foreground">Встретилось:</h2>
+            {text.constructions.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={construction === c.id}
+                onClick={() => setConstruction(construction === c.id ? null : c.id)}
+                className={`pixel-frame min-h-10 px-3 text-sm font-semibold ${construction === c.id ? 'bg-primary text-primary-foreground' : 'bg-card'}`}
+              >
+                {c.title}
+              </button>
+            ))}
+          </div>
+          {construction && (
+            <ConstructionPanel
+              key={construction}
+              construction={text.constructions.find((c) => c.id === construction)!}
+              sentences={text.sentences}
+              onClose={() => setConstruction(null)}
+            />
+          )}
         </section>
       )}
 

@@ -7,3 +7,8 @@ import "embed"
 //
 //go:embed sheets/*.json
 var Sheets embed.FS
+
+// Constructions — пояснения к грамматическим конструкциям (по одному JSON-файлу на конструкцию).
+//
+//go:embed constructions/*.json
+var Constructions embed.FS

@@ -1111,6 +1111,20 @@ export interface components {
             /** @description Новые слова текста (леммы) */
             targets: string[];
             hints: components["schemas"]["ReadWordHint"][];
+            /** @description Грамматические конструкции, найденные в тексте, с короткими пояснениями (считаются при выдаче, не хранятся) */
+            constructions: components["schemas"]["ReadConstruction"][];
+        };
+        ReadConstruction: {
+            id: string;
+            title: string;
+            form: string;
+            explanation: string;
+            exampleEn: string;
+            exampleRu: string;
+            /** @description Шпаргалка по теме, если она есть */
+            sheetId?: string;
+            /** @description Номера предложений текста (с нуля), где конструкция найдена */
+            sentences: number[];
         };
         ReadSentence: {
             /** Format: int64 */
