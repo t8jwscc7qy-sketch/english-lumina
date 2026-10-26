@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/constructions"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/library"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/sheets"
 )
 
@@ -105,6 +107,52 @@ func TestEmbeddedConstructionsAreValidAndComplete(t *testing.T) {
 		}
 		if !slices.ContainsFunc(all, func(s sheets.Sheet) bool { return s.ID == info.SheetID }) {
 			t.Errorf("%s: шпаргалки %q нет", id, info.SheetID)
+		}
+	}
+}
+
+// Авторские тексты проходят проверку структуры; словарь уровня проверяется по базе знаний (без базы пропускается).
+func TestEmbeddedTextsAreValid(t *testing.T) {
+	texts, err := library.LoadAll(Texts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(texts) < 40 {
+		t.Fatalf("текстов %d, ждали не меньше 40", len(texts))
+	}
+}
+
+func TestEmbeddedTextsMatchBandVocabulary(t *testing.T) {
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		t.Skip("нет DATABASE_URL")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		t.Skip("база недоступна")
+	}
+	defer pool.Close()
+	q := db.New(pool)
+	texts, err := library.LoadAll(Texts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allowed := map[int]map[string]bool{}
+	for _, tx := range texts {
+		if allowed[tx.Band] == nil {
+			rows, err := q.LibraryBandLexemes(ctx, int32(tx.Band))
+			if err != nil || len(rows) == 0 {
+				t.Skip("база знаний не собрана")
+			}
+			ws := make([]library.BandWord, len(rows))
+			for i, r := range rows {
+				ws[i] = library.BandWord{Lemma: r.Lemma, Pos: r.Pos}
+			}
+			allowed[tx.Band] = library.AllowedForms(ws)
+		}
+		if probs := tx.CheckVocabulary(allowed[tx.Band]); len(probs) > 0 {
+			t.Errorf("%s: слова вне словаря уровня %d: %v", tx.ID, tx.Band, probs)
 		}
 	}
 }

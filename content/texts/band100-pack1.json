@@ -1,0 +1,1254 @@
+[
+ {
+  "id": "t100-001",
+  "title": "Большая собака",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "dog",
+    "pos": "noun"
+   },
+   {
+    "lemma": "big",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "run",
+    "pos": "verb"
+   },
+   {
+    "lemma": "happy",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom wants a dog.",
+    "ru": "Том хочет собаку."
+   },
+   {
+    "en": "Tom wants a big dog.",
+    "ru": "Том хочет большую собаку."
+   },
+   {
+    "en": "A man with a big dog is here.",
+    "ru": "Здесь мужчина с большой собакой."
+   },
+   {
+    "en": "\"I want that dog!\" says Tom.",
+    "ru": "«Я хочу ту собаку!» — говорит Том."
+   },
+   {
+    "en": "\"No,\" says the man. \"This is my dog.\"",
+    "ru": "«Нет, — говорит мужчина. — Это моя собака.»"
+   },
+   {
+    "en": "Tom is not happy.",
+    "ru": "Том не рад."
+   },
+   {
+    "en": "The dog runs to Tom. The dog runs and runs.",
+    "ru": "Собака бежит к Тому. Собака бежит и бежит."
+   },
+   {
+    "en": "The dog likes Tom.",
+    "ru": "Собака любит Тома."
+   },
+   {
+    "en": "Now Tom is happy, and the man is happy.",
+    "ru": "Теперь Том рад, и мужчина рад."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t100-002",
+  "title": "Маленькая кошка",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "cat",
+    "pos": "noun"
+   },
+   {
+    "lemma": "small",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "eat",
+    "pos": "verb"
+   },
+   {
+    "lemma": "milk",
+    "pos": "noun"
+   },
+   {
+    "lemma": "girl",
+    "pos": "noun"
+   },
+   {
+    "lemma": "happy",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "A small cat is here. The cat is so small.",
+    "ru": "Здесь маленькая кошка. Кошка такая маленькая."
+   },
+   {
+    "en": "The cat wants some milk.",
+    "ru": "Кошка хочет молока."
+   },
+   {
+    "en": "\"Where is the milk?\" says the cat.",
+    "ru": "«Где молоко?» — говорит кошка."
+   },
+   {
+    "en": "A girl comes with the milk.",
+    "ru": "Приходит девочка с молоком."
+   },
+   {
+    "en": "The cat eats and eats.",
+    "ru": "Кошка ест и ест."
+   },
+   {
+    "en": "The girl likes the cat.",
+    "ru": "Девочка любит кошку."
+   },
+   {
+    "en": "The girl is happy. The cat likes the girl.",
+    "ru": "Девочка рада. Кошка любит девочку."
+   },
+   {
+    "en": "The milk is all out. The cat is happy.",
+    "ru": "Молоко всё выпито. Кошка довольна."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ]
+ },
+ {
+  "id": "t100-003",
+  "title": "Старый дом",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "house",
+    "pos": "noun"
+   },
+   {
+    "lemma": "door",
+    "pos": "noun"
+   },
+   {
+    "lemma": "open",
+    "pos": "verb"
+   },
+   {
+    "lemma": "old",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna sees a house.",
+    "ru": "Анна видит дом."
+   },
+   {
+    "en": "The house is old.",
+    "ru": "Дом старый."
+   },
+   {
+    "en": "The door of the house is old, and the house is old.",
+    "ru": "Дверь дома старая, и дом старый."
+   },
+   {
+    "en": "Anna wants to see the house.",
+    "ru": "Анна хочет посмотреть дом."
+   },
+   {
+    "en": "She goes to the door.",
+    "ru": "Она идёт к двери."
+   },
+   {
+    "en": "\"Can I open this door?\" says Anna.",
+    "ru": "«Можно открыть эту дверь?» — говорит Анна."
+   },
+   {
+    "en": "She opens the door. Who is there?",
+    "ru": "Она открывает дверь. Кто там?"
+   },
+   {
+    "en": "It is a little man. \"Hey, come in!\" he says.",
+    "ru": "Это маленький человек. «Эй, заходи!» — говорит он."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna"
+  ]
+ },
+ {
+  "id": "t100-004",
+  "title": "Хлеб на столе",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "bread",
+    "pos": "noun"
+   },
+   {
+    "lemma": "table",
+    "pos": "noun"
+   },
+   {
+    "lemma": "hungry",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "eat",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben is hungry.",
+    "ru": "Бен голоден."
+   },
+   {
+    "en": "Ben wants to eat.",
+    "ru": "Бен хочет есть."
+   },
+   {
+    "en": "He looks at the table.",
+    "ru": "Он смотрит на стол."
+   },
+   {
+    "en": "There is bread on the table.",
+    "ru": "На столе лежит хлеб."
+   },
+   {
+    "en": "Ben takes the bread.",
+    "ru": "Бен берёт хлеб."
+   },
+   {
+    "en": "\"Is this bread good?\" he says.",
+    "ru": "«Этот хлеб хороший?» — говорит он."
+   },
+   {
+    "en": "Ben eats the bread. It is good!",
+    "ru": "Бен ест хлеб. Он хороший!"
+   },
+   {
+    "en": "Now Ben is not hungry.",
+    "ru": "Теперь Бен не голоден."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t100-005",
+  "title": "Быстрая машина",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "car",
+    "pos": "noun"
+   },
+   {
+    "lemma": "drive",
+    "pos": "verb"
+   },
+   {
+    "lemma": "fast",
+    "pos": "adverb"
+   },
+   {
+    "lemma": "road",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max wants a car.",
+    "ru": "Макс хочет машину."
+   },
+   {
+    "en": "Max gets a car.",
+    "ru": "Макс получает машину."
+   },
+   {
+    "en": "It is a good car.",
+    "ru": "Это хорошая машина."
+   },
+   {
+    "en": "Max drives the car on the road.",
+    "ru": "Макс едет на машине по дороге."
+   },
+   {
+    "en": "He drives fast, so fast.",
+    "ru": "Он едет быстро, так быстро."
+   },
+   {
+    "en": "\"Not so fast!\" says a man on the road.",
+    "ru": "«Не так быстро!» — говорит мужчина на дороге."
+   },
+   {
+    "en": "Max looks at the man. Now he drives well.",
+    "ru": "Макс смотрит на мужчину. Теперь он едет хорошо."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max"
+  ]
+ },
+ {
+  "id": "t100-006",
+  "title": "Друг",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "friend",
+    "pos": "noun"
+   },
+   {
+    "lemma": "help",
+    "pos": "verb"
+   },
+   {
+    "lemma": "sad",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "laugh",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate is sad.",
+    "ru": "Кейт грустит."
+   },
+   {
+    "en": "She is here with no friend.",
+    "ru": "Она здесь без друга."
+   },
+   {
+    "en": "Tom comes to Kate. \"Hey, I am your friend,\" he says.",
+    "ru": "Том подходит к Кейт. «Эй, я твой друг», — говорит он."
+   },
+   {
+    "en": "Tom wants to help Kate.",
+    "ru": "Том хочет помочь Кейт."
+   },
+   {
+    "en": "\"I can help you,\" says Tom.",
+    "ru": "«Я могу тебе помочь», — говорит Том."
+   },
+   {
+    "en": "Tom tells Kate a good thing.",
+    "ru": "Том рассказывает Кейт кое-что хорошее."
+   },
+   {
+    "en": "Kate laughs and laughs.",
+    "ru": "Кейт смеётся и смеётся."
+   },
+   {
+    "en": "Now Kate is not sad. Tom is her friend.",
+    "ru": "Теперь Кейт не грустит. Том — её друг."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate",
+   "Tom"
+  ]
+ },
+ {
+  "id": "t100-007",
+  "title": "Холодная вода",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "water",
+    "pos": "noun"
+   },
+   {
+    "lemma": "drink",
+    "pos": "verb"
+   },
+   {
+    "lemma": "cold",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "glass",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna wants some water.",
+    "ru": "Анна хочет воды."
+   },
+   {
+    "en": "She gets a glass.",
+    "ru": "Она берёт стакан."
+   },
+   {
+    "en": "She gets water in the glass.",
+    "ru": "Она наливает воду в стакан."
+   },
+   {
+    "en": "The water is cold. Anna likes cold water.",
+    "ru": "Вода холодная. Анна любит холодную воду."
+   },
+   {
+    "en": "She drinks the water.",
+    "ru": "Она пьёт воду."
+   },
+   {
+    "en": "\"Good!\" she says. \"I want water, good water.\"",
+    "ru": "«Хорошо! — говорит она. — Я хочу воды, хорошей воды.»"
+   },
+   {
+    "en": "Anna drinks all the water in the glass.",
+    "ru": "Анна выпивает всю воду в стакане."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna"
+  ]
+ },
+ {
+  "id": "t100-008",
+  "title": "Телефон",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "phone",
+    "pos": "noun"
+   },
+   {
+    "lemma": "call",
+    "pos": "verb"
+   },
+   {
+    "lemma": "answer",
+    "pos": "verb"
+   },
+   {
+    "lemma": "mother",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben wants to call his mother.",
+    "ru": "Бен хочет позвонить маме."
+   },
+   {
+    "en": "He takes his phone.",
+    "ru": "Он берёт телефон."
+   },
+   {
+    "en": "Ben calls his mother on the phone.",
+    "ru": "Бен звонит маме по телефону."
+   },
+   {
+    "en": "The phone says, \"Hello?\"",
+    "ru": "В телефоне говорят: «Алло?»"
+   },
+   {
+    "en": "\"Mother, it is me, Ben!\" he says.",
+    "ru": "«Мама, это я, Бен!» — говорит он."
+   },
+   {
+    "en": "His mother answers the phone. \"Hey, Ben! How are you?\"",
+    "ru": "Мама отвечает на звонок. «Привет, Бен! Как ты?»"
+   },
+   {
+    "en": "Ben says, \"I want you to answer, and you answer!\"",
+    "ru": "Бен говорит: «Я хочу, чтобы ты ответила, и ты отвечаешь!»"
+   },
+   {
+    "en": "\"I am good,\" says Ben. \"I want to see you.\"",
+    "ru": "«У меня всё хорошо, — говорит Бен. — Я хочу тебя увидеть.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t100-009",
+  "title": "Книга ночью",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "book",
+    "pos": "noun"
+   },
+   {
+    "lemma": "read",
+    "pos": "verb"
+   },
+   {
+    "lemma": "night",
+    "pos": "noun"
+   },
+   {
+    "lemma": "sleep",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate gets a book.",
+    "ru": "Кейт берёт книгу."
+   },
+   {
+    "en": "It is night.",
+    "ru": "Сейчас ночь."
+   },
+   {
+    "en": "Kate wants to read the book.",
+    "ru": "Кейт хочет почитать книгу."
+   },
+   {
+    "en": "She reads and reads.",
+    "ru": "Она читает и читает."
+   },
+   {
+    "en": "The book is good. Kate likes the book.",
+    "ru": "Книга хорошая. Кейт нравится книга."
+   },
+   {
+    "en": "\"It is time to sleep,\" says Kate.",
+    "ru": "«Пора спать», — говорит Кейт."
+   },
+   {
+    "en": "But she wants to read, and read.",
+    "ru": "Но она хочет читать и читать."
+   },
+   {
+    "en": "Kate reads all night, and she can not sleep.",
+    "ru": "Кейт читает всю ночь и не может уснуть."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate"
+  ]
+ },
+ {
+  "id": "t100-010",
+  "title": "Новая сумка",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "money",
+    "pos": "noun"
+   },
+   {
+    "lemma": "buy",
+    "pos": "verb"
+   },
+   {
+    "lemma": "shop",
+    "pos": "noun"
+   },
+   {
+    "lemma": "bag",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom needs a bag.",
+    "ru": "Тому нужна сумка."
+   },
+   {
+    "en": "A man gives Tom some money.",
+    "ru": "Мужчина даёт Тому деньги."
+   },
+   {
+    "en": "Now Tom can go to the shop.",
+    "ru": "Теперь Том может пойти в магазин."
+   },
+   {
+    "en": "In the shop, Tom looks for a bag.",
+    "ru": "В магазине Том ищет сумку."
+   },
+   {
+    "en": "He sees a good bag.",
+    "ru": "Он видит хорошую сумку."
+   },
+   {
+    "en": "\"I want to buy this bag,\" says Tom.",
+    "ru": "«Я хочу купить эту сумку», — говорит Том."
+   },
+   {
+    "en": "The man in the shop takes the money.",
+    "ru": "Мужчина в магазине берёт деньги."
+   },
+   {
+    "en": "Tom buys the bag. It is his bag now.",
+    "ru": "Том покупает сумку. Теперь это его сумка."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t100-011",
+  "title": "Усталый Макс",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "bed",
+    "pos": "noun"
+   },
+   {
+    "lemma": "sleep",
+    "pos": "verb"
+   },
+   {
+    "lemma": "tired",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "night",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max is tired.",
+    "ru": "Макс устал."
+   },
+   {
+    "en": "It is night.",
+    "ru": "Сейчас ночь."
+   },
+   {
+    "en": "Max wants to sleep.",
+    "ru": "Макс хочет спать."
+   },
+   {
+    "en": "He goes to his bed.",
+    "ru": "Он идёт к своей кровати."
+   },
+   {
+    "en": "The bed is good. Max likes his bed.",
+    "ru": "Кровать хорошая. Максу нравится его кровать."
+   },
+   {
+    "en": "Max is in bed.",
+    "ru": "Макс лежит в кровати."
+   },
+   {
+    "en": "He sleeps all night.",
+    "ru": "Он спит всю ночь."
+   },
+   {
+    "en": "Now Max is not tired.",
+    "ru": "Теперь Макс не устал."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max"
+  ]
+ },
+ {
+  "id": "t100-012",
+  "title": "Дождь",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "rain",
+    "pos": "noun"
+   },
+   {
+    "lemma": "wet",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "umbrella",
+    "pos": "noun"
+   },
+   {
+    "lemma": "walk",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna wants to walk.",
+    "ru": "Анна хочет погулять."
+   },
+   {
+    "en": "But there is rain.",
+    "ru": "Но идёт дождь."
+   },
+   {
+    "en": "\"I can not walk in the rain,\" says Anna.",
+    "ru": "«Я не могу гулять под дождём», — говорит Анна."
+   },
+   {
+    "en": "She gets an umbrella.",
+    "ru": "Она берёт зонт."
+   },
+   {
+    "en": "Now Anna walks with the umbrella.",
+    "ru": "Теперь Анна гуляет с зонтом."
+   },
+   {
+    "en": "The rain is on the umbrella, not on Anna.",
+    "ru": "Дождь идёт на зонт, а не на Анну."
+   },
+   {
+    "en": "Anna is not wet.",
+    "ru": "Анна не промокла."
+   },
+   {
+    "en": "A man with no umbrella is wet.",
+    "ru": "Мужчина без зонта промок."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna"
+  ]
+ },
+ {
+  "id": "t100-013",
+  "title": "Яблоня",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "apple",
+    "pos": "noun"
+   },
+   {
+    "lemma": "tree",
+    "pos": "noun"
+   },
+   {
+    "lemma": "red",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "fall",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben sees a tree.",
+    "ru": "Бен видит дерево."
+   },
+   {
+    "en": "It is an apple tree.",
+    "ru": "Это яблоня."
+   },
+   {
+    "en": "There is a red apple on the tree.",
+    "ru": "На дереве красное яблоко."
+   },
+   {
+    "en": "Ben wants the red apple.",
+    "ru": "Бен хочет красное яблоко."
+   },
+   {
+    "en": "\"Fall, apple, fall!\" says Ben.",
+    "ru": "«Падай, яблоко, падай!» — говорит Бен."
+   },
+   {
+    "en": "Then the apple falls.",
+    "ru": "Тут яблоко падает."
+   },
+   {
+    "en": "Ben takes the apple.",
+    "ru": "Бен берёт яблоко."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t100-014",
+  "title": "День рождения",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "birthday",
+    "pos": "noun"
+   },
+   {
+    "lemma": "cake",
+    "pos": "noun"
+   },
+   {
+    "lemma": "party",
+    "pos": "noun"
+   },
+   {
+    "lemma": "sing",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "It is Kate's birthday.",
+    "ru": "Сегодня день рождения Кейт."
+   },
+   {
+    "en": "Tom wants a party for Kate.",
+    "ru": "Том хочет устроить для Кейт вечеринку."
+   },
+   {
+    "en": "The party is here, with all.",
+    "ru": "Вечеринка здесь, со всеми."
+   },
+   {
+    "en": "Tom gets a cake for the party.",
+    "ru": "Том берёт для вечеринки торт."
+   },
+   {
+    "en": "The cake is for Kate.",
+    "ru": "Торт для Кейт."
+   },
+   {
+    "en": "\"It is your birthday!\" says Tom.",
+    "ru": "«Это твой день рождения!» — говорит Том."
+   },
+   {
+    "en": "All sing. Tom sings and sings.",
+    "ru": "Все поют. Том поёт и поёт."
+   },
+   {
+    "en": "Kate likes the cake and the party.",
+    "ru": "Кейт нравятся торт и вечеринка."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate",
+   "Tom"
+  ]
+ },
+ {
+  "id": "t100-015",
+  "title": "Потерянный ключ",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "key",
+    "pos": "noun"
+   },
+   {
+    "lemma": "find",
+    "pos": "verb"
+   },
+   {
+    "lemma": "lost",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "pocket",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max needs his key.",
+    "ru": "Максу нужен его ключ."
+   },
+   {
+    "en": "The key is lost.",
+    "ru": "Ключ потерян."
+   },
+   {
+    "en": "\"Where is my key?\" says Max.",
+    "ru": "«Где мой ключ?» — говорит Макс."
+   },
+   {
+    "en": "He looks and looks.",
+    "ru": "Он ищет и ищет."
+   },
+   {
+    "en": "He can not find the key.",
+    "ru": "Он не может найти ключ."
+   },
+   {
+    "en": "Then Max looks in his pocket.",
+    "ru": "Тогда Макс смотрит в карман."
+   },
+   {
+    "en": "The key is in the pocket!",
+    "ru": "Ключ в кармане!"
+   },
+   {
+    "en": "\"I find it!\" says Max. \"The key is not lost.\"",
+    "ru": "«Я нашёл его! — говорит Макс. — Ключ не потерян.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max"
+  ]
+ },
+ {
+  "id": "t100-016",
+  "title": "Школа",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "school",
+    "pos": "noun"
+   },
+   {
+    "lemma": "teacher",
+    "pos": "noun"
+   },
+   {
+    "lemma": "learn",
+    "pos": "verb"
+   },
+   {
+    "lemma": "question",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom goes to school.",
+    "ru": "Том идёт в школу."
+   },
+   {
+    "en": "He likes school.",
+    "ru": "Ему нравится школа."
+   },
+   {
+    "en": "The teacher is a man.",
+    "ru": "Учитель — мужчина."
+   },
+   {
+    "en": "The teacher says, \"What do you know?\"",
+    "ru": "Учитель говорит: «Что ты знаешь?»"
+   },
+   {
+    "en": "Tom wants to learn.",
+    "ru": "Том хочет учиться."
+   },
+   {
+    "en": "The teacher gives Tom a question.",
+    "ru": "Учитель задаёт Тому вопрос."
+   },
+   {
+    "en": "Tom looks at the question.",
+    "ru": "Том смотрит на вопрос."
+   },
+   {
+    "en": "\"I learn a good thing now,\" says Tom.",
+    "ru": "«Сейчас я узнаю хорошую вещь», — говорит Том."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t100-017",
+  "title": "Игра в мяч",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "ball",
+    "pos": "noun"
+   },
+   {
+    "lemma": "kick",
+    "pos": "verb"
+   },
+   {
+    "lemma": "game",
+    "pos": "noun"
+   },
+   {
+    "lemma": "win",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max and Ben want a game.",
+    "ru": "Макс и Бен хотят поиграть."
+   },
+   {
+    "en": "They get a ball.",
+    "ru": "Они берут мяч."
+   },
+   {
+    "en": "Max kicks the ball.",
+    "ru": "Макс бьёт по мячу."
+   },
+   {
+    "en": "Ben kicks the ball back.",
+    "ru": "Бен бьёт по мячу в ответ."
+   },
+   {
+    "en": "It is a good game.",
+    "ru": "Это хорошая игра."
+   },
+   {
+    "en": "\"I will win!\" says Max.",
+    "ru": "«Я выиграю!» — говорит Макс."
+   },
+   {
+    "en": "\"No, I will win!\" says Ben.",
+    "ru": "«Нет, я выиграю!» — говорит Бен."
+   },
+   {
+    "en": "Max kicks and kicks. Max wins the game.",
+    "ru": "Макс бьёт и бьёт. Макс выигрывает игру."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max",
+   "Ben"
+  ]
+ },
+ {
+  "id": "t100-018",
+  "title": "Птица",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "bird",
+    "pos": "noun"
+   },
+   {
+    "lemma": "fly",
+    "pos": "verb"
+   },
+   {
+    "lemma": "sing",
+    "pos": "verb"
+   },
+   {
+    "lemma": "sky",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate sees a bird in the sky.",
+    "ru": "Кейт видит птицу в небе."
+   },
+   {
+    "en": "The bird flies.",
+    "ru": "Птица летит."
+   },
+   {
+    "en": "\"I want to fly like the bird!\" says Kate.",
+    "ru": "«Я хочу летать, как птица!» — говорит Кейт."
+   },
+   {
+    "en": "The bird sings.",
+    "ru": "Птица поёт."
+   },
+   {
+    "en": "Kate likes the bird.",
+    "ru": "Кейт нравится птица."
+   },
+   {
+    "en": "\"Sing, bird, sing!\" says Kate.",
+    "ru": "«Пой, птица, пой!» — говорит Кейт."
+   },
+   {
+    "en": "Kate looks at the sky.",
+    "ru": "Кейт смотрит на небо."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate"
+  ]
+ },
+ {
+  "id": "t100-019",
+  "title": "Утренний кофе",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "egg",
+    "pos": "noun"
+   },
+   {
+    "lemma": "coffee",
+    "pos": "noun"
+   },
+   {
+    "lemma": "hot",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "morning",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "It is morning.",
+    "ru": "Сейчас утро."
+   },
+   {
+    "en": "Tom wants coffee in the morning.",
+    "ru": "Том хочет кофе по утрам."
+   },
+   {
+    "en": "Tom gets the coffee.",
+    "ru": "Том берёт кофе."
+   },
+   {
+    "en": "\"The coffee is hot!\" says Tom.",
+    "ru": "«Кофе горячий!» — говорит Том."
+   },
+   {
+    "en": "He wants an egg.",
+    "ru": "Он хочет яйцо."
+   },
+   {
+    "en": "He gets an egg, and the egg is hot.",
+    "ru": "Он берёт яйцо, и яйцо горячее."
+   },
+   {
+    "en": "Egg and coffee. This is a good morning.",
+    "ru": "Яйцо и кофе. Вот хорошее утро."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t100-020",
+  "title": "Поезд",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "train",
+    "pos": "noun"
+   },
+   {
+    "lemma": "ticket",
+    "pos": "noun"
+   },
+   {
+    "lemma": "wait",
+    "pos": "verb"
+   },
+   {
+    "lemma": "station",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna goes to the station.",
+    "ru": "Анна идёт на вокзал."
+   },
+   {
+    "en": "She wants a ticket for the train.",
+    "ru": "Она хочет билет на поезд."
+   },
+   {
+    "en": "She gets the ticket.",
+    "ru": "Она берёт билет."
+   },
+   {
+    "en": "\"Where is my train?\" says Anna.",
+    "ru": "«Где мой поезд?» — говорит Анна."
+   },
+   {
+    "en": "She waits at the station.",
+    "ru": "Она ждёт на вокзале."
+   },
+   {
+    "en": "The train is not here. Anna waits and waits.",
+    "ru": "Поезда нет. Анна ждёт и ждёт."
+   },
+   {
+    "en": "Now the train comes!",
+    "ru": "Вот поезд подходит!"
+   },
+   {
+    "en": "Anna takes the train.",
+    "ru": "Анна садится в поезд."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna"
+  ]
+ }
+]

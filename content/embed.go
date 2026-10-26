@@ -12,3 +12,8 @@ var Sheets embed.FS
 //
 //go:embed constructions/*.json
 var Constructions embed.FS
+
+// Texts — авторские тексты для чтения (файлы со списками текстов по уровням словаря).
+//
+//go:embed texts/*.json
+var Texts embed.FS
