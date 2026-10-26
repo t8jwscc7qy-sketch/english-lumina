@@ -79,7 +79,7 @@ func (q *Queries) LearnCandidates(ctx context.Context, arg LearnCandidatesParams
 }
 
 const learnGetPreferences = `-- name: LearnGetPreferences :one
-SELECT user_id, new_words_mode, new_words_per_day, camp_coverage, updated_at FROM learn_preferences WHERE user_id = $1
+SELECT user_id, new_words_mode, new_words_per_day, camp_coverage, updated_at, text_coverage FROM learn_preferences WHERE user_id = $1
 `
 
 func (q *Queries) LearnGetPreferences(ctx context.Context, userID int64) (LearnPreference, error) {
@@ -91,6 +91,7 @@ func (q *Queries) LearnGetPreferences(ctx context.Context, userID int64) (LearnP
 		&i.NewWordsPerDay,
 		&i.CampCoverage,
 		&i.UpdatedAt,
+		&i.TextCoverage,
 	)
 	return i, err
 }
@@ -349,7 +350,7 @@ INSERT INTO learn_preferences (user_id, new_words_mode, new_words_per_day, camp_
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (user_id) DO UPDATE SET new_words_mode = EXCLUDED.new_words_mode, new_words_per_day = EXCLUDED.new_words_per_day,
     camp_coverage = EXCLUDED.camp_coverage, updated_at = now()
-RETURNING user_id, new_words_mode, new_words_per_day, camp_coverage, updated_at
+RETURNING user_id, new_words_mode, new_words_per_day, camp_coverage, updated_at, text_coverage
 `
 
 type LearnUpsertPreferencesParams struct {
@@ -373,6 +374,7 @@ func (q *Queries) LearnUpsertPreferences(ctx context.Context, arg LearnUpsertPre
 		&i.NewWordsPerDay,
 		&i.CampCoverage,
 		&i.UpdatedAt,
+		&i.TextCoverage,
 	)
 	return i, err
 }

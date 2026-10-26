@@ -138,6 +138,7 @@ type LearnPreference struct {
 	NewWordsPerDay int32
 	CampCoverage   float32
 	UpdatedAt      pgtype.Timestamptz
+	TextCoverage   float32
 }
 
 type Lexeme struct {
@@ -220,6 +221,27 @@ type SheetState struct {
 	ReviewedAt   pgtype.Timestamptz
 	ReviewedHash *string
 	OpenedAt     pgtype.Timestamptz
+}
+
+type Text struct {
+	ID              int64
+	UserID          *int64
+	Kind            string
+	Title           string
+	Body            json.RawMessage
+	WordCount       int16
+	CoverageAtBuild float32
+	Goal            float32
+	CreatedAt       pgtype.Timestamptz
+}
+
+type TextRead struct {
+	UserID         int64
+	TextID         int64
+	ReadAt         pgtype.Timestamptz
+	Mode           string
+	Understood     string
+	CoverageAtRead float32
 }
 
 type TopicRating struct {
