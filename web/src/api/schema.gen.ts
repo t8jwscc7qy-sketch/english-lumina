@@ -375,6 +375,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Список шпаргалок
+         * @description Все шпаргалки с признаком избранного, статусом (draft — не проверена пользователем, reviewed — он нажал «Проверено») и числом «моих слабых» строк (трудные слова и слабые темы).
+         */
+        get: operations["listSheets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sheets/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Открыть шпаргалку
+         * @description Тело шпаргалки с подмешанными данными пользователя: статусы слов и тем в привязанных таблицах, для mine-mistakes строки из банка ошибок. Запоминает время открытия. Номер шпаргалки в теле, не в пути: параметр пути заставил бы генератор добавить новую зависимость.
+         */
+        post: operations["openSheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sheets/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Закрепить или открепить шпаргалку
+         * @description Повтор с тем же значением ничего не меняет.
+         */
+        put: operations["setSheetFavorite"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sheets/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отметить шпаргалку проверенной
+         * @description Пользователь сверил текст и подтверждает его. Отметка ставится один раз; повтор ничего не меняет.
+         */
+        post: operations["reviewSheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/level/suggestion": {
         parameters: {
             query?: never;
@@ -868,6 +948,92 @@ export interface components {
             correct: number;
             /** @description Сколько последних ответов учтено (30) */
             total: number;
+        };
+        SheetRef: {
+            id: string;
+        };
+        SheetFavoriteRequest: {
+            id: string;
+            favorite: boolean;
+        };
+        SheetReviewed: {
+            id: string;
+            status: components["schemas"]["SheetStatus"];
+        };
+        /**
+         * @description draft — текст не проверен пользователем, reviewed — он нажал «Проверено»
+         * @enum {string}
+         */
+        SheetStatus: "draft" | "reviewed";
+        SheetSummary: {
+            id: string;
+            title: string;
+            summary: string;
+            /** @enum {string} */
+            level: "A1" | "A2" | "B1" | "B2" | "C1";
+            tags: string[];
+            favorite: boolean;
+            status: components["schemas"]["SheetStatus"];
+            /** @description Строк «моих слабых» (трудные слова и слабые темы) */
+            weakCount: number;
+            /**
+             * Format: date-time
+             * @description Когда шпаргалку открывали последний раз; нет, если не открывали
+             */
+            openedAt?: string;
+        };
+        SheetList: {
+            sheets: components["schemas"]["SheetSummary"][];
+        };
+        Sheet: {
+            id: string;
+            title: string;
+            summary: string;
+            /** @enum {string} */
+            level: "A1" | "A2" | "B1" | "B2" | "C1";
+            tags: string[];
+            favorite: boolean;
+            status: components["schemas"]["SheetStatus"];
+            weakCount: number;
+            sources: string[];
+            blocks: components["schemas"]["SheetBlock"][];
+        };
+        /** @description Заполнены только поля, нужные типу блока (text, table, tip, mistakes, examples). */
+        SheetBlock: {
+            /** @enum {string} */
+            type: "text" | "table" | "tip" | "mistakes" | "examples";
+            title?: string;
+            text?: string;
+            /** @enum {string} */
+            bind?: "word" | "topic" | "mistake";
+            columns?: components["schemas"]["SheetColumn"][];
+            rows?: components["schemas"]["SheetRow"][];
+            pairs?: components["schemas"]["SheetPair"][];
+            examples?: components["schemas"]["SheetExample"][];
+        };
+        SheetColumn: {
+            title: string;
+        };
+        SheetRow: {
+            key?: string;
+            cells: string[];
+            needsCheck?: boolean;
+            /**
+             * @description Для привязки word — статус слова; для topic — weak, ok или unseen
+             * @enum {string}
+             */
+            status?: "unseen" | "introduced" | "learning" | "learned" | "known_at_start" | "hard" | "weak" | "ok";
+            /** @description Рейтинг темы (только привязка topic) */
+            rating?: number;
+        };
+        SheetPair: {
+            wrong: string;
+            right: string;
+            note: string;
+        };
+        SheetExample: {
+            en: string;
+            ru: string;
         };
         LevelSuggestionResponse: {
             suggestion?: components["schemas"]["LevelSuggestion"];
@@ -1622,6 +1788,132 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    listSheets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Список */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    openSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SheetRef"];
+            };
+        };
+        responses: {
+            /** @description Шпаргалка */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sheet"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Такой шпаргалки нет (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setSheetFavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SheetFavoriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Состояние после запроса */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetFavoriteRequest"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Такой шпаргалки нет (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reviewSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SheetRef"];
+            };
+        };
+        responses: {
+            /** @description Шпаргалка теперь проверена */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetReviewed"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Такой шпаргалки нет (not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getLevelSuggestion: {

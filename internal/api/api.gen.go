@@ -281,6 +281,162 @@ func (e PlacementResultNext) Valid() bool {
 	}
 }
 
+// Defines values for SheetLevel.
+const (
+	SheetLevelA1 SheetLevel = "A1"
+	SheetLevelA2 SheetLevel = "A2"
+	SheetLevelB1 SheetLevel = "B1"
+	SheetLevelB2 SheetLevel = "B2"
+	SheetLevelC1 SheetLevel = "C1"
+)
+
+// Valid indicates whether the value is a known member of the SheetLevel enum.
+func (e SheetLevel) Valid() bool {
+	switch e {
+	case SheetLevelA1:
+		return true
+	case SheetLevelA2:
+		return true
+	case SheetLevelB1:
+		return true
+	case SheetLevelB2:
+		return true
+	case SheetLevelC1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SheetBlockBind.
+const (
+	SheetBlockBindMistake SheetBlockBind = "mistake"
+	SheetBlockBindTopic   SheetBlockBind = "topic"
+	SheetBlockBindWord    SheetBlockBind = "word"
+)
+
+// Valid indicates whether the value is a known member of the SheetBlockBind enum.
+func (e SheetBlockBind) Valid() bool {
+	switch e {
+	case SheetBlockBindMistake:
+		return true
+	case SheetBlockBindTopic:
+		return true
+	case SheetBlockBindWord:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SheetBlockType.
+const (
+	Examples SheetBlockType = "examples"
+	Mistakes SheetBlockType = "mistakes"
+	Table    SheetBlockType = "table"
+	Text     SheetBlockType = "text"
+	Tip      SheetBlockType = "tip"
+)
+
+// Valid indicates whether the value is a known member of the SheetBlockType enum.
+func (e SheetBlockType) Valid() bool {
+	switch e {
+	case Examples:
+		return true
+	case Mistakes:
+		return true
+	case Table:
+		return true
+	case Text:
+		return true
+	case Tip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SheetRowStatus.
+const (
+	SheetRowStatusHard         SheetRowStatus = "hard"
+	SheetRowStatusIntroduced   SheetRowStatus = "introduced"
+	SheetRowStatusKnownAtStart SheetRowStatus = "known_at_start"
+	SheetRowStatusLearned      SheetRowStatus = "learned"
+	SheetRowStatusLearning     SheetRowStatus = "learning"
+	SheetRowStatusOk           SheetRowStatus = "ok"
+	SheetRowStatusUnseen       SheetRowStatus = "unseen"
+	SheetRowStatusWeak         SheetRowStatus = "weak"
+)
+
+// Valid indicates whether the value is a known member of the SheetRowStatus enum.
+func (e SheetRowStatus) Valid() bool {
+	switch e {
+	case SheetRowStatusHard:
+		return true
+	case SheetRowStatusIntroduced:
+		return true
+	case SheetRowStatusKnownAtStart:
+		return true
+	case SheetRowStatusLearned:
+		return true
+	case SheetRowStatusLearning:
+		return true
+	case SheetRowStatusOk:
+		return true
+	case SheetRowStatusUnseen:
+		return true
+	case SheetRowStatusWeak:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SheetStatus.
+const (
+	Draft    SheetStatus = "draft"
+	Reviewed SheetStatus = "reviewed"
+)
+
+// Valid indicates whether the value is a known member of the SheetStatus enum.
+func (e SheetStatus) Valid() bool {
+	switch e {
+	case Draft:
+		return true
+	case Reviewed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SheetSummaryLevel.
+const (
+	SheetSummaryLevelA1 SheetSummaryLevel = "A1"
+	SheetSummaryLevelA2 SheetSummaryLevel = "A2"
+	SheetSummaryLevelB1 SheetSummaryLevel = "B1"
+	SheetSummaryLevelB2 SheetSummaryLevel = "B2"
+	SheetSummaryLevelC1 SheetSummaryLevel = "C1"
+)
+
+// Valid indicates whether the value is a known member of the SheetSummaryLevel enum.
+func (e SheetSummaryLevel) Valid() bool {
+	switch e {
+	case SheetSummaryLevelA1:
+		return true
+	case SheetSummaryLevelA2:
+		return true
+	case SheetSummaryLevelB1:
+		return true
+	case SheetSummaryLevelB2:
+		return true
+	case SheetSummaryLevelC1:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddCardRequest defines model for AddCardRequest.
 type AddCardRequest struct {
 	Lemma string `json:"lemma"`
@@ -808,6 +964,126 @@ type Settings struct {
 	Timezone string `json:"timezone"`
 }
 
+// Sheet defines model for Sheet.
+type Sheet struct {
+	Blocks   []SheetBlock `json:"blocks"`
+	Favorite bool         `json:"favorite"`
+	Id       string       `json:"id"`
+	Level    SheetLevel   `json:"level"`
+	Sources  []string     `json:"sources"`
+
+	// Status draft — текст не проверен пользователем, reviewed — он нажал «Проверено»
+	Status    SheetStatus `json:"status"`
+	Summary   string      `json:"summary"`
+	Tags      []string    `json:"tags"`
+	Title     string      `json:"title"`
+	WeakCount int         `json:"weakCount"`
+}
+
+// SheetLevel defines model for Sheet.Level.
+type SheetLevel string
+
+// SheetBlock Заполнены только поля, нужные типу блока (text, table, tip, mistakes, examples).
+type SheetBlock struct {
+	Bind     *SheetBlockBind `json:"bind,omitempty"`
+	Columns  *[]SheetColumn  `json:"columns,omitempty"`
+	Examples *[]SheetExample `json:"examples,omitempty"`
+	Pairs    *[]SheetPair    `json:"pairs,omitempty"`
+	Rows     *[]SheetRow     `json:"rows,omitempty"`
+	Text     *string         `json:"text,omitempty"`
+	Title    *string         `json:"title,omitempty"`
+	Type     SheetBlockType  `json:"type"`
+}
+
+// SheetBlockBind defines model for SheetBlock.Bind.
+type SheetBlockBind string
+
+// SheetBlockType defines model for SheetBlock.Type.
+type SheetBlockType string
+
+// SheetColumn defines model for SheetColumn.
+type SheetColumn struct {
+	Title string `json:"title"`
+}
+
+// SheetExample defines model for SheetExample.
+type SheetExample struct {
+	En string `json:"en"`
+	Ru string `json:"ru"`
+}
+
+// SheetFavoriteRequest defines model for SheetFavoriteRequest.
+type SheetFavoriteRequest struct {
+	Favorite bool   `json:"favorite"`
+	Id       string `json:"id"`
+}
+
+// SheetList defines model for SheetList.
+type SheetList struct {
+	Sheets []SheetSummary `json:"sheets"`
+}
+
+// SheetPair defines model for SheetPair.
+type SheetPair struct {
+	Note  string `json:"note"`
+	Right string `json:"right"`
+	Wrong string `json:"wrong"`
+}
+
+// SheetRef defines model for SheetRef.
+type SheetRef struct {
+	Id string `json:"id"`
+}
+
+// SheetReviewed defines model for SheetReviewed.
+type SheetReviewed struct {
+	Id string `json:"id"`
+
+	// Status draft — текст не проверен пользователем, reviewed — он нажал «Проверено»
+	Status SheetStatus `json:"status"`
+}
+
+// SheetRow defines model for SheetRow.
+type SheetRow struct {
+	Cells      []string `json:"cells"`
+	Key        *string  `json:"key,omitempty"`
+	NeedsCheck *bool    `json:"needsCheck,omitempty"`
+
+	// Rating Рейтинг темы (только привязка topic)
+	Rating *float32 `json:"rating,omitempty"`
+
+	// Status Для привязки word — статус слова; для topic — weak, ok или unseen
+	Status *SheetRowStatus `json:"status,omitempty"`
+}
+
+// SheetRowStatus Для привязки word — статус слова; для topic — weak, ok или unseen
+type SheetRowStatus string
+
+// SheetStatus draft — текст не проверен пользователем, reviewed — он нажал «Проверено»
+type SheetStatus string
+
+// SheetSummary defines model for SheetSummary.
+type SheetSummary struct {
+	Favorite bool              `json:"favorite"`
+	Id       string            `json:"id"`
+	Level    SheetSummaryLevel `json:"level"`
+
+	// OpenedAt Когда шпаргалку открывали последний раз; нет, если не открывали
+	OpenedAt *time.Time `json:"openedAt,omitempty"`
+
+	// Status draft — текст не проверен пользователем, reviewed — он нажал «Проверено»
+	Status  SheetStatus `json:"status"`
+	Summary string      `json:"summary"`
+	Tags    []string    `json:"tags"`
+	Title   string      `json:"title"`
+
+	// WeakCount Строк «моих слабых» (трудные слова и слабые темы)
+	WeakCount int `json:"weakCount"`
+}
+
+// SheetSummaryLevel defines model for SheetSummary.Level.
+type SheetSummaryLevel string
+
 // Source defines model for Source.
 type Source struct {
 	// Attribution Текст, который обязаны показать по лицензии
@@ -931,6 +1207,15 @@ type PutLearnPreferencesJSONRequestBody = LearnPreferences
 // PutSettingsJSONRequestBody defines body for PutSettings for application/json ContentType.
 type PutSettingsJSONRequestBody = Settings
 
+// SetSheetFavoriteJSONRequestBody defines body for SetSheetFavorite for application/json ContentType.
+type SetSheetFavoriteJSONRequestBody = SheetFavoriteRequest
+
+// OpenSheetJSONRequestBody defines body for OpenSheet for application/json ContentType.
+type OpenSheetJSONRequestBody = SheetRef
+
+// ReviewSheetJSONRequestBody defines body for ReviewSheet for application/json ContentType.
+type ReviewSheetJSONRequestBody = SheetRef
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Login Вход по логину и паролю
@@ -1005,6 +1290,18 @@ type ServerInterface interface {
 	// PutSettings Сохранить настройки обучения (создаёт или заменяет целиком)
 	// (PUT /api/v1/settings)
 	PutSettings(w http.ResponseWriter, r *http.Request)
+	// ListSheets Список шпаргалок
+	// (GET /api/v1/sheets)
+	ListSheets(w http.ResponseWriter, r *http.Request)
+	// SetSheetFavorite Закрепить или открепить шпаргалку
+	// (PUT /api/v1/sheets/favorite)
+	SetSheetFavorite(w http.ResponseWriter, r *http.Request)
+	// OpenSheet Открыть шпаргалку
+	// (POST /api/v1/sheets/open)
+	OpenSheet(w http.ResponseWriter, r *http.Request)
+	// ReviewSheet Отметить шпаргалку проверенной
+	// (POST /api/v1/sheets/review)
+	ReviewSheet(w http.ResponseWriter, r *http.Request)
 	// ListSources Загруженные источники данных с лицензиями и атрибуцией
 	// (GET /api/v1/sources)
 	ListSources(w http.ResponseWriter, r *http.Request)
@@ -1361,6 +1658,62 @@ func (siw *ServerInterfaceWrapper) PutSettings(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// ListSheets operation middleware
+func (siw *ServerInterfaceWrapper) ListSheets(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSheets(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetSheetFavorite operation middleware
+func (siw *ServerInterfaceWrapper) SetSheetFavorite(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetSheetFavorite(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// OpenSheet operation middleware
+func (siw *ServerInterfaceWrapper) OpenSheet(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OpenSheet(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReviewSheet operation middleware
+func (siw *ServerInterfaceWrapper) ReviewSheet(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReviewSheet(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListSources operation middleware
 func (siw *ServerInterfaceWrapper) ListSources(w http.ResponseWriter, r *http.Request) {
 
@@ -1545,6 +1898,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/learn/preferences", wrapper.PutLearnPreferences)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/topics", wrapper.ListExerciseTopics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/mistakes", wrapper.ListMistakes)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/sheets", wrapper.ListSheets)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/sheets/open", wrapper.OpenSheet)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/sheets/favorite", wrapper.SetSheetFavorite)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/sheets/review", wrapper.ReviewSheet)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/level/suggestion", wrapper.GetLevelSuggestion)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/level/suggestion/dismiss", wrapper.DismissLevelSuggestion)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/progress/today", wrapper.GetProgressToday)

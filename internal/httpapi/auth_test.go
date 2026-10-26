@@ -95,6 +95,7 @@ type fakeStore struct {
 	failKb           bool                             // чтение базы знаний падает (например, миграция не применена)
 	candidatesErr    error                            // LearnCandidates отвечает этой ошибкой
 	markLearnedErr   error                            // LearnMarkLearned отвечает этой ошибкой
+	sheetStates      map[string]db.SheetStatesRow     // состояния шпаргалок одного пользователя
 	wl               map[int64]fakeWord               // состояние изучения слов одного пользователя (word_learning)
 	learnCands       []db.LearnCandidatesRow
 	learnPlacement   []db.LearnPlacementCandidatesRow
