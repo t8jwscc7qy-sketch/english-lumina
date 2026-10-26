@@ -87,6 +87,7 @@ type AuthStore interface {
 	LearnIntroducedSince(ctx context.Context, arg db.LearnIntroducedSinceParams) (int64, error)
 	LearnInsertIntroduced(ctx context.Context, arg db.LearnInsertIntroducedParams) (int64, error)
 	ListCompletedLessons(ctx context.Context, userID int64) ([]string, error)
+	LockUserCourse(ctx context.Context, userID int32) error
 	LearnMarkKnown(ctx context.Context, arg db.LearnMarkKnownParams) (int64, error)
 	LearnMarkLearned(ctx context.Context, arg db.LearnMarkLearnedParams) (int64, error)
 	LearnReviewStats(ctx context.Context, arg db.LearnReviewStatsParams) (db.LearnReviewStatsRow, error)

@@ -16,13 +16,15 @@ SELECT * FROM events WHERE user_id = $1 AND idempotency_key = $2;
 
 -- name: ListActivityEvents :many
 -- События занятий пользователя с момента since (для минут, серии и итога дня): ответы на упражнения,
--- оценки карточек и открытие/закрытие ошибок. correct берётся из булева поля payload.correct, без него false
--- (осмысленно только у exercise.answered).
+-- оценки карточек, открытие/закрытие ошибок и пройденные уроки «Пути». correct берётся из булева поля payload.correct, без него false
+-- (осмысленно только у exercise.answered). seconds — длительность урока «Пути» из payload.seconds (у остальных 0):
+-- урок засчитывается своим временем, а не паузами между ответами.
 SELECT type,
        occurred_at,
-       COALESCE(CASE WHEN jsonb_typeof(payload -> 'correct') = 'boolean' THEN (payload ->> 'correct')::boolean END, false)::boolean AS correct
+       COALESCE(CASE WHEN jsonb_typeof(payload -> 'correct') = 'boolean' THEN (payload ->> 'correct')::boolean END, false)::boolean AS correct,
+       COALESCE(CASE WHEN type = 'lesson.completed' AND jsonb_typeof(payload -> 'seconds') = 'number' THEN LEAST(GREATEST((payload ->> 'seconds')::numeric, 0), 3600)::int END, 0)::int AS seconds
 FROM events
 WHERE user_id = sqlc.arg(user_id)
-  AND type IN ('exercise.answered', 'card.reviewed', 'mistake.opened', 'mistake.closed')
+  AND type IN ('exercise.answered', 'card.reviewed', 'mistake.opened', 'mistake.closed', 'lesson.completed')
   AND occurred_at >= sqlc.arg(since)::timestamptz
 ORDER BY occurred_at, id;

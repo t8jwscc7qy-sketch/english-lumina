@@ -239,6 +239,13 @@ func (l Lesson) validate(index int) error {
 		if strings.TrimSpace(q.Prompt) == "" || len(q.Options) < 2 || len(q.Options) > 4 || q.Answer < 0 || q.Answer >= len(q.Options) {
 			return fmt.Errorf("вопрос %d: нужен текст, 2–4 варианта и номер верного", i+1)
 		}
+		seen := map[string]bool{}
+		for _, o := range q.Options {
+			if seen[strings.TrimSpace(o)] {
+				return fmt.Errorf("вопрос %d: варианты повторяются", i+1)
+			}
+			seen[strings.TrimSpace(o)] = true
+		}
 	}
 	if l.Note != nil && (strings.TrimSpace(l.Note.Title) == "" || strings.TrimSpace(l.Note.Text) == "") {
 		return errors.New("у пояснения нужны заголовок и текст")
@@ -290,7 +297,7 @@ func (l Lesson) CheckVocabulary(known map[string]bool) []string {
 	for _, s := range l.Sentences {
 		for _, t := range s.Tokens() {
 			r := []rune(t)
-			if len(r) == 0 || unicode.IsDigit(r[0]) || l.isName(t) || allowed[lower(t)] {
+			if len(r) == 0 || allDigits(t) || l.isName(t) || allowed[lower(t)] {
 				continue
 			}
 			if w := lower(t); !seen[w] {
@@ -300,4 +307,14 @@ func (l Lesson) CheckVocabulary(known map[string]bool) []string {
 		}
 	}
 	return out
+}
+
+// allDigits — токен состоит только из цифр (число не проверяется по словарю; «5-year-old» проверяется).
+func allDigits(t string) bool {
+	for _, r := range t {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return t != ""
 }

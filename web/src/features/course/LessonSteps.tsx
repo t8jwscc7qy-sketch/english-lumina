@@ -233,6 +233,7 @@ export function Choices({
           <button
             key={o}
             type="button"
+            data-choice
             disabled={checked}
             aria-pressed={selected === o}
             aria-keyshortcuts={String(i + 1)}

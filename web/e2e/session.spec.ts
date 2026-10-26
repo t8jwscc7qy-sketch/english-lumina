@@ -58,7 +58,7 @@ test.describe('«Сегодня» и сессия', () => {
     await expect(page.getByText('2 ответа, 2 верных')).toBeVisible()
     await expect(page.getByText('Карточек повторено: 2')).toBeVisible()
     await expect(page.getByText('Серия: 3 дня')).toBeVisible()
-    await expect(page.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/')
+    await expect(page.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/today')
   })
 
   test('«Закончить» посреди карточек ведёт к итогу и не теряет оценки', async ({ page }) => {
@@ -77,7 +77,7 @@ test.describe('«Сегодня» и сессия', () => {
     await mockApi(page, { loggedIn: true, exercises: { none: true } })
     await page.goto('/session')
     await expect(page.getByRole('heading', { name: 'Подходящих упражнений пока нет' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/')
+    await expect(page.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/today')
   })
 
   test('ошибка прогресса: сообщение и «Повторить», упражнения всё равно идут', async ({ page }) => {

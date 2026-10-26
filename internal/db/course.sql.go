@@ -35,3 +35,14 @@ func (q *Queries) ListCompletedLessons(ctx context.Context, userID int64) ([]str
 	}
 	return items, nil
 }
+
+const lockUserCourse = `-- name: LockUserCourse :exec
+SELECT pg_advisory_xact_lock(hashtext('course.complete'), $1::int)
+`
+
+// Блокировка завершения уроков пользователя до конца транзакции: две вкладки с разными ключами не запишут два
+// «первых прохождения» одного урока.
+func (q *Queries) LockUserCourse(ctx context.Context, userID int32) error {
+	_, err := q.db.Exec(ctx, lockUserCourse, userID)
+	return err
+}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
@@ -132,6 +133,10 @@ func (s *authServer) GetLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c := loadCourse()
+	if len(c.Units) == 0 {
+		s.failCourse(w, errors.New("курс не загружен (см. журнал запуска)"))
+		return
+	}
 	path := coursePath(c, done)
 	if id == "" {
 		if path.Next == nil {
@@ -279,12 +284,21 @@ func (s *authServer) CompleteLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	l, _, _ := c.Find(req.LessonId)
-	resp := api.CompleteLessonResponse{LessonId: l.ID, NewWords: len(l.Words), Seconds: min(req.Seconds, maxLessonSeconds), Repeated: state == api.CourseLessonRefStateDone}
+	resp := api.CompleteLessonResponse{LessonId: l.ID, NewWords: len(l.Words), Seconds: min(req.Seconds, maxLessonSeconds)}
 	mistakes := 0
 	if req.Mistakes != nil {
 		mistakes = *req.Mistakes
 	}
 	err = s.store.InTx(ctx, func(tx AuthStore) error {
+		if err := tx.LockUserCourse(ctx, int32(user.ID)); err != nil { //nolint:gosec // номер пользователя мал
+			return fmt.Errorf("блокировка курса: %w", err)
+		}
+		// Прогресс перечитывается под блокировкой: соседняя вкладка могла только что пройти этот урок.
+		ids, err := tx.ListCompletedLessons(ctx, user.ID)
+		if err != nil {
+			return fmt.Errorf("пройденные уроки: %w", err)
+		}
+		resp.Repeated = slices.Contains(ids, l.ID)
 		now := s.now()
 		resp.CardsAdded = 0
 		var cardIDs []int64
@@ -296,22 +310,26 @@ func (s *authServer) CompleteLesson(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				if err != nil {
-					return err
+					return fmt.Errorf("слово %s/%s: %w", word.Lemma, word.Pos, err)
 				}
 				if _, err := tx.GetCardByLexeme(ctx, db.GetCardByLexemeParams{UserID: user.ID, LexemeID: lx.ID}); err == nil {
 					continue // карточка уже есть: слово знакомо по другим разделам
 				} else if !errors.Is(err, pgx.ErrNoRows) {
-					return err
+					return fmt.Errorf("карточка слова: %w", err)
 				}
-				if _, err := tx.LearnInsertIntroduced(ctx, db.LearnInsertIntroducedParams{UserID: user.ID, LexemeID: lx.ID, IntroducedAt: ts(now)}); err != nil {
-					return err
+				n, err := tx.LearnInsertIntroduced(ctx, db.LearnInsertIntroducedParams{UserID: user.ID, LexemeID: lx.ID, IntroducedAt: ts(now)})
+				if err != nil {
+					return fmt.Errorf("состояние слова: %w", err)
+				}
+				if n == 0 {
+					continue // слово уже в учёте (например, «знаю» в быстром тесте): как во «Знакомстве», карточку не создаём
 				}
 				id, err := tx.InsertCard(ctx, insertParams(user.ID, lx.ID, srs.New(now)))
 				if errors.Is(err, pgx.ErrNoRows) {
 					continue
 				}
 				if err != nil {
-					return err
+					return fmt.Errorf("новая карточка: %w", err)
 				}
 				cardIDs = append(cardIDs, id)
 				resp.CardsAdded++
@@ -328,7 +346,10 @@ func (s *authServer) CompleteLesson(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errReplay
 		}
-		return err
+		if err != nil {
+			return fmt.Errorf("событие урока: %w", err)
+		}
+		return nil
 	})
 	switch {
 	case errors.Is(err, errReplay):

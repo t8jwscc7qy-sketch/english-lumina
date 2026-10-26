@@ -107,3 +107,35 @@ describe('LessonPage', () => {
     expect(completed.lessonCalls).toHaveLength(1)
   })
 })
+
+describe('LessonPage: клавиатура и повтор', () => {
+  it('Enter после выбора мышью нажимает «Проверить», а не вариант; на повторе нет обещания вернуть задание', async () => {
+    stub()
+    const user = userEvent.setup()
+    render()
+    await screen.findByRole('heading', { name: 'how' })
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Дальше' }))
+    await user.click(screen.getByRole('button', { name: /Хорошо/ }))
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('status', { name: 'Результат' })).toHaveTextContent('Верно!')
+    await user.keyboard('{Enter}')
+    // Пропуск: ошибка мышью и Enter
+    await user.click(screen.getByRole('button', { name: /Fine/ }))
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('status', { name: 'Результат' })).toHaveTextContent('вернётся в конце')
+    await user.keyboard('{Enter}')
+    for (const w of ['I', 'am', 'fine']) await user.click(screen.getByRole('button', { name: w }))
+    await user.click(screen.getByRole('button', { name: 'Проверить' }))
+    await user.click(screen.getByRole('button', { name: 'Дальше' }))
+    for (const [en, ru] of [['how', 'как'], ['fine', 'хорошо'], ['hello', 'привет']]) {
+      await user.click(screen.getByRole('button', { name: en }))
+      await user.click(screen.getByRole('button', { name: ru }))
+    }
+    await user.click(screen.getByRole('button', { name: 'Дальше' }))
+    expect(screen.getByText('Ещё раз')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Fine/ }))
+    await user.click(screen.getByRole('button', { name: 'Проверить' }))
+    expect(screen.getByRole('status', { name: 'Результат' })).toHaveTextContent('Правильно: How')
+    expect(screen.getByRole('status', { name: 'Результат' })).not.toHaveTextContent('вернётся')
+  })
+})

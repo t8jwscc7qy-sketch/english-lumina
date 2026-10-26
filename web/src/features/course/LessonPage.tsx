@@ -187,15 +187,13 @@ function LessonRun({ lesson }: { lesson: Lesson }) {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement
       if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return
-      if (
-        e.key === 'Enter' &&
-        step.kind !== 'summary' &&
-        !actionDisabled &&
-        t.tagName !== 'BUTTON' &&
-        t.tagName !== 'A'
-      ) {
+      if (e.key === 'Enter') {
+        if (e.repeat || step.kind === 'summary' || actionDisabled) return // удержание Enter не пролистывает шаги
+        // Вариант ответа, выбранный мышью, держит фокус: Enter всё равно нажимает кнопку панели, а не вариант.
+        if ((t.tagName === 'BUTTON' && !t.dataset.choice) || t.tagName === 'A') return
         e.preventDefault()
         action()
+        return
       }
       const opts = question?.options ?? (drill?.kind === 'gap' ? drill.options : undefined)
       const n = Number(e.key)
@@ -343,7 +341,7 @@ function LessonRun({ lesson }: { lesson: Lesson }) {
                         <span lang="en" className="font-semibold">
                           {result.answer}
                         </span>
-                        {drill ? '. Это задание вернётся в конце урока.' : ''}
+                        {drill && !(step.kind === 'drill' && step.retry) ? '. Это задание вернётся в конце урока.' : ''}
                       </p>
                     )}
                   </div>

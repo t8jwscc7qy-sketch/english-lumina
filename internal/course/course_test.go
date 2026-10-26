@@ -49,6 +49,7 @@ func TestValidateRejects(t *testing.T) {
 		"плохой номер урока":   func(c *Course) { c.Units[0].Lessons[0].ID = "lesson1" },
 		"повтор урока":         func(c *Course) { c.Units[0].Lessons[1].ID = "u1-l1" },
 		"блок не с 1":          func(c *Course) { c.Units[0].ID = 2 },
+		"одинаковые варианты":  func(c *Course) { c.Units[0].Lessons[0].Questions[0].Options = []string{"а", "а"} },
 	}
 	for name, mutate := range cases {
 		c := twoLessons()
@@ -129,5 +130,69 @@ func TestGlossaryHasFormsUpToLesson(t *testing.T) {
 	g := Glossary(twoLessons(), 0)
 	if g["i'm"] != "есть" || g["hello"] != "привет" || g["you"] != "" {
 		t.Fatalf("словарик урока: %v", g)
+	}
+}
+
+func TestGapOptionsShareAnswerCase(t *testing.T) {
+	c := twoLessons()
+	c.Units[0].Lessons[1].Sentences[2] = Sentence{En: "Anna's fine. You are fine, Tom!", Ru: "р"}
+	for i := range c.Ordered() {
+		for _, d := range Drills(c, i) {
+			if d.Kind != KindGap {
+				continue
+			}
+			upper := func(s string) bool { return s != "I" && strings.ToUpper(s[:1]) == s[:1] }
+			for _, o := range d.Options {
+				if o != "I" && d.Answer != "I" && upper(o) != upper(d.Answer) {
+					t.Errorf("регистр подсказывает ответ: %q, варианты %v", d.Text, d.Options)
+				}
+			}
+		}
+	}
+}
+
+func TestOneGapPerLineAndUniquePairs(t *testing.T) {
+	c := twoLessons()
+	c.Units[0].Lessons[1].Sentences[2] = Sentence{En: "Anna's fine. You are fine, Tom!", Ru: "р"}
+	// Два слова с одинаковым переводом: пары не должны повторять перевод.
+	c.Units[0].Lessons[1].Words[2].Ru = "есть"
+	for i := range c.Ordered() {
+		seen := map[string]bool{}
+		for _, d := range Drills(c, i) {
+			switch d.Kind {
+			case KindGap:
+				if seen[d.Prompt+"|"+d.Text] {
+					t.Errorf("урок %d: повтор задания %q", i+1, d.Text)
+				}
+				seen[d.Prompt+"|"+d.Text] = true
+			case KindMatch:
+				en, ru := map[string]bool{}, map[string]bool{}
+				for _, p := range d.Pairs {
+					if en[strings.ToLower(p.En)] || ru[p.Ru] {
+						t.Errorf("урок %d: пары повторяются: %+v", i+1, d.Pairs)
+					}
+					en[strings.ToLower(p.En)], ru[p.Ru] = true, true
+				}
+			}
+		}
+	}
+}
+
+func TestBlankMatchesTokenizer(t *testing.T) {
+	if got, ok := blank("Tom’s here.", "Tom's"); !ok || got != "___ here." {
+		t.Errorf("типографский апостроф: %q %v", got, ok)
+	}
+	if got, ok := blank("I’m fine. I am Tom.", "I"); !ok || got != "I’m fine. ___ am Tom." {
+		t.Errorf("слово внутри сокращения: %q %v", got, ok)
+	}
+	if got, ok := blank("A well-known man is well.", "well"); !ok || got != "A well-known man is ___." {
+		t.Errorf("слово внутри слова через дефис: %q %v", got, ok)
+	}
+}
+
+func TestCheckVocabularyChecksPartsAfterDigits(t *testing.T) {
+	l := lesson("u1-l1", w1, "Hello! I am 5-year-old Anna, 12.")
+	if got := l.CheckVocabulary(nil); !slices.Contains(got, "5-year-old") {
+		t.Fatalf("слово с цифрой и буквами проверяется: %v", got)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"math/rand/v2"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -88,12 +89,25 @@ func Drills(c Course, index int) []Drill {
 		}
 	}
 	used := map[int]bool{} // строки урока, уже занятые пропуском
-	var fresh []Drill
-	for _, w := range l.Words {
-		if len(fresh) == maxNewGaps {
+	// Сначала слова, которым подходит меньше предложений: иначе частое слово (is) займёт единственное предложение
+	// редкого (friend). Порядок заданий потом возвращается к порядку слов урока.
+	order := make([]int, len(l.Words))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(a, b int) bool { return candidates(l, l.Words[order[a]]) < candidates(l, l.Words[order[b]]) })
+	byWord := map[int]Drill{}
+	for _, i := range order {
+		if len(byWord) == maxNewGaps {
 			break
 		}
-		if d, ok := gapFor(l, w, pool, rng, used); ok {
+		if d, ok := gapFor(l, l.Words[i], pool, rng, used); ok {
+			byWord[i] = d
+		}
+	}
+	var fresh []Drill
+	for i := range l.Words {
+		if d, ok := byWord[i]; ok {
 			fresh = append(fresh, d)
 		}
 	}
@@ -109,20 +123,25 @@ func Drills(c Course, index int) []Drill {
 			repeat = append(repeat, d)
 		}
 	}
-	order := orderDrills(l, rng)
-	if room := maxDrills - 1 - len(fresh) - len(repeat); len(order) > max(room, 1) {
-		order = order[:max(room, 1)]
+	tiles := orderDrills(l, rng)
+	if room := maxDrills - 1 - len(fresh) - len(repeat); len(tiles) > max(room, 1) {
+		tiles = tiles[:max(room, 1)]
 	}
-	out := append(append(fresh, order...), repeat...)
+	out := append(append(fresh, tiles...), repeat...)
 	var pairs []Pair
-	for _, w := range l.Words {
+	seenEn, seenRu := map[string]bool{}, map[string]bool{}
+	addPair := func(w Word) { // одинаковое слово или перевод дали бы две неразличимые плитки, и пары не собрать
+		if len(pairs) == maxPairs || seenEn[lower(w.Lemma)] || seenRu[w.Ru] {
+			return
+		}
+		seenEn[lower(w.Lemma)], seenRu[w.Ru] = true, true
 		pairs = append(pairs, Pair{En: w.Lemma, Ru: w.Ru})
+	}
+	for _, w := range l.Words {
+		addPair(w)
 	}
 	for _, w := range old {
-		pairs = append(pairs, Pair{En: w.Lemma, Ru: w.Ru})
-	}
-	if len(pairs) > maxPairs {
-		pairs = pairs[:maxPairs]
+		addPair(w.Word)
 	}
 	if len(pairs) >= 3 {
 		out = append(out, Drill{Kind: KindMatch, Old: len(old) > 0, Pairs: pairs})
@@ -148,54 +167,89 @@ func oldWords(all []Lesson, index int) []wordRef {
 	return out
 }
 
-// gapFor строит пропуск для слова w в тексте урока l: первая свободная строка, где слово встречается.
+// candidates — в скольких предложениях урока встречается слово.
+func candidates(l Lesson, w Word) int {
+	forms := map[string]bool{}
+	for _, f := range w.forms() {
+		forms[f] = true
+	}
+	n := 0
+	for _, s := range units(l) {
+		for _, t := range s.Tokens() {
+			if forms[lower(t)] {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// units — предложения урока по отдельности: реплика «Hello, Anna! How are you?» даёт два предложения, если перевод
+// делится на столько же частей; иначе реплика остаётся целиком.
+func units(l Lesson) []Sentence {
+	var out []Sentence
+	for _, s := range l.Sentences {
+		en, ru := splitSentences(s.En), splitSentences(s.Ru)
+		if len(en) < 2 || len(en) != len(ru) {
+			out = append(out, s)
+			continue
+		}
+		for i := range en {
+			out = append(out, Sentence{Speaker: s.Speaker, En: en[i], Ru: ru[i]})
+		}
+	}
+	return out
+}
+
+// gapFor строит пропуск для слова w: первое свободное предложение урока l, где слово встречается. Одно предложение —
+// один пропуск: иначе второе задание подсказывало бы ответ первого.
 func gapFor(l Lesson, w Word, pool []wordRef, rng *rand.Rand, used map[int]bool) (Drill, bool) {
 	forms := map[string]bool{}
 	for _, f := range w.forms() {
 		forms[f] = true
 	}
-	best := -1
-	var tok string
-	for i, s := range l.Sentences {
-		for _, t := range s.Tokens() {
-			if forms[lower(t)] {
-				if best < 0 || (used[best] && !used[i]) {
-					best, tok = i, t
-				}
-				break
+	for i, s := range units(l) {
+		if used[i] {
+			continue
+		}
+		for _, tok := range s.Tokens() {
+			if !forms[lower(tok)] {
+				continue
 			}
+			text, ok := blank(s.En, tok)
+			if !ok {
+				return Drill{}, false
+			}
+			used[i] = true
+			opts := append([]string{tok}, distractors(w, capitalized(tok), pool, rng)...)
+			rng.Shuffle(len(opts), func(a, b int) { opts[a], opts[b] = opts[b], opts[a] })
+			return Drill{Kind: KindGap, Prompt: s.Ru, Text: text, Options: opts, Answer: tok}, len(opts) >= 2
 		}
-		if best >= 0 && !used[best] {
-			break
-		}
 	}
-	if best < 0 {
-		return Drill{}, false
-	}
-	used[best] = true
-	s := l.Sentences[best]
-	text, ok := blank(s.En, tok)
-	if !ok {
-		return Drill{}, false
-	}
-	opts := append([]string{tok}, distractors(w, strings.HasPrefix(text, "___"), pool, rng)...)
-	rng.Shuffle(len(opts), func(i, j int) { opts[i], opts[j] = opts[j], opts[i] })
-	return Drill{Kind: KindGap, Prompt: s.Ru, Text: text, Options: opts, Answer: tok}, len(opts) >= 2
+	return Drill{}, false
 }
 
-// blank заменяет первое вхождение слова tok (целым словом) на ___.
+// blank заменяет первое вхождение слова tok (целым словом, как режет токенизатор: апостроф и дефис — часть слова,
+// прямой и типографский апостроф равны) на ___.
 func blank(en, tok string) (string, bool) {
-	re := regexp.MustCompile(`(^|[^\p{L}'])` + regexp.QuoteMeta(tok) + `($|[^\p{L}'])`)
+	word := strings.ReplaceAll(regexp.QuoteMeta(strings.ReplaceAll(tok, "’", "'")), "'", "['’]")
+	re := regexp.MustCompile(`(^|[^\p{L}\p{N}'’-])(` + word + `)($|[^\p{L}\p{N}'’-])`)
 	loc := re.FindStringSubmatchIndex(en)
 	if loc == nil {
 		return "", false
 	}
-	start, end := loc[3], loc[4] // конец первой группы и начало второй — границы слова
-	return en[:start] + "___" + en[end:], true
+	return en[:loc[4]] + "___" + en[loc[5]:], true
 }
 
-// distractors — два неверных варианта: сначала слова той же части речи, потом любые; в начале предложения с заглавной.
-func distractors(w Word, atStart bool, pool []wordRef, rng *rand.Rand) []string {
+// capitalized — ответ пишется с заглавной (начало предложения), кроме местоимения I, которое заглавное всегда.
+func capitalized(tok string) bool {
+	return tok != "I" && tok != "" && strings.ToUpper(tok[:1]) == tok[:1] && strings.ToLower(tok[:1]) != tok[:1]
+}
+
+// distractors — два неверных варианта: сначала слова той же части речи, потом любые; регистр первой буквы как у
+// ответа, иначе ответ угадывается по заглавной букве.
+func distractors(w Word, capital bool, pool []wordRef, rng *rand.Rand) []string {
 	own := map[string]bool{}
 	for _, f := range w.forms() {
 		own[f] = true
@@ -223,7 +277,7 @@ func distractors(w Word, atStart bool, pool []wordRef, rng *rand.Rand) []string 
 	for i, c := range cands {
 		switch {
 		case c == "I":
-		case atStart:
+		case capital:
 			cands[i] = strings.ToUpper(c[:1]) + c[1:]
 		default:
 			cands[i] = strings.ToLower(c[:1]) + c[1:]

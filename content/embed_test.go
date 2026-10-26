@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -179,8 +180,19 @@ func TestEmbeddedCourseIsValid(t *testing.T) {
 		t.Fatalf("уроков %d, ждали не меньше 3", n)
 	}
 	for i := range c.Ordered() {
-		if len(course.Drills(c, i)) < 4 {
+		drills := course.Drills(c, i)
+		if len(drills) < 4 {
 			t.Errorf("урок %d: заданий меньше 4", i+1)
+		}
+		for _, d := range drills {
+			if d.Kind != course.KindGap || d.Answer == "I" {
+				continue
+			}
+			for _, o := range d.Options {
+				if o != "I" && (o[:1] == strings.ToUpper(o[:1])) != (d.Answer[:1] == strings.ToUpper(d.Answer[:1])) {
+					t.Errorf("урок %d: регистр подсказывает ответ в %q: %v", i+1, d.Text, d.Options)
+				}
+			}
 		}
 	}
 }

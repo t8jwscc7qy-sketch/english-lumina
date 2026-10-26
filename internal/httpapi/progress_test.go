@@ -161,3 +161,26 @@ func TestProgressEndpointUnauthorized(t *testing.T) {
 		t.Fatalf("статус %d", rec.Code)
 	}
 }
+
+// Урок «Пути» засчитывается своим временем: 7 минут урока и 3 минуты ответов дают минимум дня, серию и часы.
+func TestLessonTimeCountsTowardsMinutes(t *testing.T) {
+	lesson := activityRow("lesson.completed", progressNow.Add(-2*time.Hour), false)
+	lesson.Seconds = 420
+	yesterday := activityRow("lesson.completed", progressNow.Add(-24*time.Hour), false)
+	yesterday.Seconds = 900
+	events := append(minimumDay(progressNow.Add(-time.Hour))[:10], lesson, yesterday)
+	p := buildProgress(events, progressNow, "", 15)
+	if !p.DoneToday || p.StreakDays != 2 {
+		t.Fatalf("урок должен входить в минуты дня и серию: %+v", p)
+	}
+	o := buildOverview([]db.ListActivityEventsRow{yesterday}, progressNow, "")
+	if o.StudiedMinutes != 15 {
+		t.Fatalf("часы занятий без урока: %+v", o.StudiedMinutes)
+	}
+	m := buildMilestones([]db.ListActivityEventsRow{yesterday}, progressNow, "")
+	for _, x := range m.Milestones {
+		if x.Id == "hours-1" && x.Progress.Value != 0.25 {
+			t.Fatalf("веха часов без урока: %+v", x.Progress)
+		}
+	}
+}

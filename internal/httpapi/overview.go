@@ -55,14 +55,8 @@ func round(v float64, places int) float32 {
 
 // buildOverview собирает ответ из событий; чистая функция (время и пояс приходят снаружи).
 func buildOverview(events []db.ListActivityEventsRow, now time.Time, tz string) api.ProgressOverview {
-	var times []time.Time
-	for _, e := range events {
-		if e.Type == "exercise.answered" || e.Type == "card.reviewed" {
-			times = append(times, e.OccurredAt.Time)
-		}
-	}
 	loc := activity.Location(tz)
-	perDay := activity.DayMinutes(times, loc)
+	perDay := studyMinutes(events, loc)
 	today := activity.DayOf(now, loc)
 
 	var total time.Duration

@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
+	"github.com/t8jwscc7qy-sketch/english-lumina/internal/course"
 )
 
 const (
-	courseAPIPath   = "/api/v1/course"
+	courseAPIPath = "/api/v1/course"
 	lessonPath    = "/api/v1/course/lesson"
 	completePath  = "/api/v1/course/complete"
 	completeBody1 = `{"lessonId":"u1-l1","key":"k1","seconds":420,"mistakes":2}`
@@ -34,6 +35,8 @@ func (f *fakeStore) ListCompletedLessons(_ context.Context, userID int64) ([]str
 	}
 	return out, nil
 }
+
+func (f *fakeStore) LockUserCourse(context.Context, int32) error { return nil }
 
 func decode[T any](t *testing.T, body []byte) T {
 	t.Helper()
@@ -140,5 +143,31 @@ func TestCompleteLesson(t *testing.T) {
 	l := decode[api.Lesson](t, e.do(http.MethodPost, lessonPath, `{"id":"u1-l1"}`, withCookie(token)).Body.Bytes())
 	if !l.Done {
 		t.Fatal("пройденный урок открывается с пометкой done")
+	}
+}
+
+func TestCompleteLessonSkipsWordsKnownAtStart(t *testing.T) {
+	e, token := learnEnv(t)
+	e.store.addLexeme(901, "hello", "noun", "A1")
+	e.store.addLexeme(902, "I", "pronoun", "A1")
+	e.store.wl = map[int64]fakeWord{902: {status: "known_at_start", source: "placement"}}
+	rec := e.do(http.MethodPost, completePath, completeBody1, withCookie(token))
+	res := decode[api.CompleteLessonResponse](t, rec.Body.Bytes())
+	if rec.Code != http.StatusOK || res.CardsAdded != 1 {
+		t.Fatalf("слово «знаю» не получает карточку: %d %+v", rec.Code, res)
+	}
+	if e.store.hasCard(1, 902) || e.store.wl[902].status != "known_at_start" {
+		t.Fatal("состояние «знаю» не меняется и карточки нет — как во «Знакомстве»")
+	}
+}
+
+func TestLessonWhenCourseNotLoaded(t *testing.T) {
+	e, token := learnEnv(t)
+	prev := loadCourse
+	loadCourse = func() course.Course { return course.Course{} }
+	t.Cleanup(func() { loadCourse = prev })
+	rec := e.do(http.MethodPost, lessonPath, `{}`, withCookie(token))
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("курс не загрузился — это сбой, а не «все уроки пройдены»: %d %s", rec.Code, rec.Body)
 	}
 }

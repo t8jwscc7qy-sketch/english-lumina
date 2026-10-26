@@ -45,7 +45,6 @@ func (s *authServer) GetMilestones(w http.ResponseWriter, r *http.Request) {
 func buildMilestones(events []db.ListActivityEventsRow, now time.Time, tz string) api.MilestoneList {
 	loc := activity.Location(tz)
 	today := activity.DayOf(now, loc)
-	var times []time.Time
 	in := activity.MilestoneInput{Answers: map[activity.Day]int{}}
 	earliest := func(cur **activity.Day, d activity.Day) {
 		if *cur == nil || d.Before(**cur) {
@@ -59,18 +58,16 @@ func buildMilestones(events []db.ListActivityEventsRow, now time.Time, tz string
 		earliest(&first, d)
 		switch e.Type {
 		case "exercise.answered":
-			times = append(times, e.OccurredAt.Time)
 			in.Answers[d]++
 			earliest(&in.FirstExercise, d)
 		case "card.reviewed":
-			times = append(times, e.OccurredAt.Time)
 			in.Answers[d]++
 			earliest(&in.FirstCard, d)
 		case "mistake.closed":
 			earliest(&in.FirstMistakeClosed, d)
 		}
 	}
-	in.Minutes = activity.DayMinutes(times, loc)
+	in.Minutes = studyMinutes(events, loc)
 
 	all, newToday := activity.ComputeMilestones(in, today)
 	// История, вероятно, обрезана окном: вехи «до окна» достигаются заново каждый день, вспышку не даём.
