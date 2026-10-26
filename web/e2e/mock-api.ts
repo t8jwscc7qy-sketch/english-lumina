@@ -251,9 +251,17 @@ export type LearnOpts = {
   campRequests?: number[]
 }
 
+export type SheetsOpts = {
+  /** Сюда складываются тела принятых PUT /sheets/favorite и POST /sheets/review. */
+  favorites?: unknown[]
+  reviews?: unknown[]
+  /** Сколько слов в шпаргалке «Неправильные глаголы» трудные. */
+  hard?: number
+}
+
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts; learn?: LearnOpts },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts; learn?: LearnOpts; sheets?: SheetsOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -511,6 +519,54 @@ export async function mockApi(
   await page.route('**/api/v1/level/suggestion', (route) =>
     route.fulfill({ json: opts.level?.suggestion && suggestionVisible ? { suggestion: opts.level.suggestion } : {} }),
   )
+
+  const sheetDefs = [
+    { id: 'to-be', title: 'Глагол to be', summary: 'Когда нужно сказать «я есть»', level: 'A1', tags: ['глаголы', 'основы'] },
+    { id: 'articles', title: 'Артикли a / an / the', summary: 'Как выбрать артикль', level: 'A1', tags: ['артикли', 'основы'] },
+    { id: 'irregular-verbs', title: 'Неправильные глаголы', summary: 'Три формы частых глаголов', level: 'A2', tags: ['глаголы', 'таблицы'] },
+  ]
+  const sheetState = new Map<string, { favorite: boolean; reviewed: boolean; openedAt?: string }>()
+  const stateOf = (id: string) => sheetState.get(id) ?? { favorite: false, reviewed: false }
+  const hardCount = opts.sheets?.hard ?? 0
+  const verbRows = ['go', 'see', 'take', 'give', 'make', 'know', 'come', 'find', 'tell', 'write'].map((v, i) => ({
+    key: v, cells: [v, `${v}-past`, `${v}-pp`, 'перевод'], status: i < hardCount ? 'hard' : i === 9 ? 'learned' : 'unseen',
+  }))
+  const summaryOf = (d: (typeof sheetDefs)[number]) => ({
+    ...d, favorite: stateOf(d.id).favorite, status: stateOf(d.id).reviewed ? 'reviewed' : 'draft',
+    weakCount: d.id === 'irregular-verbs' ? hardCount : 0, ...(stateOf(d.id).openedAt ? { openedAt: stateOf(d.id).openedAt } : {}),
+  })
+  await page.route('**/api/v1/sheets**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    const method = route.request().method()
+    if (path.endsWith('/sheets') && method === 'GET') return route.fulfill({ json: { sheets: sheetDefs.map(summaryOf) } })
+    const body = route.request().postDataJSON() as { id: string; favorite?: boolean }
+    const def = sheetDefs.find((d) => d.id === body.id)
+    if (!def) return route.fulfill(apiError(404, 'not_found', 'Такой шпаргалки нет'))
+    if (path.endsWith('/sheets/open')) {
+      sheetState.set(def.id, { ...stateOf(def.id), openedAt: new Date().toISOString() })
+      return route.fulfill({
+        json: {
+          ...summaryOf(def), sources: ['собственные знания автора'],
+          blocks: [
+            { type: 'text', text: 'Нужно запомнить формы.' },
+            { type: 'table', bind: 'word', title: 'Формы', columns: [{ title: 'Глагол' }, { title: 'Past Simple' }, { title: 'Past Participle' }, { title: 'Перевод' }], rows: verbRows },
+            { type: 'examples', examples: [{ en: 'I **went** home.', ru: 'Я пошёл домой.' }, { en: 'She **wrote** a letter.', ru: 'Она написала письмо.' }, { en: 'We **saw** it.', ru: 'Мы это видели.' }] },
+          ],
+        },
+      })
+    }
+    if (path.endsWith('/sheets/favorite')) {
+      opts.sheets?.favorites?.push(body)
+      sheetState.set(def.id, { ...stateOf(def.id), favorite: body.favorite === true })
+      return route.fulfill({ json: { id: def.id, favorite: body.favorite === true } })
+    }
+    if (path.endsWith('/sheets/review')) {
+      opts.sheets?.reviews?.push(body)
+      sheetState.set(def.id, { ...stateOf(def.id), reviewed: true })
+      return route.fulfill({ json: { id: def.id, status: 'reviewed' } })
+    }
+    return route.fulfill({ status: 404 })
+  })
 
   const learnReason = { code: 'base', text: 'Столько слов поместится в твои минуты' }
   await page.route('**/api/v1/learn/status', (route) =>
