@@ -1,0 +1,485 @@
+[
+ {
+  "id": "t200-001",
+  "title": "Потерянная кошка",
+  "band": 200,
+  "targets": [
+   {
+    "lemma": "cat",
+    "pos": "noun"
+   },
+   {
+    "lemma": "street",
+    "pos": "noun"
+   },
+   {
+    "lemma": "car",
+    "pos": "noun"
+   },
+   {
+    "lemma": "lost",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna had a cat.",
+    "ru": "У Анны была кошка."
+   },
+   {
+    "en": "The cat's name was Max.",
+    "ru": "Кошку звали Макс."
+   },
+   {
+    "en": "One night, the cat was lost.",
+    "ru": "Однажды ночью кошка пропала."
+   },
+   {
+    "en": "Anna looked for the cat at home, but she did not find it.",
+    "ru": "Анна искала кошку дома, но не нашла."
+   },
+   {
+    "en": "She went out to the street.",
+    "ru": "Она вышла на улицу."
+   },
+   {
+    "en": "\"Did you see a cat?\" she asked a man.",
+    "ru": "«Вы не видели кошку?» — спросила она мужчину."
+   },
+   {
+    "en": "\"No,\" said the man. \"Sorry.\"",
+    "ru": "«Нет, — сказал мужчина. — Простите.»"
+   },
+   {
+    "en": "Anna felt bad.",
+    "ru": "Анне было плохо."
+   },
+   {
+    "en": "Then she heard something.",
+    "ru": "Вдруг она что-то услышала."
+   },
+   {
+    "en": "It was her cat! The cat was on a car in the street.",
+    "ru": "Это была её кошка! Кошка сидела на машине на улице."
+   },
+   {
+    "en": "Anna took the cat from the car and went home.",
+    "ru": "Анна сняла кошку с машины и пошла домой."
+   },
+   {
+    "en": "The cat was not lost now, and Anna loved her cat.",
+    "ru": "Кошка больше не была потеряна, и Анна любила свою кошку."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Anna",
+   "Max"
+  ]
+ },
+ {
+  "id": "t200-002",
+  "title": "Билеты в кино",
+  "band": 200,
+  "targets": [
+   {
+    "lemma": "movie",
+    "pos": "noun"
+   },
+   {
+    "lemma": "ticket",
+    "pos": "noun"
+   },
+   {
+    "lemma": "buy",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom and his friend wanted to see a movie.",
+    "ru": "Том и его друг хотели посмотреть фильм."
+   },
+   {
+    "en": "Tom went to the place to buy tickets.",
+    "ru": "Том пошёл туда, чтобы купить билеты."
+   },
+   {
+    "en": "He gave the man some money, and he could buy the tickets.",
+    "ru": "Он дал мужчине деньги и смог купить билеты."
+   },
+   {
+    "en": "\"Two tickets, please,\" said Tom.",
+    "ru": "«Два билета, пожалуйста», — сказал Том."
+   },
+   {
+    "en": "After that, Tom called his friend.",
+    "ru": "После этого Том позвонил другу."
+   },
+   {
+    "en": "\"I have the tickets!\" he said.",
+    "ru": "«У меня есть билеты!» — сказал он."
+   },
+   {
+    "en": "\"Great!\" said his friend. \"I will be there.\"",
+    "ru": "«Отлично! — сказал друг. — Я буду там.»"
+   },
+   {
+    "en": "But then Tom could not find the tickets.",
+    "ru": "Но потом Том не смог найти билеты."
+   },
+   {
+    "en": "He looked and looked. At last, he found them.",
+    "ru": "Он искал и искал. Наконец он их нашёл."
+   },
+   {
+    "en": "They were here all the time!",
+    "ru": "Они были здесь всё время!"
+   },
+   {
+    "en": "The movie started, and Tom felt great.",
+    "ru": "Фильм начался, и Тому было отлично."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t200-003",
+  "title": "Старая подруга",
+  "band": 200,
+  "targets": [
+   {
+    "lemma": "shop",
+    "pos": "noun"
+   },
+   {
+    "lemma": "smile",
+    "pos": "noun"
+   },
+   {
+    "lemma": "laugh",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "One day, Kate went to a shop.",
+    "ru": "Однажды Кейт пошла в магазин."
+   },
+   {
+    "en": "A woman was there, and she looked at Kate.",
+    "ru": "Там была женщина, и она посмотрела на Кейт."
+   },
+   {
+    "en": "\"Kate?\" said the woman. \"Is that you?\"",
+    "ru": "«Кейт? — сказала женщина. — Это ты?»"
+   },
+   {
+    "en": "Kate looked at her. The woman had a big smile.",
+    "ru": "Кейт посмотрела на неё. У женщины была широкая улыбка."
+   },
+   {
+    "en": "Then Kate knew her. It was Anna, her old friend!",
+    "ru": "Тут Кейт её узнала. Это была Анна, её старая подруга!"
+   },
+   {
+    "en": "\"I did not see you for a long time,\" said Anna.",
+    "ru": "«Я не видела тебя очень давно», — сказала Анна."
+   },
+   {
+    "en": "Kate had a big smile, too.",
+    "ru": "У Кейт тоже была широкая улыбка."
+   },
+   {
+    "en": "They talked and talked. They laughed a lot.",
+    "ru": "Они говорили и говорили. Они много смеялись."
+   },
+   {
+    "en": "The man in the shop looked at them and laughed, too.",
+    "ru": "Мужчина в магазине посмотрел на них и тоже засмеялся."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Kate",
+   "Anna"
+  ]
+ },
+ {
+  "id": "t200-004",
+  "title": "К морю",
+  "band": 200,
+  "targets": [
+   {
+    "lemma": "sea",
+    "pos": "noun"
+   },
+   {
+    "lemma": "car",
+    "pos": "noun"
+   },
+   {
+    "lemma": "swim",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max and his friend wanted to see the sea.",
+    "ru": "Макс и его друг хотели увидеть море."
+   },
+   {
+    "en": "They took a car.",
+    "ru": "Они поехали на машине."
+   },
+   {
+    "en": "The way was long.",
+    "ru": "Дорога была долгой."
+   },
+   {
+    "en": "After a long time, they saw the sea.",
+    "ru": "Через долгое время они увидели море."
+   },
+   {
+    "en": "It was big and great.",
+    "ru": "Оно было большое и прекрасное."
+   },
+   {
+    "en": "\"I want to swim!\" said Max.",
+    "ru": "«Я хочу плавать!» — сказал Макс."
+   },
+   {
+    "en": "His friend said, \"Me, too!\"",
+    "ru": "Его друг сказал: «И я!»"
+   },
+   {
+    "en": "They left the car and went down to the sea.",
+    "ru": "Они оставили машину и спустились к морю."
+   },
+   {
+    "en": "The sea was great, and they swam and swam.",
+    "ru": "Море было чудесное, и они плавали и плавали."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Max"
+  ]
+ },
+ {
+  "id": "t200-005",
+  "title": "Библиотека",
+  "band": 200,
+  "targets": [
+   {
+    "lemma": "library",
+    "pos": "noun"
+   },
+   {
+    "lemma": "book",
+    "pos": "noun"
+   },
+   {
+    "lemma": "read",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate loved books.",
+    "ru": "Кейт любила книги."
+   },
+   {
+    "en": "One day, she went to the library to find a book.",
+    "ru": "Однажды она пошла в библиотеку, чтобы найти книгу."
+   },
+   {
+    "en": "The library was big and old.",
+    "ru": "Библиотека была большая и старая."
+   },
+   {
+    "en": "A woman in the library said, \"Can I help you?\"",
+    "ru": "Женщина в библиотеке сказала: «Вам помочь?»"
+   },
+   {
+    "en": "\"Yes, I want a good book,\" said Kate.",
+    "ru": "«Да, мне нужна хорошая книга», — сказала Кейт."
+   },
+   {
+    "en": "The woman gave her a book.",
+    "ru": "Женщина дала ей книгу."
+   },
+   {
+    "en": "Kate stayed in the library and started to read.",
+    "ru": "Кейт осталась в библиотеке и начала читать."
+   },
+   {
+    "en": "She read and read. She did not stop.",
+    "ru": "Она читала и читала. Она не останавливалась."
+   },
+   {
+    "en": "At last, the woman said, \"Sorry, it is time to go home.\"",
+    "ru": "Наконец женщина сказала: «Простите, пора идти домой.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Kate"
+  ]
+ },
+ {
+  "id": "t200-006",
+  "title": "Новый велосипед",
+  "band": 200,
+  "targets": [
+   {
+    "lemma": "bike",
+    "pos": "noun"
+   },
+   {
+    "lemma": "ride",
+    "pos": "verb"
+   },
+   {
+    "lemma": "fall",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "A friend gave Ben a new bike.",
+    "ru": "Друг подарил Бену новый велосипед."
+   },
+   {
+    "en": "It was big, and Ben was a little kid.",
+    "ru": "Он был большой, а Бен был маленьким мальчиком."
+   },
+   {
+    "en": "\"Can I ride the bike?\" he asked.",
+    "ru": "«Можно мне прокатиться на велосипеде?» — спросил он."
+   },
+   {
+    "en": "\"Yes,\" said his friend. \"Go!\"",
+    "ru": "«Да, — сказал друг. — Давай!»"
+   },
+   {
+    "en": "Ben started to ride.",
+    "ru": "Бен начал ехать."
+   },
+   {
+    "en": "Then he fell down.",
+    "ru": "Потом он упал."
+   },
+   {
+    "en": "Ben felt bad. He did not want to fall again.",
+    "ru": "Бену было плохо. Он не хотел падать снова."
+   },
+   {
+    "en": "But he did not stop.",
+    "ru": "Но он не остановился."
+   },
+   {
+    "en": "He started to ride again.",
+    "ru": "Он снова начал ехать."
+   },
+   {
+    "en": "After a few days, Ben could ride well.",
+    "ru": "Через несколько дней Бен уже хорошо ездил."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t200-007",
+  "title": "Звук за дверью",
+  "band": 200,
+  "targets": [
+   {
+    "lemma": "sound",
+    "pos": "noun"
+   },
+   {
+    "lemma": "door",
+    "pos": "noun"
+   },
+   {
+    "lemma": "dog",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "One night, Max heard a sound at the door.",
+    "ru": "Однажды ночью Макс услышал звук у двери."
+   },
+   {
+    "en": "\"Who is there?\" he asked.",
+    "ru": "«Кто там?» — спросил он."
+   },
+   {
+    "en": "No one said anything.",
+    "ru": "Никто ничего не ответил."
+   },
+   {
+    "en": "Max heard the sound again.",
+    "ru": "Макс снова услышал звук."
+   },
+   {
+    "en": "He felt bad, but he went to the door.",
+    "ru": "Ему было не по себе, но он подошёл к двери."
+   },
+   {
+    "en": "He looked out.",
+    "ru": "Он выглянул."
+   },
+   {
+    "en": "A little dog was there!",
+    "ru": "Там была маленькая собака!"
+   },
+   {
+    "en": "It wanted to come in.",
+    "ru": "Она хотела войти."
+   },
+   {
+    "en": "Max let the dog in.",
+    "ru": "Макс впустил собаку."
+   },
+   {
+    "en": "The dog was very little, and it looked at Max.",
+    "ru": "Собака была совсем маленькая и смотрела на Макса."
+   },
+   {
+    "en": "Max gave it a place to stay.",
+    "ru": "Макс дал ей место, где остаться."
+   },
+   {
+    "en": "After that, the dog lived with Max.",
+    "ru": "После этого собака жила с Максом."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Max"
+  ]
+ }
+]

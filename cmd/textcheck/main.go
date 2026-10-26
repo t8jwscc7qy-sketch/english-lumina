@@ -3,6 +3,7 @@
 //
 //	go run ./cmd/textcheck            # все встроенные тексты
 //	go run ./cmd/textcheck файл.json  # файл со списком текстов (до встраивания)
+//	go run ./cmd/textcheck -words 200 # напечатать словарь уровня (леммы по частоте), чтобы писать в его пределах
 package main
 
 import (
@@ -10,6 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -26,6 +29,9 @@ func main() {
 }
 
 func run(files []string) error {
+	if len(files) == 2 && files[0] == "-words" {
+		return printWords(files[1])
+	}
 	var texts []library.Text
 	var err error
 	if len(files) == 0 {
@@ -100,5 +106,37 @@ func run(files []string) error {
 	if bad {
 		return fmt.Errorf("есть нарушения")
 	}
+	return nil
+}
+
+// printWords печатает леммы словаря уровня по убыванию частоты (одна строка).
+func printWords(band string) error {
+	n, err := strconv.Atoi(band)
+	if err != nil {
+		return err
+	}
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		return fmt.Errorf("нужен DATABASE_URL")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	rows, err := db.New(pool).LibraryBandLexemes(ctx, int32(n)) //nolint:gosec // уровни — малые числа
+	if err != nil {
+		return err
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, r := range rows {
+		if !seen[r.Lemma] {
+			seen[r.Lemma] = true
+			out = append(out, r.Lemma)
+		}
+	}
+	fmt.Println(strings.Join(out, " "))
 	return nil
 }
