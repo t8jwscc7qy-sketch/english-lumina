@@ -19,7 +19,7 @@ type Candidate struct {
 
 // PickBlock выбирает до n слов из упорядоченного списка кандидатов (повторное знакомство уже стоит первым).
 // Слово берётся, если: не больше maxPerPos слов его части речи, нет связи related (синоним или антоним, в любую
-// сторону) ни с одним взятым, написание не отличается от взятого одной правкой (quite/quiet, house/horse) и ok (у слова
+// сторону) ни с одним взятым, лемма не совпадает со взятой (run как глагол и как существительное), написание не отличается от взятого одной правкой (quite/quiet, house/horse) и ok (у слова
 // есть пример: дорогая проверка) истинно. После заполнения блока слова не проверяются.
 func PickBlock(cands []Candidate, n int, ok func(Candidate) bool, related func(a, b int64) bool) []Candidate {
 	if n <= 0 {
@@ -42,7 +42,7 @@ func PickBlock(cands []Candidate, n int, ok func(Candidate) bool, related func(a
 
 func clashes(c Candidate, picked []Candidate, related func(a, b int64) bool) bool {
 	for _, p := range picked {
-		if related(c.ID, p.ID) || related(p.ID, c.ID) || nearSpelling(c.Lemma, p.Lemma) {
+		if related(c.ID, p.ID) || related(p.ID, c.ID) || c.Lemma == p.Lemma || nearSpelling(c.Lemma, p.Lemma) {
 			return true
 		}
 	}

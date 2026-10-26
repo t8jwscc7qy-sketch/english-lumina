@@ -19,7 +19,7 @@ CREATE TABLE learn_preferences (
     user_id           bigint PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
     new_words_mode    text        NOT NULL DEFAULT 'auto' CHECK (new_words_mode IN ('auto', 'manual')),
     new_words_per_day integer     NOT NULL DEFAULT 12 CHECK (new_words_per_day BETWEEN 1 AND 30),
-    camp_coverage     real        NOT NULL DEFAULT 0.95 CHECK (camp_coverage BETWEEN 0.90 AND 0.99),
+    camp_coverage     real        NOT NULL DEFAULT 0.95 CHECK (camp_coverage BETWEEN 0.895 AND 0.995), -- real неточный: 0.90 и 0.99 хранятся с небольшим отклонением
     updated_at        timestamptz NOT NULL DEFAULT now()
 );
 

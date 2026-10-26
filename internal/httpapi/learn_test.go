@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -608,5 +609,94 @@ func TestLearnDayBoundaryUsesUserTimezone(t *testing.T) {
 	s := decodeStatus(t, getLearn(t, e, token, learnStatusPath).Body.String())
 	if s.NewToday != 1 {
 		t.Fatalf("за сутки пользователя введено %d, ждали 1 (границу даёт его пояс)", s.NewToday)
+	}
+}
+
+func TestLearnAutoModeCapComesFromPreferences(t *testing.T) {
+	e, token := learnEnv(t)
+	e.store.settings.DailyMinMinutes = 60 // база 12 слов
+	e.store.learnPrefs = &db.LearnPreference{UserID: 1, NewWordsMode: "auto", NewWordsPerDay: 5, CampCoverage: 0.95}
+	s := decodeStatus(t, getLearn(t, e, token, learnStatusPath).Body.String())
+	if s.Limit != 5 || s.PerDay != 5 {
+		t.Fatalf("потолок авто-режима 5, а лимит %d", s.Limit)
+	}
+	e.store.learnPrefs.NewWordsPerDay = 30
+	if s := decodeStatus(t, getLearn(t, e, token, learnStatusPath).Body.String()); s.Limit != 20 {
+		t.Fatalf("60 минут / 3 = 20 при потолке 30, а лимит %d", s.Limit)
+	}
+}
+
+func TestLearnNewTodayIsRealCountEvenWhenLimitDropped(t *testing.T) {
+	e, token := learnEnv(t)
+	e.store.wl = map[int64]fakeWord{}
+	for i := int64(10); i < 17; i++ { // введено 7, лимит дня сейчас 5
+		e.store.wl[i] = fakeWord{status: "introduced", source: "lesson", introducedAt: time.Now()}
+	}
+	s := decodeStatus(t, getLearn(t, e, token, learnStatusPath).Body.String())
+	if s.NewToday != 7 || s.Remaining != 0 {
+		t.Fatalf("введено 7, остаток 0: %+v", s)
+	}
+}
+
+func TestLearnBlockReadsPastWordsWithoutExamples(t *testing.T) {
+	e, token := learnEnv(t)
+	for i := int64(1); i <= 170; i++ { // 170 слов без примеров занимают две страницы выборки
+		addLearnWord(e, i, fmt.Sprintf("dead%c%c", 'a'+rune(i/26), 'a'+rune(i%26)), "noun", "A1", int32(i), false, "слово")
+	}
+	addLearnWord(e, 1000, "alive", "noun", "A1", 1000, true, "живой")
+	b := decodeBlock(t, getLearn(t, e, token, learnBlockPath).Body.String())
+	if got := lemmasOf(b); !slices.Equal(got, []string{"alive"}) {
+		t.Fatalf("слово с примером за пределами первой страницы должно найтись: %v", got)
+	}
+}
+
+func TestLearnBlockOtherErrorsAre500(t *testing.T) {
+	e, token := learnEnv(t)
+	addLearnWord(e, 1, "apple", "noun", "A1", 100, true, "яблоко")
+	e.store.candidatesErr = errors.New("соединение оборвано")
+	if rec := getLearn(t, e, token, learnBlockPath); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("сбой базы не прячется за 404: статус %d", rec.Code)
+	}
+}
+
+func TestLearnBlockOneLemmaOnce(t *testing.T) {
+	e, token := learnEnv(t)
+	addLearnWord(e, 1, "run", "verb", "A1", 100, true, "бежать")
+	addLearnWord(e, 2, "run", "noun", "A1", 101, true, "пробежка")
+	if got := lemmasOf(decodeBlock(t, getLearn(t, e, token, learnBlockPath).Body.String())); !slices.Equal(got, []string{"run"}) {
+		t.Fatalf("одна лемма — одно слово блока: %v", got)
+	}
+}
+
+func TestLearnPlacementDoesNotMarkWordsThatHaveCards(t *testing.T) {
+	e, token := learnEnv(t)
+	addLearnWord(e, 1, "apple", "noun", "A1", 100, true, "яблоко")
+	seed(t, e, 1, time.Now().Add(time.Hour))
+	rec := submitPlacement(e, token, []int64{1}, []int64{1}, "p")
+	var r api.PlacementResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil || rec.Code != http.StatusOK || r.Marked != 0 {
+		t.Fatalf("слово с карточкой не помечается «знаю»: %d %s", rec.Code, rec.Body)
+	}
+	if _, ok := e.store.wl[1]; ok {
+		t.Fatal("строка состояния не создаётся")
+	}
+}
+
+func TestReviewFailsAtomicallyWhenMarkLearnedFails(t *testing.T) {
+	e, token := learnEnv(t)
+	addLearnWord(e, 1, "apple", "noun", "A1", 100, true, "яблоко")
+	id := seed(t, e, 1, time.Now().Add(-time.Minute))
+	before := e.store.cards[id]
+	e.store.markLearnedErr = errors.New("нет таблицы word_learning")
+	rec := doReview(e, token, id, 3, "k1")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("статус %d", rec.Code)
+	}
+	if e.store.cards[id] != before || reviewEvents(e) != 0 {
+		t.Fatal("карточка и событие откатываются вместе с ошибкой")
+	}
+	e.store.markLearnedErr = nil
+	if rec := doReview(e, token, id, 3, "k1"); rec.Code != http.StatusOK {
+		t.Fatalf("повтор с тем же ключом после исправления: %d", rec.Code)
 	}
 }

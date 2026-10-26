@@ -7,11 +7,13 @@ JOIN kb_teaching_card c ON c.lexeme_id = l.id
 JOIN LATERAL (SELECT min(level) AS level FROM lexeme_cefr WHERE lexeme_id = l.id) lv ON true
 LEFT JOIN kb_lexeme_stat st ON st.lexeme_id = l.id
 WHERE lv.level = ANY(sqlc.arg(levels)::text[])
+  AND l.lemma ~ '^[a-z]+$'
+  AND l.pos IN ('noun', 'verb', 'adjective', 'adverb')
   AND COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof(c.payload->'translations') = 'array' THEN c.payload->'translations' END), 0) > 0
   AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = sqlc.arg(user_id) AND w.lexeme_id = l.id)
   AND NOT EXISTS (SELECT 1 FROM cards cd WHERE cd.user_id = sqlc.arg(user_id) AND cd.lexeme_id = l.id)
 ORDER BY lv.level, st.freq_rank NULLS LAST, l.id
-LIMIT sqlc.arg(max_rows)::int;
+LIMIT sqlc.arg(max_rows)::int OFFSET sqlc.arg(row_offset)::int;
 
 -- name: LearnRelations :many
 -- Связи слов (синонимы, антонимы) между словами нашего словаря.
@@ -32,7 +34,8 @@ ON CONFLICT DO NOTHING;
 
 -- name: LearnMarkKnown :execrows
 INSERT INTO word_learning (user_id, lexeme_id, status, source)
-VALUES (sqlc.arg(user_id), sqlc.arg(lexeme_id), 'known_at_start', 'placement')
+SELECT sqlc.arg(user_id)::bigint, sqlc.arg(lexeme_id)::bigint, 'known_at_start', 'placement'
+WHERE NOT EXISTS (SELECT 1 FROM cards cd WHERE cd.user_id = sqlc.arg(user_id)::bigint AND cd.lexeme_id = sqlc.arg(lexeme_id)::bigint)
 ON CONFLICT DO NOTHING;
 
 -- name: LearnMarkLearned :execrows

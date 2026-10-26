@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import type { PlacementPage as Page, PlacementResult } from '@/api/client'
 import { FoxNote } from '@/components/brand/FoxNote'
@@ -66,6 +66,12 @@ export function PlacementPage() {
   const [skip, setSkip] = useState(0)
   const [result, setResult] = useState<{ r: PlacementResult; known: number; shown: number } | null>(null)
   const page = usePlacementPage(skip)
+  const resultRef = useRef<HTMLElement>(null)
+
+  // Список с кнопкой заменяется итогом: фокус переходит на итог, а не теряется.
+  useEffect(() => {
+    if (result) resultRef.current?.focus()
+  }, [result])
 
   useEffect(() => {
     document.title = 'Быстрый тест — Verst'
@@ -95,7 +101,7 @@ export function PlacementPage() {
       )}
 
       {result && (
-        <section aria-live="polite" className="surface flex flex-col items-start gap-3 p-6">
+        <section ref={resultRef} tabIndex={-1} aria-live="polite" className="surface flex flex-col items-start gap-3 p-6 outline-none">
           <FoxNote mood={result.r.next === 'stop' ? 'thinking' : 'happy'}>
             <h2 className="text-title">{`Отмечено слов: ${result.r.marked}`}</h2>
             <p className="text-muted-foreground">{OUTCOME[result.r.next]}</p>

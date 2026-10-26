@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/api"
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
@@ -23,18 +24,19 @@ import (
 )
 
 const (
-	maxLearnBody       = 4 << 10
-	maxLearnKey        = 64
-	learnBlockSize     = 7  // слов в одном блоке знакомства
-	learnCandidateRows = 80 // кандидатов, из которых собирается блок
-	learnExamplesShown = 2
-	learnListCap       = 8 // форм и синонимов в карточке слова
-	placementPageSize  = 50
-	placementMaxSkip   = 2000
-	accuracyWindowDays = 7
-	minAccuracySample  = 10 // меньше повторений за неделю — точность не считается
-	placementMoreShare = 0.8
-	placementStopShare = 0.5
+	maxLearnBody        = 4 << 10
+	maxLearnKey         = 64
+	learnBlockSize      = 7  // слов в одном блоке знакомства
+	learnCandidateRows  = 80 // кандидатов на одной странице выборки
+	learnCandidatePages = 10 // страниц выборки: слова без примеров остаются в начале списка, поэтому дочитываем дальше
+	learnExamplesShown  = 2
+	learnListCap        = 8 // форм и синонимов в карточке слова
+	placementPageSize   = 50
+	placementMaxSkip    = 2000
+	accuracyWindowDays  = 7
+	minAccuracySample   = 10 // меньше повторений за неделю — точность не считается
+	placementMoreShare  = 0.8
+	placementStopShare  = 0.5
 
 	defaultPerDay   = 12
 	defaultCoverage = 0.95
@@ -44,6 +46,12 @@ const (
 	audioBaseURL    = "https://commons.wikimedia.org/wiki/Special:FilePath/"
 )
 
+// isMissingTable: PostgreSQL ответил «таблицы нет» (миграция базы знаний не применена).
+func isMissingTable(err error) bool {
+	var pg *pgconn.PgError
+	return errors.As(err, &pg) && pg.Code == "42P01"
+}
+
 func (s *authServer) failLearn(w http.ResponseWriter, err error) {
 	slog.Error("знакомство", "err", err)
 	writeError(w, http.StatusInternalServerError, api.ErrorErrorCodeInternal, "Внутренняя ошибка, попробуй ещё раз")
@@ -51,11 +59,12 @@ func (s *authServer) failLearn(w http.ResponseWriter, err error) {
 
 // learnSetup — всё, что нужно любой ручке знакомства: настройки, предпочтения и суточный лимит.
 type learnSetup struct {
-	settings db.Setting
-	prefs    db.LearnPreference
-	pace     pace.Result
-	now      time.Time
-	dayStart time.Time
+	settings   db.Setting
+	prefs      db.LearnPreference
+	pace       pace.Result
+	introduced int // слов введено сегодня
+	now        time.Time
+	dayStart   time.Time
 }
 
 func (s *authServer) learnPrefs(ctx context.Context, userID int64) (db.LearnPreference, error) {
@@ -101,11 +110,12 @@ func (s *authServer) learnContext(w http.ResponseWriter, r *http.Request, userID
 	}
 	in := pace.Input{
 		DailyMinutes: int(st.DailyMinMinutes), Due: int(counts.Due), IntroducedToday: int(introduced),
-		Mode: out.prefs.NewWordsMode, PerDay: int(out.prefs.NewWordsPerDay), Cap: defaultPerDay,
+		Mode: out.prefs.NewWordsMode, PerDay: int(out.prefs.NewWordsPerDay), Cap: int(out.prefs.NewWordsPerDay),
 	}
 	if stats.Total >= minAccuracySample {
 		in.HasAccuracy, in.Accuracy7d = true, float64(stats.Good)/float64(stats.Total)
 	}
+	out.introduced = int(introduced)
 	out.pace = pace.NewWordsToday(in)
 	return out, true
 }
@@ -134,7 +144,7 @@ func (s *authServer) GetLearnStatus(w http.ResponseWriter, r *http.Request) {
 	out := api.LearnStatus{
 		Limit: setup.pace.Limit, Remaining: setup.pace.Remaining, Reason: reasonView(setup.pace.Reason),
 		Mode: api.LearnStatusMode(setup.prefs.NewWordsMode), PerDay: int(setup.prefs.NewWordsPerDay),
-		NewToday: setup.pace.Limit - setup.pace.Remaining,
+		NewToday: setup.introduced,
 	}
 	for _, c := range counts {
 		switch c.Status {
@@ -228,63 +238,77 @@ func (s *authServer) GetLearnBlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	rows, err := s.store.LearnCandidates(ctx, db.LearnCandidatesParams{UserID: user.ID, Levels: learnLevels(setup.settings.CurrentLevel), MaxRows: learnCandidateRows})
-	if err != nil {
-		// Нет таблиц базы знаний или она пуста: слов для знакомства нет, это не авария сервера.
-		slog.Warn("знакомство: кандидаты не прочитаны", "err", err)
-		writeError(w, http.StatusNotFound, api.ErrorErrorCodeNoWords, "Слов для знакомства пока нет")
-		return
-	}
+	levels := learnLevels(setup.settings.CurrentLevel)
 	cards := map[int64]teachingCard{}
-	var cands []learn.Candidate
-	ids := make([]int64, 0, len(rows))
-	for _, row := range rows {
-		c, ok := parseCard(row.Payload)
-		if !ok {
-			continue
-		}
-		cards[row.LexemeID] = c
-		cands = append(cands, learn.Candidate{ID: row.LexemeID, Lemma: row.Lemma, Pos: row.Pos})
-		ids = append(ids, row.LexemeID)
-	}
+	byID := map[int64]db.LearnCandidatesRow{}
 	related := map[[2]int64]bool{}
-	if len(ids) > 0 {
-		rels, err := s.store.LearnRelations(ctx, ids)
+	examples := map[int64][]exampleSentence{}
+	var cands []learn.Candidate
+	var picked []learn.Candidate
+	var exErr error
+	isRelated := func(a, b int64) bool { return related[[2]int64{a, b}] || related[[2]int64{b, a}] }
+	for page := 0; page < learnCandidatePages; page++ {
+		rows, err := s.store.LearnCandidates(ctx, db.LearnCandidatesParams{
+			UserID: user.ID, Levels: levels, MaxRows: learnCandidateRows, RowOffset: int32(page * learnCandidateRows), //nolint:gosec // страниц мало
+		})
 		if err != nil {
-			s.failLearn(w, fmt.Errorf("связи слов: %w", err))
+			if isMissingTable(err) { // базы знаний нет: слов для знакомства нет, это не авария сервера
+				slog.Warn("знакомство: таблицы базы знаний недоступны", "err", err)
+				writeError(w, http.StatusNotFound, api.ErrorErrorCodeNoWords, "Слов для знакомства пока нет")
+				return
+			}
+			s.failLearn(w, fmt.Errorf("кандидаты: %w", err))
 			return
 		}
-		for _, rel := range rels {
-			if rel.OtherLexemeID != nil {
-				related[[2]int64{rel.LexemeID, *rel.OtherLexemeID}] = true
+		ids := make([]int64, 0, len(rows))
+		for _, row := range rows {
+			byID[row.LexemeID] = row
+			c, ok := parseCard(row.Payload)
+			if !ok {
+				continue
+			}
+			cards[row.LexemeID] = c
+			cands = append(cands, learn.Candidate{ID: row.LexemeID, Lemma: row.Lemma, Pos: row.Pos})
+			ids = append(ids, row.LexemeID)
+		}
+		if len(ids) > 0 {
+			rels, err := s.store.LearnRelations(ctx, ids)
+			if err != nil {
+				s.failLearn(w, fmt.Errorf("связи слов: %w", err))
+				return
+			}
+			for _, rel := range rels {
+				if rel.OtherLexemeID != nil {
+					related[[2]int64{rel.LexemeID, *rel.OtherLexemeID}] = true
+				}
 			}
 		}
-	}
-	examples := map[int64][]exampleSentence{}
-	var exErr error
-	picked := learn.PickBlock(cands, min(learnBlockSize, setup.pace.Remaining), func(c learn.Candidate) bool {
+		picked = learn.PickBlock(cands, min(learnBlockSize, setup.pace.Remaining), func(c learn.Candidate) bool {
+			if exErr != nil {
+				return false
+			}
+			if ex, seen := examples[c.ID]; seen {
+				return len(ex) > 0
+			}
+			ex, err := exampleSentences(ctx, s.store, c.Lemma, c.Pos)
+			if err != nil {
+				exErr = err
+				return false
+			}
+			examples[c.ID] = ex
+			return len(ex) > 0
+		}, isRelated)
 		if exErr != nil {
-			return false
+			s.failLearn(w, fmt.Errorf("примеры: %w", exErr))
+			return
 		}
-		ex, err := exampleSentences(ctx, s.store, c.Lemma, c.Pos)
-		if err != nil {
-			exErr = err
-			return false
+		if len(picked) >= min(learnBlockSize, setup.pace.Remaining) || len(rows) < learnCandidateRows {
+			break
 		}
-		examples[c.ID] = ex
-		return len(ex) > 0
-	}, func(a, b int64) bool { return related[[2]int64{a, b}] || related[[2]int64{b, a}] })
-	if exErr != nil {
-		s.failLearn(w, fmt.Errorf("примеры: %w", exErr))
-		return
 	}
 	if len(picked) == 0 {
 		writeError(w, http.StatusNotFound, api.ErrorErrorCodeNoWords, "Слов для знакомства пока нет")
 		return
-	}
-	byID := map[int64]db.LearnCandidatesRow{}
-	for _, row := range rows {
-		byID[row.LexemeID] = row
 	}
 	for _, c := range picked {
 		row, card := byID[c.ID], cards[c.ID]
@@ -437,7 +461,7 @@ func (s *authServer) IntroduceWords(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, errReplay):
 		if ok, err := s.storedResult(ctx, user.ID, eventKey, &prev); err != nil || !ok {
-			s.failLearn(w, fmt.Errorf("повтор запроса: %v", err))
+			s.failLearn(w, fmt.Errorf("повтор запроса: событие не найдено или нечитаемо (%v)", err))
 			return
 		}
 		writeJSON(w, http.StatusOK, prev)
@@ -598,7 +622,7 @@ func (s *authServer) SubmitPlacement(w http.ResponseWriter, r *http.Request) {
 	})
 	if errors.Is(err, errReplay) {
 		if ok, err := s.storedResult(ctx, user.ID, eventKey, &res); err != nil || !ok {
-			s.failLearn(w, fmt.Errorf("повтор запроса: %v", err))
+			s.failLearn(w, fmt.Errorf("повтор запроса: событие не найдено или нечитаемо (%v)", err))
 			return
 		}
 	} else if err != nil {

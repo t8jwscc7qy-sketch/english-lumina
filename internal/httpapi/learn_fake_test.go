@@ -2,11 +2,11 @@ package httpapi
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/db"
 )
@@ -17,7 +17,8 @@ type fakeWord struct {
 	introducedAt   time.Time
 }
 
-var errLearnDown = errors.New("запросы знакомства недоступны")
+// errLearnDown — как будто таблиц базы знаний нет (код PostgreSQL 42P01).
+var errLearnDown error = &pgconn.PgError{Code: "42P01", Message: "relation \"kb_teaching_card\" does not exist"}
 
 func (f *fakeStore) hasCard(userID, lexemeID int64) bool {
 	for _, c := range f.cards {
@@ -43,6 +44,9 @@ func (f *fakeStore) LearnCandidates(_ context.Context, arg db.LearnCandidatesPar
 	if f.failLearn {
 		return nil, errLearnDown
 	}
+	if f.candidatesErr != nil {
+		return nil, f.candidatesErr
+	}
 	var out []db.LearnCandidatesRow
 	for _, r := range f.learnCands {
 		if _, learned := f.wl[r.LexemeID]; learned || f.hasCard(arg.UserID, r.LexemeID) || !slices.Contains(arg.Levels, r.Level) {
@@ -50,10 +54,8 @@ func (f *fakeStore) LearnCandidates(_ context.Context, arg db.LearnCandidatesPar
 		}
 		out = append(out, r)
 	}
-	if int32(len(out)) > arg.MaxRows {
-		out = out[:arg.MaxRows]
-	}
-	return out, nil
+	start := min(int(arg.RowOffset), len(out))
+	return out[start:min(start+int(arg.MaxRows), len(out))], nil
 }
 
 func (f *fakeStore) LearnPlacementCandidates(_ context.Context, arg db.LearnPlacementCandidatesParams) ([]db.LearnPlacementCandidatesRow, error) {
@@ -119,7 +121,7 @@ func (f *fakeStore) LearnInsertIntroduced(_ context.Context, arg db.LearnInsertI
 }
 
 func (f *fakeStore) LearnMarkKnown(_ context.Context, arg db.LearnMarkKnownParams) (int64, error) {
-	if _, ok := f.wl[arg.LexemeID]; ok {
+	if _, ok := f.wl[arg.LexemeID]; ok || f.hasCard(arg.UserID, arg.LexemeID) {
 		return 0, nil
 	}
 	if f.wl == nil {
@@ -131,6 +133,9 @@ func (f *fakeStore) LearnMarkKnown(_ context.Context, arg db.LearnMarkKnownParam
 
 // LearnMarkLearned повторяет SQL: нет строки — создаётся learned/card; introduced → learned; иначе без изменений.
 func (f *fakeStore) LearnMarkLearned(_ context.Context, arg db.LearnMarkLearnedParams) (int64, error) {
+	if f.markLearnedErr != nil {
+		return 0, f.markLearnedErr
+	}
 	w, ok := f.wl[arg.LexemeID]
 	if f.wl == nil {
 		f.wl = map[int64]fakeWord{}

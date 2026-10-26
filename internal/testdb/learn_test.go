@@ -58,6 +58,8 @@ func TestLearnTables(t *testing.T) {
 	d := word("delta", "A2", 1, []string{"дельта"})
 	e := word("echo", "A1", 2, []string{"эхо"}) // есть карточка
 	f := word("foxtrot", "A1", 3, []string{"фокстрот"})
+	_ = word("IT", "A1", 4, []string{"ай-ти"})       // не строчное слово из букв: в блок не берётся
+	_ = word("a.m./p.m.", "A1", 6, []string{"время"}) // с точками и слэшем: не берётся
 	if _, err := pool.Exec(ctx, `INSERT INTO cards (user_id, lexeme_id, due, stability, difficulty, scheduled_days, reps, lapses, state, remaining_steps) VALUES ($1, $2, now(), 1, 1, 0, 1, 0, 1, 0)`, user.ID, e); err != nil {
 		t.Fatal(err)
 	}
@@ -96,6 +98,12 @@ func TestLearnTables(t *testing.T) {
 		t.Fatalf("уровень и карточка: %+v", cands[0])
 	}
 	_ = c
+	if page, err := q.LearnCandidates(ctx, db.LearnCandidatesParams{UserID: user.ID, Levels: []string{"A1", "A2"}, MaxRows: 2, RowOffset: 1}); err != nil || len(page) != 2 || page[0].LexemeID != a || page[1].LexemeID != d {
+		t.Fatalf("вторая страница выборки: %+v %v", page, err)
+	}
+	if n, err := q.LearnMarkKnown(ctx, db.LearnMarkKnownParams{UserID: user.ID, LexemeID: e}); err != nil || n != 0 {
+		t.Fatalf("слово с карточкой не помечается «знаю»: %d %v", n, err)
+	}
 
 	// Переходы в «изучено».
 	if n, err := q.LearnMarkLearned(ctx, db.LearnMarkLearnedParams{UserID: user.ID, LexemeID: f, Now: ts(now)}); err != nil || n != 1 {
@@ -160,6 +168,11 @@ func TestLearnTables(t *testing.T) {
 	}
 	if _, err := q.LearnUpsertPreferences(ctx, db.LearnUpsertPreferencesParams{UserID: user.ID, NewWordsMode: "auto", NewWordsPerDay: 31, CampCoverage: 0.95}); err == nil {
 		t.Fatal("число слов в день от 1 до 30")
+	}
+	for _, edge := range []float32{0.90, 0.99} { // границы real хранятся неточно, но должны проходить
+		if _, err := q.LearnUpsertPreferences(ctx, db.LearnUpsertPreferencesParams{UserID: user.ID, NewWordsMode: "auto", NewWordsPerDay: 10, CampCoverage: edge}); err != nil {
+			t.Fatalf("покрытие %v допустимо: %v", edge, err)
+		}
 	}
 	if _, err := q.LearnUpsertPreferences(ctx, db.LearnUpsertPreferencesParams{UserID: user.ID, NewWordsMode: "auto", NewWordsPerDay: 10, CampCoverage: 0.5}); err == nil {
 		t.Fatal("покрытие от 0,90 до 0,99")
