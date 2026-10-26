@@ -202,7 +202,7 @@ export interface paths {
         };
         /**
          * Следующее упражнение
-         * @description Упражнение с пропуском: предложение, перевод-подсказка и варианты ответа (пустой список — ввод вручную). Верного ответа в теле нет. Если подходящего не нашлось, 404 с кодом no_exercise.
+         * @description Упражнение с пропуском: предложение, перевод-подсказка и варианты ответа (пустой список — ввод вручную). Верного ответа в теле нет. Если подходящего не нашлось, 404 с кодом no_exercise. Режим «Привал» включается параметром mode=camp в строке запроса (читается без объявления в контракте: параметр запроса заставил бы генератор добавить новую зависимость): только предложения, где не меньше camp_coverage слов изучено. Пока изучено меньше campMinWords слов, 404 с кодом camp_closed.
          */
         get: operations["getNextExercise"];
         put?: never;
@@ -515,6 +515,12 @@ export interface components {
             perDay: number;
             /** @description Собрана ли база знаний */
             kbReady: boolean;
+            /** @description Слов известно «Привалу» (изучено и отмечено «знаю») */
+            campWords: number;
+            /** @description Сколько слов нужно, чтобы «Привал» открылся */
+            campMinWords: number;
+            /** @description Открыт ли «Привал» */
+            campOpen: boolean;
         };
         LearnWord: {
             /** Format: int64 */
@@ -933,7 +939,7 @@ export interface components {
                  * @description Машинный код ошибки
                  * @enum {string}
                  */
-                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "no_words" | "limit_reached" | "already_answered" | "invalid_answer" | "internal";
+                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "no_words" | "camp_closed" | "limit_reached" | "already_answered" | "invalid_answer" | "internal";
                 /** @description Текст для пользователя на русском */
                 message: string;
             };

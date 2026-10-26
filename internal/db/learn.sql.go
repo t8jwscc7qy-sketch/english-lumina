@@ -132,6 +132,40 @@ func (q *Queries) LearnIntroducedSince(ctx context.Context, arg LearnIntroducedS
 	return count, err
 }
 
+const learnKnownWords = `-- name: LearnKnownWords :many
+SELECT l.id AS lexeme_id, l.lemma, l.pos
+FROM word_learning w
+JOIN lexemes l ON l.id = w.lexeme_id
+WHERE w.user_id = $1 AND w.status IN ('learned', 'known_at_start')
+`
+
+type LearnKnownWordsRow struct {
+	LexemeID int64
+	Lemma    string
+	Pos      string
+}
+
+// Известные слова для «Привала»: изучено или отмечено «знаю».
+func (q *Queries) LearnKnownWords(ctx context.Context, userID int64) ([]LearnKnownWordsRow, error) {
+	rows, err := q.db.Query(ctx, learnKnownWords, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LearnKnownWordsRow{}
+	for rows.Next() {
+		var i LearnKnownWordsRow
+		if err := rows.Scan(&i.LexemeID, &i.Lemma, &i.Pos); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const learnMarkKnown = `-- name: LearnMarkKnown :execrows
 INSERT INTO word_learning (user_id, lexeme_id, status, source)
 SELECT $1::bigint, $2::bigint, 'known_at_start', 'placement'

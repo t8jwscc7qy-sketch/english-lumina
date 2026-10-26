@@ -100,7 +100,7 @@ func (s *authServer) grammarCandidate(ctx context.Context, rng *idRange, topic s
 		if len(pending) >= maxWindowCandidates {
 			break
 		}
-		if used[row.ID] {
+		if skipSentence(ctx, used, row.ID, row.Text) {
 			continue
 		}
 		cased := exercises.CasedTokens(row.Text)
@@ -195,7 +195,7 @@ func (s *authServer) levelCandidate(ctx context.Context, topic string, used map[
 		var pending []levelPending
 		var lookup []string
 		for _, row := range rows {
-			if used[row.EnID] {
+			if skipSentence(ctx, used, row.EnID, row.EnText) {
 				continue
 			}
 			start, end, ok := words.FindMatch(row.EnText, forms)
@@ -253,7 +253,7 @@ func (s *authServer) orderCandidate(ctx context.Context, rng *idRange, maxLevel 
 		if len(pending) >= maxWindowCandidates {
 			break
 		}
-		if used[row.ID] {
+		if skipSentence(ctx, used, row.ID, row.Text) {
 			continue
 		}
 		p := orderPending{row: row, tokens: exercises.Tokens(row.Text), seed: s.rnd(1 << 62)}
@@ -306,7 +306,7 @@ func (s *authServer) translateCandidate(ctx context.Context, rng *idRange, maxLe
 		if len(pending) >= maxWindowCandidates {
 			break
 		}
-		if used[row.ID] {
+		if skipSentence(ctx, used, row.ID, row.Text) {
 			continue
 		}
 		if _, ok := exercises.BuildTranslate(row.Text, nil); !ok {
@@ -363,6 +363,9 @@ type formPending struct {
 // уровня пользователя и следующего за ним (по batch на уровень; без настроек — A1). Подходят слова, для которых
 // posOK верно; повторы убираются.
 func (s *authServer) levelWords(ctx context.Context, userID int64, level string, posOK func(string) bool, weak, batch int32) ([]formInfo, error) {
+	if camp := campFrom(ctx); camp != nil { // «Привал»: только известные слова
+		return s.campWordsFor(camp, posOK, int(weak+batch)), nil
+	}
 	var out []formInfo
 	seen := map[int64]bool{}
 	add := func(id int64, lemma, pos string) {
@@ -435,7 +438,7 @@ func (s *authServer) formCandidate(ctx context.Context, _ *idRange, userID int64
 		var pending []formPending
 		var lookup []string
 		for _, row := range rows {
-			if used[row.EnID] {
+			if skipSentence(ctx, used, row.EnID, row.EnText) {
 				continue
 			}
 			seed := s.rnd(1 << 62)

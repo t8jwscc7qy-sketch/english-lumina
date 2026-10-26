@@ -45,6 +45,7 @@ func (e CefrLevel) Valid() bool {
 const (
 	ErrorErrorCodeAlreadyAnswered    ErrorErrorCode = "already_answered"
 	ErrorErrorCodeBusy               ErrorErrorCode = "busy"
+	ErrorErrorCodeCampClosed         ErrorErrorCode = "camp_closed"
 	ErrorErrorCodeForbiddenOrigin    ErrorErrorCode = "forbidden_origin"
 	ErrorErrorCodeInternal           ErrorErrorCode = "internal"
 	ErrorErrorCodeInvalidAnswer      ErrorErrorCode = "invalid_answer"
@@ -67,6 +68,8 @@ func (e ErrorErrorCode) Valid() bool {
 	case ErrorErrorCodeAlreadyAnswered:
 		return true
 	case ErrorErrorCodeBusy:
+		return true
+	case ErrorErrorCodeCampClosed:
 		return true
 	case ErrorErrorCodeForbiddenOrigin:
 		return true
@@ -489,6 +492,15 @@ type LearnReasonCode string
 
 // LearnStatus defines model for LearnStatus.
 type LearnStatus struct {
+	// CampMinWords Сколько слов нужно, чтобы «Привал» открылся
+	CampMinWords int `json:"campMinWords"`
+
+	// CampOpen Открыт ли «Привал»
+	CampOpen bool `json:"campOpen"`
+
+	// CampWords Слов известно «Привалу» (изучено и отмечено «знаю»)
+	CampWords int `json:"campWords"`
+
 	// Introduced Слов введено, но ещё не вспомнено хорошо
 	Introduced int `json:"introduced"`
 
