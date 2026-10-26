@@ -156,6 +156,9 @@ func (s *authServer) GetLearnStatus(w http.ResponseWriter, r *http.Request) {
 			out.KnownAtStart = int(c.Count)
 		}
 	}
+	out.CampWords = out.Learned + out.KnownAtStart
+	out.CampMinWords = campMinWords
+	out.CampOpen = out.CampWords >= campMinWords
 	switch b, err := s.store.KbLatestBuild(ctx); {
 	case err == nil:
 		out.KbReady = b.Status == "ok"

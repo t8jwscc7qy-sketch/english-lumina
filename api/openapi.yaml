@@ -249,7 +249,10 @@ paths:
       summary: Следующее упражнение
       description: >
         Упражнение с пропуском: предложение, перевод-подсказка и варианты ответа (пустой список — ввод вручную).
-        Верного ответа в теле нет. Если подходящего не нашлось, 404 с кодом no_exercise.
+        Верного ответа в теле нет. Если подходящего не нашлось, 404 с кодом no_exercise. Режим «Привал» включается
+        параметром mode=camp в строке запроса (читается без объявления в контракте: параметр запроса заставил бы
+        генератор добавить новую зависимость): только предложения, где не меньше camp_coverage слов изучено. Пока
+        изучено меньше campMinWords слов, 404 с кодом camp_closed.
       responses:
         "200":
           description: Упражнение
@@ -614,7 +617,7 @@ components:
           description: Объяснение по-русски
     LearnStatus:
       type: object
-      required: [learned, introduced, knownAtStart, newToday, limit, remaining, reason, mode, perDay, kbReady]
+      required: [learned, introduced, knownAtStart, newToday, limit, remaining, reason, mode, perDay, kbReady, campWords, campMinWords, campOpen]
       properties:
         learned:
           type: integer
@@ -643,6 +646,15 @@ components:
         kbReady:
           type: boolean
           description: Собрана ли база знаний
+        campWords:
+          type: integer
+          description: Слов известно «Привалу» (изучено и отмечено «знаю»)
+        campMinWords:
+          type: integer
+          description: Сколько слов нужно, чтобы «Привал» открылся
+        campOpen:
+          type: boolean
+          description: Открыт ли «Привал»
     LearnWord:
       type: object
       required: [lexemeId, lemma, pos, level, translations, forms, synonyms, examples]
@@ -1434,7 +1446,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, no_words, limit_reached, already_answered, invalid_answer, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, no_words, camp_closed, limit_reached, already_answered, invalid_answer, internal]
             message:
               type: string
               description: Текст для пользователя на русском

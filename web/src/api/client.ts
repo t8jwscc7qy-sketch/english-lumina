@@ -134,8 +134,8 @@ export type Rating = components['schemas']['Rating']
 export type TopicList = components['schemas']['TopicList']
 
 /** Следующее упражнение; 404 с кодом no_exercise значит, что подходящих пока нет. */
-export async function getNextExercise(): Promise<Exercise> {
-  const res = await request('/api/v1/exercises/next')
+export async function getNextExercise(mode?: 'camp'): Promise<Exercise> {
+  const res = await request(mode ? `/api/v1/exercises/next?mode=${mode}` : '/api/v1/exercises/next')
   return (await res.json()) as Exercise
 }
 

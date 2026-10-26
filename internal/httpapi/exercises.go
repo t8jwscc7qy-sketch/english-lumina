@@ -96,6 +96,19 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	camp := campRequested(r)
+	if camp {
+		f, err := s.loadCamp(ctx, user.ID)
+		if errors.Is(err, errCampClosed) {
+			writeCampClosed(w)
+			return
+		}
+		if err != nil {
+			s.failExercises(w, err)
+			return
+		}
+		ctx = context.WithValue(ctx, campKey{}, f)
+	}
 	// Сначала возвращаем ошибки, которым пора: так работает банк ошибок.
 	if rep, ok, err := s.repeatExercise(ctx, user.ID, time.Now()); err != nil {
 		s.failExercises(w, err)
@@ -119,6 +132,12 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if camp {
+		// Предложение сменить уровень считает ответы по темам level:*; в «Привале» предложения облегчены известными
+		// словами, и такие ответы уровень не измеряют. Цели level:* там и не из изученного.
+		available = slices.DeleteFunc(available, func(t string) bool { return strings.HasPrefix(t, "level:") })
+	}
+	campBudget := campTotalTries
 	var rng idRange
 	for try := 0; try < maxTopicTries; try++ {
 		topic, ok := exercises.PickTopic(ratings, available)
@@ -133,26 +152,41 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		}
 		var cand gapCandidate
 		var found bool
-		switch {
-		case topic == orderTopic:
-			cand, found, err = s.orderCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
-		case topic == translateTopic:
-			cand, found, err = s.translateCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
-		case topic == formTopic:
-			cand, found, err = s.formCandidate(ctx, &rng, user.ID, userLevel, used)
-		case topic == matchTopic:
-			cand, found, err = s.matchCandidate(ctx, user.ID, userLevel)
-		case strings.HasPrefix(topic, "level:"):
-			cand, found, err = s.levelCandidate(ctx, topic, used)
-		default:
-			cand, found, err = s.grammarCandidate(ctx, &rng, topic, used)
+		attempts := 1
+		if camp {
+			attempts = min(campWindowTries, campBudget) // общий бюджет окон на запрос: худший случай не растёт с числом тем
+			if attempts == 0 {
+				break
+			}
 		}
-		if err != nil {
-			s.failExercises(w, err)
-			return
+		for attempt := 0; attempt < attempts && !found; attempt++ {
+			if camp {
+				campBudget--
+			}
+			switch {
+			case topic == orderTopic:
+				cand, found, err = s.orderCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
+			case topic == translateTopic:
+				cand, found, err = s.translateCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
+			case topic == formTopic:
+				cand, found, err = s.formCandidate(ctx, &rng, user.ID, userLevel, used)
+			case topic == matchTopic:
+				cand, found, err = s.matchCandidate(ctx, user.ID, userLevel)
+			case strings.HasPrefix(topic, "level:"):
+				cand, found, err = s.levelCandidate(ctx, topic, used)
+			default:
+				cand, found, err = s.grammarCandidate(ctx, &rng, topic, used)
+			}
+			if err != nil {
+				s.failExercises(w, err)
+				return
+			}
 		}
 		if !found {
 			continue
+		}
+		if camp {
+			cand.level = "" // тема level:* не записывается (см. выше)
 		}
 		ex, err := s.saveExercise(ctx, user.ID, topic, cand)
 		if err != nil {
@@ -162,7 +196,7 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, ex)
 		return
 	}
-	writeError(w, http.StatusNotFound, api.ErrorErrorCodeNoExercise, "Подходящих упражнений пока нет")
+	writeError(w, http.StatusNotFound, api.ErrorErrorCodeNoExercise, campOrDefaultText(camp))
 }
 
 // ListExerciseTopics отдаёт рейтинги тем, по которым пользователь уже занимался.
@@ -340,4 +374,11 @@ func posTopic(pos string) string {
 		return ""
 	}
 	return "pos:" + pos
+}
+
+func campOrDefaultText(camp bool) string {
+	if camp {
+		return campNoMatchText
+	}
+	return "Подходящих упражнений пока нет"
 }

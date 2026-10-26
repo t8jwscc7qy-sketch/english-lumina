@@ -9,6 +9,7 @@ import { ProgressPage } from '@/features/progress/ProgressPage'
 import { SessionPage } from '@/features/session/SessionPage'
 import { ExercisesPage } from '@/features/exercises/ExercisesPage'
 import { MistakesPage } from '@/features/mistakes/MistakesPage'
+import { CampPage } from '@/features/camp/CampPage'
 import { LearnPage } from '@/features/learn/LearnPage'
 import { PlacementPage } from '@/features/learn/PlacementPage'
 import { CardsPage } from '@/features/cards/CardsPage'
@@ -49,6 +50,7 @@ export const routes: RouteObject[] = [
       { path: 'cards', element: <CardsPage /> },
       { path: 'learn', element: <LearnPage /> },
       { path: 'learn/placement', element: <PlacementPage /> },
+      { path: 'camp', element: <CampPage /> },
       { path: 'exercises', element: <ExercisesPage /> },
       { path: 'session', element: <SessionPage /> },
       { path: 'words', element: <WordsPage /> },

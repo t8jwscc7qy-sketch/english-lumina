@@ -168,3 +168,15 @@ func (f *fakeStore) LearnUpsertPreferences(_ context.Context, arg db.LearnUpsert
 	f.learnPrefs = &p
 	return p, nil
 }
+
+func (f *fakeStore) LearnKnownWords(_ context.Context, _ int64) ([]db.LearnKnownWordsRow, error) {
+	var out []db.LearnKnownWordsRow
+	for id, w := range f.wl {
+		if w.status == "learned" || w.status == "known_at_start" {
+			lx := f.lexemesByID[id]
+			out = append(out, db.LearnKnownWordsRow{LexemeID: id, Lemma: lx.Lemma, Pos: lx.Pos})
+		}
+	}
+	slices.SortFunc(out, func(a, b db.LearnKnownWordsRow) int { return int(a.LexemeID - b.LexemeID) })
+	return out, nil
+}

@@ -58,7 +58,7 @@ func TestLearnTables(t *testing.T) {
 	d := word("delta", "A2", 1, []string{"дельта"})
 	e := word("echo", "A1", 2, []string{"эхо"}) // есть карточка
 	f := word("foxtrot", "A1", 3, []string{"фокстрот"})
-	_ = word("IT", "A1", 4, []string{"ай-ти"})       // не строчное слово из букв: в блок не берётся
+	_ = word("IT", "A1", 4, []string{"ай-ти"})        // не строчное слово из букв: в блок не берётся
 	_ = word("a.m./p.m.", "A1", 6, []string{"время"}) // с точками и слэшем: не берётся
 	if _, err := pool.Exec(ctx, `INSERT INTO cards (user_id, lexeme_id, due, stability, difficulty, scheduled_days, reps, lapses, state, remaining_steps) VALUES ($1, $2, now(), 1, 1, 0, 1, 0, 1, 0)`, user.ID, e); err != nil {
 		t.Fatal(err)
@@ -135,6 +135,9 @@ func TestLearnTables(t *testing.T) {
 	}
 	if byStatus["learned"] != 2 || byStatus["known_at_start"] != 1 || byStatus["introduced"] != 0 {
 		t.Fatalf("по статусам: %v", byStatus)
+	}
+	if known, err := q.LearnKnownWords(ctx, user.ID); err != nil || len(known) != 3 { // f и a изучены, b «знаю»
+		t.Fatalf("известные слова: %+v %v", known, err)
 	}
 	if n, err := q.LearnIntroducedSince(ctx, db.LearnIntroducedSinceParams{UserID: user.ID, Since: ts(now.Add(-time.Hour))}); err != nil || n != 1 {
 		t.Fatalf("введено за час: %d %v", n, err)

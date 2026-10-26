@@ -89,6 +89,7 @@ type AuthStore interface {
 	LearnMarkKnown(ctx context.Context, arg db.LearnMarkKnownParams) (int64, error)
 	LearnMarkLearned(ctx context.Context, arg db.LearnMarkLearnedParams) (int64, error)
 	LearnReviewStats(ctx context.Context, arg db.LearnReviewStatsParams) (db.LearnReviewStatsRow, error)
+	LearnKnownWords(ctx context.Context, userID int64) ([]db.LearnKnownWordsRow, error)
 	LearnGetPreferences(ctx context.Context, userID int64) (db.LearnPreference, error)
 	LearnUpsertPreferences(ctx context.Context, arg db.LearnUpsertPreferencesParams) (db.LearnPreference, error)
 	KbListChosenTranslations(ctx context.Context, arg db.KbListChosenTranslationsParams) ([]db.KbListChosenTranslationsRow, error)

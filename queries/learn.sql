@@ -73,3 +73,10 @@ WHERE lv.level = ANY(sqlc.arg(levels)::text[])
   AND NOT EXISTS (SELECT 1 FROM cards cd WHERE cd.user_id = sqlc.arg(user_id) AND cd.lexeme_id = l.id)
 ORDER BY lv.level, st.freq_rank NULLS LAST, l.id
 LIMIT sqlc.arg(max_rows)::int OFFSET sqlc.arg(row_offset)::int;
+
+-- name: LearnKnownWords :many
+-- Известные слова для «Привала»: изучено или отмечено «знаю».
+SELECT l.id AS lexeme_id, l.lemma, l.pos
+FROM word_learning w
+JOIN lexemes l ON l.id = w.lexeme_id
+WHERE w.user_id = $1 AND w.status IN ('learned', 'known_at_start');

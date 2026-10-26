@@ -8,8 +8,8 @@ export const nextExerciseKey = ['exercises', 'next'] as const
 export const topicsKey = ['exercises', 'topics'] as const
 
 /** Текущее упражнение. Кэш не переиспользуется; фокус окна и возврат сети его не меняют: следующее берётся только явным refetch после «Дальше». */
-export function useNextExercise() {
-  return useQuery({ queryKey: nextExerciseKey, queryFn: getNextExercise, retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false })
+export function useNextExercise(mode?: 'camp') {
+  return useQuery({ queryKey: mode ? [...nextExerciseKey, mode] : nextExerciseKey, queryFn: () => getNextExercise(mode), retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false })
 }
 
 export function useTopics() {

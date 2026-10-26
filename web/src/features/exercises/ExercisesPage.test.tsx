@@ -555,3 +555,47 @@ describe('ExercisesPage: повтор ошибки', () => {
     await waitFor(() => expect(client.getQueryState(['mistakes'])?.isInvalidated).toBe(true))
   })
 })
+
+describe('ExercisesPage: Привал', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  function stubCamp(next: () => Response) {
+    const urls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/exercises/next')) {
+          urls.push(url)
+          return next()
+        }
+        return jsonResponse(200, { topics: [] })
+      }),
+    )
+    return urls
+  }
+
+  const renderCamp = () => renderAt('/exercises?mode=camp', [{ path: '/exercises', element: <ExercisesPage /> }])
+
+  it('просит упражнение с mode=camp', async () => {
+    const urls = stubCamp(() => errorResponse(404, 'no_exercise', 'x'))
+    renderCamp()
+    expect(await screen.findByRole('heading', { name: 'Упражнения Привала' })).toBeInTheDocument()
+    expect(urls[0]).toContain('mode=camp')
+  })
+
+  it('закрытый Привал — спокойное сообщение со ссылкой, не ошибка', async () => {
+    stubCamp(() => errorResponse(404, 'camp_closed', 'Привал откроется, когда ты изучишь больше слов'))
+    renderCamp()
+    expect(await screen.findByRole('heading', { name: 'Привал пока закрыт' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'К Привалу' })).toHaveAttribute('href', '/camp')
+  })
+
+  it('нет подходящих предложений — совет добавить слов', async () => {
+    stubCamp(() => errorResponse(404, 'no_exercise', 'x'))
+    renderCamp()
+    expect(await screen.findByText(/Добавь слов/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Знакомство' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Попробовать ещё' })).toBeInTheDocument()
+  })
+})
