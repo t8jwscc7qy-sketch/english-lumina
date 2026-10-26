@@ -23,6 +23,9 @@ export type SpeakHandlers = {
   onEnd?: () => void
 }
 
+/** Громкость по умолчанию ниже максимума: записи Tatoeba и синтез браузера бывают очень громкими. */
+export const DEFAULT_VOLUME = 0.4
+
 let session = 0
 let current: HTMLAudioElement | null = null
 
@@ -37,6 +40,7 @@ function synth(item: SpeakItem, i: number, rate: number, handlers: SpeakHandlers
   const u = new SpeechSynthesisUtterance(item.text)
   u.lang = 'en-US'
   u.rate = rate
+  u.volume = DEFAULT_VOLUME
   u.onstart = () => handlers.onSentence?.(i)
   u.onboundary = (e) => handlers.onWord?.(i, e.charIndex)
   live.add(u)
@@ -68,6 +72,7 @@ export function speak(items: SpeakItem[], rate: number, handlers: SpeakHandlers 
     if (item.audioUrl && typeof Audio !== 'undefined') {
       const a = new Audio(item.audioUrl)
       a.playbackRate = rate
+      a.volume = DEFAULT_VOLUME
       current = a
       a.onplay = () => handlers.onSentence?.(i)
       a.onended = () => next(i + 1)

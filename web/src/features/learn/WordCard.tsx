@@ -3,7 +3,7 @@ import type { LearnWord } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { HighlightedText } from '@/features/words/HighlightedText'
 import { TatoebaCredit } from '@/features/words/TatoebaCredit'
-import { canPlay, speak as playItems } from '@/features/read/speech'
+import { canPlay, DEFAULT_VOLUME, speak as playItems } from '@/features/read/speech'
 
 /** Произнести слово синтезом речи браузера: запасной путь, если записи нет или она не играет. */
 function speak(text: string) {
@@ -11,6 +11,7 @@ function speak(text: string) {
   window.speechSynthesis.cancel()
   const u = new SpeechSynthesisUtterance(text)
   u.lang = 'en-US'
+  u.volume = DEFAULT_VOLUME
   window.speechSynthesis.speak(u)
 }
 
@@ -26,6 +27,7 @@ function Listen({ word }: { word: LearnWord }) {
   function play() {
     if (!word.audioUrl || failed) return speak(word.lemma)
     audio.current ??= new Audio(word.audioUrl)
+    audio.current.volume = DEFAULT_VOLUME
     audio.current.currentTime = 0
     audio.current.play().catch(() => {
       setFailed(true)
