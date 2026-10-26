@@ -78,6 +78,8 @@ type AuthStore interface {
 	RandomLexemesByLevel(ctx context.Context, arg db.RandomLexemesByLevelParams) ([]db.RandomLexemesByLevelRow, error)
 	ListEnglishAlternatives(ctx context.Context, arg db.ListEnglishAlternativesParams) ([]db.ListEnglishAlternativesRow, error)
 	ListTranslateAlternatives(ctx context.Context, arg db.ListTranslateAlternativesParams) ([]db.ListTranslateAlternativesRow, error)
+	KbGetTeachingCards(ctx context.Context, lexemeIds []int64) ([]db.KbGetTeachingCardsRow, error)
+	KbListChosenTranslations(ctx context.Context, arg db.KbListChosenTranslationsParams) ([]db.KbListChosenTranslationsRow, error)
 	ListWeakCardWords(ctx context.Context, arg db.ListWeakCardWordsParams) ([]db.ListWeakCardWordsRow, error)
 
 	InsertMistake(ctx context.Context, arg db.InsertMistakeParams) (int64, error)

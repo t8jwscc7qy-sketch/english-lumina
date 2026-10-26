@@ -38,6 +38,61 @@ async function search(text: string) {
   await userEvent.setup().type(screen.getByRole('searchbox', { name: 'Слово' }), text)
 }
 
+describe('WordsPage: база знаний', () => {
+  const DAD = {
+    lemma: 'dad',
+    pos: 'noun',
+    level: 'A1',
+    levels: [{ source: 'cefrj', level: 'A1', notes: [] }],
+    inCards: false,
+    ipa: 'dæd',
+    translations: ['папа', 'бать'],
+    synonyms: ['father', 'pa'],
+  }
+
+  it('показывает транскрипцию, переводы и синонимы', async () => {
+    stub(() => list(DAD))
+    renderPage()
+    await search('dad')
+    const row = await screen.findByRole('listitem')
+    const ipa = within(row).getByText('/dæd/')
+    expect(ipa).toHaveAttribute('lang', 'en-fonipa')
+    const tr = within(row).getByText('папа, бать')
+    expect(tr).toHaveAttribute('lang', 'ru')
+    const syn = within(row).getByText(/Синонимы:/)
+    expect(syn).toHaveTextContent('Синонимы: father, pa')
+    expect(within(row).getByText('father, pa')).toHaveAttribute('lang', 'en')
+  })
+
+  it('без полей базы знаний ничего лишнего не рисует', async () => {
+    stub(() => list(RUN))
+    renderPage()
+    await search('run')
+    const row = await screen.findByRole('listitem')
+    expect(within(row).queryByText(/Синонимы/)).not.toBeInTheDocument()
+    expect(within(row).queryByText(/^\/.*\/$/)).not.toBeInTheDocument()
+    expect(within(row).queryByText('Перевод')).not.toBeInTheDocument()
+  })
+
+  it('пустые списки и пустая транскрипция не создают пустых строк', async () => {
+    stub(() => list({ ...RUN, ipa: '', translations: [], synonyms: [] }))
+    renderPage()
+    await search('run')
+    const row = await screen.findByRole('listitem')
+    expect(within(row).queryByText(/Синонимы/)).not.toBeInTheDocument()
+    expect(within(row).queryByText('//')).not.toBeInTheDocument()
+  })
+
+  it('тексты из базы выводятся как текст, не как разметка', async () => {
+    stub(() => list({ ...DAD, translations: ['<b>папа</b>'], synonyms: ['<i>x</i>'] }))
+    renderPage()
+    await search('dad')
+    const row = await screen.findByRole('listitem')
+    expect(within(row).getByText('<b>папа</b>')).toBeInTheDocument()
+    expect(row.querySelector('b, i')).toBeNull()
+  })
+})
+
 describe('WordsPage', () => {
   it('до ввода показывает подсказку и ничего не запрашивает', () => {
     const fetchMock = stub(() => list())

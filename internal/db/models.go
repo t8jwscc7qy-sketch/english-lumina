@@ -64,6 +64,74 @@ type Exercise struct {
 	MistakeID  *int64
 }
 
+type KbBuild struct {
+	ID            int64
+	StartedAt     pgtype.Timestamptz
+	FinishedAt    pgtype.Timestamptz
+	Status        string
+	SchemaVersion int32
+	Sources       json.RawMessage
+	Report        json.RawMessage
+}
+
+type KbForm struct {
+	Form     string
+	LexemeID int64
+	Tag      string
+}
+
+type KbLexemeStat struct {
+	LexemeID  int64
+	FreqCount int64
+	FreqRank  *int32
+}
+
+type KbPronunciation struct {
+	ID        int64
+	LexemeID  int64
+	Accent    string
+	Ipa       string
+	AudioRef  string
+	IsPrimary bool
+	SourceID  int64
+}
+
+type KbRelation struct {
+	LexemeID      int64
+	Kind          string
+	OtherLemma    string
+	OtherLexemeID *int64
+}
+
+type KbSense struct {
+	ID       int64
+	LexemeID int64
+	SenseNo  int32
+	GlossEn  string
+	Tags     []string
+	Flags    []string
+	SourceID int64
+}
+
+type KbTeachingCard struct {
+	LexemeID int64
+	Payload  json.RawMessage
+	BuiltAt  pgtype.Timestamptz
+}
+
+type KbTranslation struct {
+	ID        int64
+	LexemeID  int64
+	SenseNo   *int32
+	Lang      string
+	Text      string
+	Score     float32
+	Rank      int32
+	Chosen    bool
+	Flags     []string
+	SourceIds []int64
+}
+
 type Lexeme struct {
 	ID        int64
 	Lemma     string

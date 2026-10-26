@@ -530,6 +530,19 @@ components:
           description: Оценки по источникам
           items:
             $ref: "#/components/schemas/WordLevel"
+        ipa:
+          type: string
+          description: Транскрипция (IPA) основного произношения из базы знаний; нет, если базы нет или слова в ней нет
+        translations:
+          type: array
+          items:
+            type: string
+          description: Русские переводы (до двух), основной первым, из базы знаний; нет, если базы нет или перевода нет
+        synonyms:
+          type: array
+          items:
+            type: string
+          description: Синонимы из базы знаний; нет, если их нет
     WordList:
       type: object
       required: [words]

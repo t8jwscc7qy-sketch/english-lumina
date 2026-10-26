@@ -431,6 +431,12 @@ export interface components {
             level: components["schemas"]["CefrLevel"];
             /** @description Оценки по источникам */
             levels: components["schemas"]["WordLevel"][];
+            /** @description Транскрипция (IPA) основного произношения из базы знаний; нет, если базы нет или слова в ней нет */
+            ipa?: string;
+            /** @description Русские переводы (до двух), основной первым, из базы знаний; нет, если базы нет или перевода нет */
+            translations?: string[];
+            /** @description Синонимы из базы знаний; нет, если их нет */
+            synonyms?: string[];
         };
         WordList: {
             words: components["schemas"]["Word"][];
