@@ -444,10 +444,25 @@ func TestStatCountSkipsAbbreviations(t *testing.T) {
 		{Form: "foot", LexemeID: 2, Tag: "lemma"},
 	}
 	counts := map[string]int64{"inch": 10, "inches": 5, "in": 7000000, "foot": 99}
-	if got := statCount(forms, 1, counts); got != 15 {
+	if got := statCount(forms, 1, counts, false); got != 15 {
 		t.Fatalf("счёт inch %d, ждали 15 (без сокращения «in»)", got)
 	}
-	if got := statCount(forms, 2, counts); got != 99 {
+	if got := statCount(forms, 2, counts, false); got != 99 {
 		t.Fatalf("чужие формы не считаются: %d", got)
+	}
+}
+
+func TestStatCountForPronounsUsesOnlyTheLemma(t *testing.T) {
+	forms := []FormRow{
+		{Form: "himself", LexemeID: 1, Tag: "lemma"}, {Form: "he", LexemeID: 1, Tag: "reflexive-of"},
+		{Form: "herself", LexemeID: 1, Tag: "feminine"}, {Form: "itself", LexemeID: 1, Tag: "neuter"}, {Form: "themselves", LexemeID: 1, Tag: "plural"},
+	}
+	counts := map[string]int64{"himself": 100, "he": 9000000, "herself": 400, "itself": 500, "themselves": 600}
+	if got := statCount(forms, 1, counts, true); got != 100 {
+		t.Fatalf("himself %d, ждали 100: чужие формы (he, herself, itself) не считаются", got)
+	}
+	// У обычного слова другая форма с тегом reflexive-of тоже не считается.
+	if got := statCount(forms, 1, counts, false); got != 100+400+500+600 {
+		t.Fatalf("без режима «только лемма» reflexive-of всё равно пропускается: %d", got)
 	}
 }

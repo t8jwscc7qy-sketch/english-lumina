@@ -19,7 +19,7 @@ JOIN kb_teaching_card c ON c.lexeme_id = l.id
 JOIN LATERAL (SELECT min(level) AS level FROM lexeme_cefr WHERE lexeme_id = l.id) lv ON true
 LEFT JOIN kb_lexeme_stat st ON st.lexeme_id = l.id
 WHERE (lv.level = ANY($1::text[]) OR st.freq_rank <= 1000)
-  AND l.lemma ~ '^[a-z]+$'
+  AND (l.lemma ~ '^[a-z]+$' OR l.lemma = 'I') -- «I» — самое частотное слово с заглавной
   AND (l.pos IN ('noun', 'verb', 'adjective', 'adverb') OR st.freq_rank <= 1000) -- у тысячи самых частых нужны и служебные слова
   AND COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof(c.payload->'translations') = 'array' THEN c.payload->'translations' END), 0) > 0
   AND NOT EXISTS (SELECT 1 FROM word_learning w WHERE w.user_id = $2 AND w.lexeme_id = l.id)
