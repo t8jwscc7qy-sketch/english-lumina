@@ -3,6 +3,7 @@ package httpapi
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -125,5 +126,35 @@ func TestLearnStatusReportsCamp(t *testing.T) {
 	e.store.wl[50] = fakeWord{status: "known_at_start", source: "placement"}
 	if s := decodeStatus(t, getLearn(t, e, token, learnStatusPath).Body.String()); !s.CampOpen || s.CampWords != 50 {
 		t.Fatalf("50 слов: %+v", s)
+	}
+}
+
+func TestCampDoesNotRecordLevelTopic(t *testing.T) {
+	e, token := campEnv(t, 50, "I have a dog.", "dog")
+	rec := e.do(http.MethodGet, nextCampPath, "", withCookie(token))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
+	}
+	ex := decodeExercise(t, rec)
+	for _, topic := range e.store.exercises[ex.Id].Topics {
+		if strings.HasPrefix(topic, "level:") {
+			t.Fatalf("в «Привале» тема %q не записывается: иначе ответы сдвигают предложение сменить уровень", topic)
+		}
+	}
+	// В обычном режиме та же выдача записывает уровень.
+	e2, token2 := campEnv(t, 50, "I have a dog.", "dog")
+	ex2 := decodeExercise(t, getNext(t, e2, token2))
+	if !slices.ContainsFunc(e2.store.exercises[ex2.Id].Topics, func(s string) bool { return strings.HasPrefix(s, "level:") }) {
+		t.Fatal("обычный режим записывает level:*")
+	}
+}
+
+func TestCampNeverOffersLevelTopics(t *testing.T) {
+	e, token := campEnv(t, 50, "I have a dog.", "dog")
+	// level:A1 — самая слабая тема: без исключения она выпала бы первой.
+	e.store.topicRatings = map[topicKey]db.TopicRating{{userID: 1, topic: "level:A1"}: {UserID: 1, Topic: "level:A1", Rating: 1000, Deviation: 350}}
+	rec := e.do(http.MethodGet, nextCampPath, "", withCookie(token))
+	if rec.Code != http.StatusOK || decodeExercise(t, rec).Topic == "level:A1" {
+		t.Fatalf("статус %d, тело %s", rec.Code, rec.Body)
 	}
 }

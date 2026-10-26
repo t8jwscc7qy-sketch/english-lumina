@@ -13,6 +13,7 @@ import (
 const (
 	campMinWords    = 50 // изучено слов, чтобы «Привал» открылся
 	campWindowTries = 8  // сколько раз перебирается окно предложений, пока не найдётся подходящее по покрытию
+	campTotalTries  = 12 // всего окон на один запрос по всем темам
 	campModeParam   = "camp"
 	campClosedText  = "Привал откроется, когда ты изучишь больше слов"
 	campNoMatchText = "Подходящих упражнений пока нет, добавь слов"
@@ -28,7 +29,7 @@ type campFilter struct {
 
 // ok — предложение состоит из известных слов не меньше чем на порог.
 func (f *campFilter) ok(text string) bool {
-	return exercises.Coverage(exercises.CasedTokens(text), f.known) >= f.threshold
+	return exercises.CoverageOK(exercises.CasedTokens(text), f.known, f.threshold)
 }
 
 type campKey struct{}

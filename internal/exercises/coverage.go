@@ -1,6 +1,7 @@
 package exercises
 
 import (
+	"math"
 	"strings"
 	"unicode"
 
@@ -22,7 +23,11 @@ var functionWords = func() map[string]bool {
 		am is are was were be been being do does did done have has had having will would can could shall should may might must
 		don't doesn't didn't isn't aren't wasn't weren't won't can't couldn't wouldn't shouldn't haven't hasn't hadn't
 		i'm you're he's she's it's we're they're i've you've we've they've i'll you'll he'll she'll we'll they'll i'd you'd
-		that's there here very too also just all any some one each every more most much many`) {
+		that's there here very too also just all any some one each every more most much many
+		two three four five six seven eight nine ten first second something nothing anything everything someone everyone
+		anyone nobody myself yourself himself herself itself ourselves themselves before after without through until while
+		since both other another let's what's there's who's where's how's please against between during among within
+		upon across behind beside beyond except onto toward towards whether though although unless once`) {
 		m[w] = true
 	}
 	return m
@@ -41,24 +46,67 @@ func KnownForms(lemmas []LemmaPos) map[string]bool {
 	return known
 }
 
-// Coverage — доля известных слов среди учитываемых в предложении. tokens — слова в исходном регистре
-// (CasedTokens). Не учитываются числа и слова с заглавной буквы не в начале предложения (имена); служебные слова
-// считаются известными. Нет учитываемых слов — покрытие полное.
-func Coverage(tokens []string, known map[string]bool) float64 {
-	total, hit := 0, 0
+// isKnown — слово известно: служебное, среди форм изученных слов, без притяжательного окончания ('s, s') или
+// составное через дефис, все части которого известны.
+func isKnown(lower string, known map[string]bool) bool {
+	if known[lower] || functionWords[lower] {
+		return true
+	}
+	if base, ok := strings.CutSuffix(lower, "'s"); ok && base != "" {
+		return isKnown(base, known)
+	}
+	if base, ok := strings.CutSuffix(lower, "s'"); ok && base != "" {
+		return known[base] || known[base+"s"] || functionWords[base]
+	}
+	if parts := strings.Split(lower, "-"); len(parts) > 1 {
+		for _, p := range parts {
+			if p == "" || !isKnown(p, known) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// counts возвращает число учитываемых слов и сколько среди них неизвестных. Не учитываются числа и слова с заглавной
+// буквы не в начале предложения (имена); служебные слова считаются известными.
+func counts(tokens []string, known map[string]bool) (total, unknown int) {
 	for i, t := range tokens {
 		r := []rune(t)
 		if len(r) == 0 || unicode.IsDigit(r[0]) || (i > 0 && unicode.IsUpper(r[0])) {
 			continue
 		}
 		total++
-		lower := strings.ToLower(t)
-		if known[lower] || functionWords[lower] {
-			hit++
+		if !isKnown(strings.ToLower(t), known) {
+			unknown++
 		}
 	}
+	return total, unknown
+}
+
+// Coverage — доля известных слов среди учитываемых в предложении. tokens — слова в исходном регистре
+// (CasedTokens). Нет учитываемых слов — покрытие полное.
+func Coverage(tokens []string, known map[string]bool) float64 {
+	total, unknown := counts(tokens, known)
 	if total == 0 {
 		return 1
 	}
-	return float64(hit) / float64(total)
+	return float64(total-unknown) / float64(total)
+}
+
+// minLenientWords — с этой длины (учитываемых слов) допускается одно неизвестное слово при любом пороге: предложения
+// короткие (4–12 слов), и без этого порог 0,92–0,99 означал бы «все слова известны», а предложение с именем в начале
+// (оно считается словом) отсекалось бы всегда.
+const minLenientWords = 8
+
+// CoverageOK — предложение проходит порог покрытия: неизвестных слов не больше floor((1 − порог) × n), но при
+// n ≥ minLenientWords не меньше одного.
+func CoverageOK(tokens []string, known map[string]bool, threshold float64) bool {
+	total, unknown := counts(tokens, known)
+	allowed := int(math.Floor((1-threshold)*float64(total) + 1e-9))
+	if total >= minLenientWords {
+		allowed = max(allowed, 1)
+	}
+	return unknown <= allowed
 }

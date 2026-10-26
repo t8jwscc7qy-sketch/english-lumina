@@ -132,6 +132,12 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if camp {
+		// Предложение сменить уровень считает ответы по темам level:*; в «Привале» предложения облегчены известными
+		// словами, и такие ответы уровень не измеряют. Цели level:* там и не из изученного.
+		available = slices.DeleteFunc(available, func(t string) bool { return strings.HasPrefix(t, "level:") })
+	}
+	campBudget := campTotalTries
 	var rng idRange
 	for try := 0; try < maxTopicTries; try++ {
 		topic, ok := exercises.PickTopic(ratings, available)
@@ -148,9 +154,15 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		var found bool
 		attempts := 1
 		if camp {
-			attempts = campWindowTries
+			attempts = min(campWindowTries, campBudget) // общий бюджет окон на запрос: худший случай не растёт с числом тем
+			if attempts == 0 {
+				break
+			}
 		}
 		for attempt := 0; attempt < attempts && !found; attempt++ {
+			if camp {
+				campBudget--
+			}
 			switch {
 			case topic == orderTopic:
 				cand, found, err = s.orderCandidate(ctx, &rng, orderMaxLevel(userLevel), used)
@@ -172,6 +184,9 @@ func (s *authServer) GetNextExercise(w http.ResponseWriter, r *http.Request) {
 		}
 		if !found {
 			continue
+		}
+		if camp {
+			cand.level = "" // тема level:* не записывается (см. выше)
 		}
 		ex, err := s.saveExercise(ctx, user.ID, topic, cand)
 		if err != nil {

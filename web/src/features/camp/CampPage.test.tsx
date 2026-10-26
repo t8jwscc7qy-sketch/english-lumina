@@ -35,7 +35,7 @@ describe('CampPage', () => {
     render()
     expect(await screen.findByRole('heading', { name: 'Привал открыт' })).toBeInTheDocument()
     expect(screen.getByText('Изучено слов: 73')).toBeInTheDocument()
-    expect(await screen.findByText(/не меньше 95% слов/)).toBeInTheDocument()
+    expect(await screen.findByText(/около 95% слов/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Упражнения Привала' })).toHaveAttribute('href', '/exercises?mode=camp')
   })
 })

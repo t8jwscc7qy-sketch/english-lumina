@@ -596,5 +596,6 @@ describe('ExercisesPage: Привал', () => {
     renderCamp()
     expect(await screen.findByText(/Добавь слов/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Знакомство' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Попробовать ещё' })).toBeInTheDocument()
   })
 })

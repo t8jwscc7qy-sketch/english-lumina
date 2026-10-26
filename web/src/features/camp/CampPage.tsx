@@ -39,7 +39,7 @@ export function CampPage() {
             <p className="tabular-nums">{`Изучено слов: ${s.campWords}${s.campOpen ? '' : ` из ${s.campMinWords}`}`}</p>
             {prefs.data && (
               <p className="text-sm text-muted-foreground">
-                {`В предложениях известно не меньше ${Math.round(prefs.data.campCoverage * 100)}% слов (меняется в настройках).`}
+                {`В предложениях известно около ${Math.round(prefs.data.campCoverage * 100)}% слов, в длинных допускается одно незнакомое (порог меняется в настройках).`}
               </p>
             )}
           </FoxNote>

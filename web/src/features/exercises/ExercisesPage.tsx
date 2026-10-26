@@ -55,9 +55,12 @@ export function ExercisesPage() {
             <h2 className="text-title">Подходящих упражнений пока нет</h2>
             <p className="text-muted-foreground">Добавь слов: чем больше изучено, тем больше предложений подойдёт.</p>
           </FoxNote>
-          <Button asChild>
-            <Link to="/learn">Знакомство</Link>
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => next.refetch()}>Попробовать ещё</Button>
+            <Button asChild variant="secondary">
+              <Link to="/learn">Знакомство</Link>
+            </Button>
+          </div>
         </section>
       )}
 
