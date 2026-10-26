@@ -19,6 +19,7 @@ const (
 	maxRelations          = 10 // синонимов (и антонимов) на слово
 	maxCardForms          = 8  // форм слова в карточке
 	sampleSize            = 50 // слов в выборке отчёта
+	minSubstringSense     = 5  // короче этого пояснение ищется только по общим значимым словам
 )
 
 // Lexeme — слово из таблицы lexemes; Level — самый низкий уровень CEFR среди источников (может быть пуст).
@@ -287,10 +288,12 @@ func matchSense(senses []keptSense, text string) (int, []string) {
 	if text == "" {
 		return 0, nil
 	}
-	for _, s := range senses {
-		for _, g := range s.gloss {
-			if strings.Contains(strings.ToLower(g), text) {
-				return s.no, s.tags
+	if len(text) >= minSubstringSense { // короткий текст («go») нашёлся бы внутри чужого слова («good»)
+		for _, s := range senses {
+			for _, g := range s.gloss {
+				if strings.Contains(strings.ToLower(g), text) {
+					return s.no, s.tags
+				}
 			}
 		}
 	}

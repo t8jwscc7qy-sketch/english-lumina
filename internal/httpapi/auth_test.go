@@ -93,6 +93,7 @@ type fakeStore struct {
 	kbCards          map[int64]json.RawMessage        // карточки слов базы знаний (ListTeachingCards)
 	kbTranslations   map[int64][]string               // выбранные русские переводы слов в базе знаний, основной первым
 	failKb           bool                             // чтение базы знаний падает (например, миграция не применена)
+	kbFlags          map[int64]map[string][]string    // пометки выбранных переводов: слово → перевод → пометки
 	translationCalls int
 	failTranslations bool
 }

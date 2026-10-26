@@ -375,3 +375,63 @@ func TestExplainShowsCandidates(t *testing.T) {
 		t.Fatal("слово задаётся как лемма/часть_речи")
 	}
 }
+
+func TestBuildRequiresRegisteredKaikkiSource(t *testing.T) {
+	pool := testdb.Pool(t)
+	seed(t, pool)
+	if _, err := pool.Exec(context.Background(), `DELETE FROM data_sources WHERE name = $1`, kaikki.Name); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Build(context.Background(), pool, sampleReader(t), Options{})
+	if err == nil || !strings.Contains(err.Error(), "kb-prepare") {
+		t.Fatalf("ждали понятную ошибку про незарегистрированный источник Kaikki, получили %v", err)
+	}
+	if n := count(t, pool, "kb_sense"); n != 0 {
+		t.Fatalf("данные записаны: %d значений", n)
+	}
+}
+
+func TestThresholdLine(t *testing.T) {
+	pool := testdb.Pool(t)
+	seed(t, pool)
+	rep, err := Preview(context.Background(), pool, sampleReader(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ThresholdLine(rep, kb.Options{}); got != "пороги качества: пройдены" {
+		t.Fatalf("%q", got)
+	}
+	got := ThresholdLine(rep, kb.Options{MinCoverage: map[string]float64{"A1": 0.99}})
+	if !strings.HasPrefix(got, "пороги качества: НЕ пройдены") || !strings.Contains(got, "A1") {
+		t.Fatalf("%q", got)
+	}
+}
+
+func TestBuildConcurrentBuildsDoNotConflict(t *testing.T) {
+	pool := testdb.Pool(t)
+	seed(t, pool)
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range errs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			f, err := os.Open(samplePath)
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			defer func() { _ = f.Close() }()
+			_, errs[i] = Build(context.Background(), pool, f, Options{})
+		}()
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("сборка %d: %v", i, err)
+		}
+	}
+	if count(t, pool, "kb_teaching_card") == 0 {
+		t.Fatal("после двух одновременных сборок данных нет")
+	}
+}

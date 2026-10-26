@@ -78,6 +78,17 @@ type rawLink struct {
 	Tags []string `json:"tags"`
 }
 
+// hasFormOfTag: значение сообщает лишь, что это форма или вариант другого слова.
+func hasFormOfTag(tags []string) bool {
+	return slices.ContainsFunc(tags, func(t string) bool {
+		switch strings.ToLower(t) {
+		case "form-of", "alt-of", "alternative", "abbreviation-of":
+			return true
+		}
+		return false
+	})
+}
+
 // skipLinkTags — пометки связей (синонимов и антонимов), с которыми слово не берётся: грубое, просторечное, устаревшее.
 var skipLinkTags = []string{"vulgar", "offensive", "derogatory", "slang", "archaic", "obsolete", "dated", "dialectal", "nonstandard", "rare"}
 
@@ -154,6 +165,9 @@ func ParseEntry(line []byte) (Entry, error) {
 	}
 	e := Entry{Word: *r.Word, Pos: r.Pos, LangCode: r.LangCode, EtymNo: int(r.EtymNo)}
 	for _, s := range r.Senses {
+		if hasFormOfTag(s.Tags) {
+			continue // «past tense of find», «alternative spelling of …»: это форма или вариант, а не значение слова
+		}
 		glosses := s.Glosses
 		if len(glosses) == 0 {
 			glosses = s.RawGlosses // у части записей чистых значений нет

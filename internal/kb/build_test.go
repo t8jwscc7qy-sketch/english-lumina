@@ -316,7 +316,8 @@ func TestAssembleTranslationGroupsAndSenseMatching(t *testing.T) {
 }
 
 // У слова бывает несколько статей по этимологии: группы переводов нумеруются сквозь статьи по порядку этимологии,
-// иначе «первая группа» второй статьи (косяк рыб) обгоняет основное значение первой (школа).
+// иначе «первая группа» второй статьи (косяк рыб) обгоняет основное значение первой (школа). Частота слов одинаковая:
+// иначе тест проходил бы и без нумерации статей.
 func TestAssembleEtymologyOrderDecidesGroups(t *testing.T) {
 	school := Entry{Word: "school", Pos: "noun", LangCode: "en", EtymNo: 1,
 		Senses:       []Sense{{Glosses: []string{"An institution dedicated to teaching and learning."}}},
@@ -327,7 +328,7 @@ func TestAssembleEtymologyOrderDecidesGroups(t *testing.T) {
 		Translations: []Translation{{Code: "ru", Word: "косяк", Sense: "group of fish"}},
 	}
 	for _, order := range [][]Entry{{school, fish}, {fish, school}} {
-		in := Inputs{Lexemes: []Lexeme{{1, "school", "noun", "A1"}}, Entries: order, RuRank: map[string]int{"школа": 200, "косяк": 6000}, SourceIDs: map[string]int64{"kaikki": 11}}
+		in := Inputs{Lexemes: []Lexeme{{1, "school", "noun", "A1"}}, Entries: order, RuRank: map[string]int{"школа": 1000, "косяк": 1000}, SourceIDs: map[string]int64{"kaikki": 11}}
 		out, _ := Assemble(in)
 		if got := chosenTexts(out, 1); len(got) == 0 || got[0] != "школа" {
 			t.Fatalf("основной перевод school: %v", got)
@@ -417,5 +418,20 @@ func TestAssembleFiltersNoisyFormsAndSynonyms(t *testing.T) {
 	got, _ := card["synonyms"].([]any)
 	if len(got) != 3 || got[0] != "father" || got[1] != "papa" || got[2] != "pa" {
 		t.Fatalf("в карточке синонимы по убыванию частоты: %v", got)
+	}
+}
+
+// Короткое пояснение («go») не должно находиться подстрокой внутри чужого слова («good») и переносить чужие пометки.
+func TestAssembleShortSenseTextDoesNotMatchInsideWords(t *testing.T) {
+	entry := Entry{Word: "go", Pos: "verb", LangCode: "en",
+		Senses:       []Sense{{Glosses: []string{"A good thing to do."}, Tags: []string{"obsolete"}}},
+		Translations: []Translation{{Code: "ru", Word: "идти", Sense: "go"}},
+	}
+	in := Inputs{Lexemes: []Lexeme{{1, "go", "verb", "A1"}}, Entries: []Entry{entry}, SourceIDs: map[string]int64{"kaikki": 11}}
+	out, _ := Assemble(in)
+	for _, r := range out.Translations {
+		if r.Text == "идти" && (r.SenseNo != nil || len(r.Flags) > 0) {
+			t.Fatalf("«go» не должно привязаться к «good»: %+v", r)
+		}
 	}
 }

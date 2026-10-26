@@ -40,6 +40,8 @@ CREATE TABLE kb_translation (
 );
 CREATE UNIQUE INDEX kb_translation_chosen ON kb_translation (lexeme_id, lang, rank) WHERE chosen;
 CREATE INDEX kb_translation_lexeme ON kb_translation (lexeme_id) WHERE chosen;
+-- Под составной внешний ключ на kb_sense (каскадное удаление значений без полного просмотра).
+CREATE INDEX kb_translation_sense ON kb_translation (lexeme_id, sense_no);
 
 CREATE TABLE kb_pronunciation (
     id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -67,6 +69,7 @@ CREATE TABLE kb_relation (
     other_lexeme_id  bigint REFERENCES lexemes (id) ON DELETE SET NULL,
     PRIMARY KEY (lexeme_id, kind, other_lemma)
 );
+CREATE INDEX kb_relation_other ON kb_relation (other_lexeme_id) WHERE other_lexeme_id IS NOT NULL;
 
 CREATE TABLE kb_lexeme_stat (
     lexeme_id  bigint PRIMARY KEY REFERENCES lexemes (id) ON DELETE CASCADE,

@@ -64,13 +64,16 @@ func run(ctx context.Context, args []string) error {
 		if err != nil {
 			return fmt.Errorf("нет сведений о файле Kaikki (%s.meta), запустите go run ./cmd/kb-prepare kaikki: %w", path, err)
 		}
+		if meta.FileSHA256 != kaikki.FileSHA256 {
+			return errors.New("подготовленный файл сделан по другой версии Kaikki, чем закреплена в коде: запустите go run ./cmd/kb-prepare kaikki")
+		}
 		if meta.LemmasHash != kb.LemmasHash(lemmas) {
 			return errors.New("список слов изменился после подготовки Kaikki: запустите go run ./cmd/kb-prepare kaikki")
 		}
 		in = f
 		opts.Sources = map[string]any{"kaikki": map[string]any{"version": kaikki.DumpDate, "fileSha256": meta.FileSHA256, "selected": meta.Selected}}
 	} else if errors.Is(err, os.ErrNotExist) {
-		fmt.Fprintln(os.Stderr, "файла Kaikki нет (запустите kb-prepare kaikki): сборка только из прежних источников")
+		fmt.Fprintln(os.Stderr, "файла Kaikki нет (запустите kb-prepare kaikki): только прежние источники; контрольный список будет ниже порога, и обычная сборка, скорее всего, не пройдёт проверку качества")
 	} else {
 		return err
 	}
@@ -102,6 +105,7 @@ func run(ctx context.Context, args []string) error {
 		return buildErr
 	}
 	if *dry {
+		fmt.Println(ThresholdLine(rep, opts.Check))
 		fmt.Println("пробный запуск: в базу ничего не записано")
 	} else {
 		fmt.Println("база знаний собрана")

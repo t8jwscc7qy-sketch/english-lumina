@@ -114,9 +114,9 @@ func TestScoreTranslationsDeterministic(t *testing.T) {
 
 func TestPickTranslationsPrefersDifferentSenses(t *testing.T) {
 	scored := []Scored{
-		{Candidate: Candidate{Text: "ааа", SenseNo: 1}, Score: 9},
-		{Candidate: Candidate{Text: "ббб", SenseNo: 1}, Score: 8},
-		{Candidate: Candidate{Text: "ввв", SenseNo: 2}, Score: 7},
+		{Candidate: Candidate{Text: "ааа"}, KaikkiSense: 1, Score: 9},
+		{Candidate: Candidate{Text: "ббб"}, KaikkiSense: 1, Score: 8},
+		{Candidate: Candidate{Text: "ввв"}, KaikkiSense: 2, Score: 7},
 	}
 	if got := texts(PickTranslations(scored, 2)); !slices.Equal(got, []string{"ааа", "ввв"}) {
 		t.Fatalf("второй перевод из другого значения: %v", got)
@@ -222,10 +222,10 @@ func TestGoldenListWellFormed(t *testing.T) {
 
 func TestPickTranslationsSkipsBadSecond(t *testing.T) {
 	scored := []Scored{
-		{Candidate: Candidate{Text: "дуть", SenseNo: 1}, Score: 8},
-		{Candidate: Candidate{Text: "соса́ть", SenseNo: 2}, Score: 7, Flags: []string{"vulgar"}},
-		{Candidate: Candidate{Text: "батюшка", SenseNo: 3}, Score: 6, Flags: []string{"archaic"}},
-		{Candidate: Candidate{Text: "веять", SenseNo: 4}, Score: 2, Flags: []string{"slang"}},
+		{Candidate: Candidate{Text: "дуть"}, KaikkiSense: 1, Score: 8},
+		{Candidate: Candidate{Text: "соса́ть"}, KaikkiSense: 2, Score: 7, Flags: []string{"vulgar"}},
+		{Candidate: Candidate{Text: "батюшка"}, KaikkiSense: 3, Score: 6, Flags: []string{"archaic"}},
+		{Candidate: Candidate{Text: "веять"}, KaikkiSense: 4, Score: 2, Flags: []string{"slang"}},
 	}
 	got := texts(PickTranslations(scored, 2))
 	if !slices.Equal(got, []string{"дуть", "веять"}) {
@@ -293,5 +293,55 @@ func TestScoreTranslationsRejectsMarkup(t *testing.T) {
 	}
 	if got := texts(ScoreTranslations(cands, nil)); !slices.Equal(got, []string{"утро"}) {
 		t.Fatalf("вики-разметка и скобки отбрасываются: %v", got)
+	}
+}
+
+func TestPickTranslationsNeverChoosesCoarseFirst(t *testing.T) {
+	coarse := Scored{Candidate: Candidate{Text: "ааа"}, Score: 9, Flags: []string{"vulgar", "slang"}}
+	plain := Scored{Candidate: Candidate{Text: "ббб"}, Score: 3}
+	if got := texts(PickTranslations([]Scored{coarse, plain}, 2)); !slices.Equal(got, []string{"ббб"}) {
+		t.Fatalf("грубый перевод не выбирается и первым: %v", got)
+	}
+	if got := PickTranslations([]Scored{coarse}, 2); len(got) != 0 {
+		t.Fatalf("у слова только грубый перевод: не выбираем ничего (строка остаётся запасной): %v", texts(got))
+	}
+	old := Scored{Candidate: Candidate{Text: "ввв"}, Score: 1, Flags: []string{"archaic"}}
+	if got := texts(PickTranslations([]Scored{old}, 2)); !slices.Equal(got, []string{"ввв"}) {
+		t.Fatalf("устаревший единственный перевод берётся: %v", got)
+	}
+}
+
+func TestPickTranslationsIgnoresLegacySenseNumbers(t *testing.T) {
+	// SenseNo у кандидата без номера от Kaikki — номер старого словаря: для разнообразия значений он не годится
+	scored := []Scored{
+		{Candidate: Candidate{Text: "ааа", SenseNo: 1}, Score: 9},
+		{Candidate: Candidate{Text: "ббб", SenseNo: 1}, Score: 8},
+		{Candidate: Candidate{Text: "ввв", SenseNo: 2}, Score: 7},
+	}
+	if got := texts(PickTranslations(scored, 2)); !slices.Equal(got, []string{"ааа", "ббб"}) {
+		t.Fatalf("номера старого словаря значений не различают: %v", got)
+	}
+}
+
+func TestScoreTranslationsMergesYoVariants(t *testing.T) {
+	cands := []Candidate{
+		{Text: "сёрфинг", Source: "kaikki", GroupNo: 1, GroupPos: 1},
+		{Text: "серфинг", Source: "freedict", SenseNo: 1},
+	}
+	got := ScoreTranslations(cands, nil)
+	if len(got) != 1 || got[0].Text != "сёрфинг" || len(got[0].Sources) != 2 {
+		t.Fatalf("«ё» и «е» — одно слово, показывается вариант с «ё», оба источника учтены: %+v", got)
+	}
+}
+
+// Штраф за «грубое» проверяется отдельно от штрафа за «просторечное»: у слова только пометка vulgar.
+func TestScoreTranslationsCoarsePenaltyAlone(t *testing.T) {
+	cands := []Candidate{
+		{Text: "соса́ть", Source: "kaikki", GroupNo: 1, GroupPos: 1, Tags: []string{"vulgar"}},
+		{Text: "дуть", Source: "kaikki", GroupNo: 1, GroupPos: 2},
+	}
+	got := ScoreTranslations(cands, map[string]int{"сосать": 3000, "дуть": 4000})
+	if got[0].Text != "дуть" {
+		t.Fatalf("штраф за vulgar должен решать: %v", texts(got))
 	}
 }

@@ -157,7 +157,7 @@ func (q *Queries) KbLatestBuild(ctx context.Context) (KbBuild, error) {
 }
 
 const kbListChosenTranslations = `-- name: KbListChosenTranslations :many
-SELECT lexeme_id, text, rank, score FROM kb_translation
+SELECT lexeme_id, text, rank, score, flags FROM kb_translation
 WHERE chosen AND lang = $1::text AND lexeme_id = ANY($2::bigint[])
 ORDER BY lexeme_id, rank
 `
@@ -172,6 +172,7 @@ type KbListChosenTranslationsRow struct {
 	Text     string
 	Rank     int32
 	Score    float32
+	Flags    []string
 }
 
 // Выбранные переводы слов на язык (до двух на слово; основной первым).
@@ -189,6 +190,7 @@ func (q *Queries) KbListChosenTranslations(ctx context.Context, arg KbListChosen
 			&i.Text,
 			&i.Rank,
 			&i.Score,
+			&i.Flags,
 		); err != nil {
 			return nil, err
 		}

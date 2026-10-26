@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -118,8 +120,13 @@ func Build(ctx context.Context, pool *pgxpool.Pool, kaikkiIn io.Reader, opts Opt
 		// Отметка о неудаче делается отдельно и даже после отмены контекста.
 		fctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
-		payload, _ := json.Marshal(map[string]any{"error": err.Error(), "report": rep})
-		_ = q.KbFinishBuild(fctx, db.KbFinishBuildParams{ID: buildID, Status: "failed", Sources: mustJSON(opts.Sources), Report: payload})
+		payload, merr := json.Marshal(map[string]any{"error": err.Error(), "report": rep})
+		if merr != nil {
+			payload = json.RawMessage(`{}`)
+		}
+		if ferr := q.KbFinishBuild(fctx, db.KbFinishBuildParams{ID: buildID, Status: "failed", Sources: mustJSON(opts.Sources), Report: payload}); ferr != nil {
+			slog.Warn("не удалось отметить сборку как неудачную: запись останется в состоянии running", "buildId", buildID, "err", ferr)
+		}
 		return rep, err
 	}
 	return rep, nil
@@ -148,6 +155,9 @@ func buildTx(ctx context.Context, pool *pgxpool.Pool, q *db.Queries, kaikkiIn io
 	if err != nil {
 		return kb.Report{}, err
 	}
+	if len(entries) > 0 && in.SourceIDs["kaikki"] == 0 {
+		return kb.Report{}, errors.New("источник " + kaikki.Name + " не зарегистрирован в data_sources (kb-prepare не дошёл до конца): запустите go run ./cmd/kb-prepare kaikki")
+	}
 	out, rep := kb.Assemble(in)
 	if err := rep.Check(opts.Check); err != nil {
 		return rep, err
@@ -155,9 +165,13 @@ func buildTx(ctx context.Context, pool *pgxpool.Pool, q *db.Queries, kaikkiIn io
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		return rep, err
+		return rep, fmt.Errorf("начало транзакции: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // после фиксации ничего не делает
+	// Две сборки одновременно не нужны: вторая ждёт первую и затем пишет поверх, а не падает на конфликте ключей.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, advisoryKey); err != nil {
+		return rep, fmt.Errorf("блокировка сборки: %w", err)
+	}
 	tq := q.WithTx(tx)
 	// DELETE, а не TRUNCATE: читатели видят прежние данные до фиксации. Дочерние строки первыми (внешний ключ значения).
 	for _, del := range []func(context.Context) error{
@@ -176,12 +190,26 @@ func buildTx(ctx context.Context, pool *pgxpool.Pool, q *db.Queries, kaikkiIn io
 		return rep, err
 	}
 	if err := tq.KbFinishBuild(ctx, db.KbFinishBuildParams{ID: buildID, Status: "ok", Sources: mustJSON(opts.Sources), Report: payload}); err != nil {
-		return rep, err
+		return rep, fmt.Errorf("отметка сборки: %w", err)
 	}
 	if opts.BeforeCommit != nil {
 		opts.BeforeCommit()
 	}
-	return rep, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return rep, fmt.Errorf("фиксация: %w", err)
+	}
+	return rep, nil
+}
+
+// advisoryKey — ключ консультативной блокировки сборки базы знаний.
+const advisoryKey int64 = 7140014
+
+// ThresholdLine — строка для пробного запуска: пройдёт ли такая сборка пороги качества.
+func ThresholdLine(rep kb.Report, o kb.Options) string {
+	if err := rep.Check(o); err != nil {
+		return "пороги качества: НЕ пройдены (" + strings.TrimPrefix(err.Error(), kb.ErrBelowThreshold.Error()+": ") + ")"
+	}
+	return "пороги качества: пройдены"
 }
 
 func copyRows(ctx context.Context, tx pgx.Tx, table string, cols []string, rows [][]any) error {

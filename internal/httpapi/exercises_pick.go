@@ -523,8 +523,8 @@ func (s *authServer) matchCandidate(ctx context.Context, userID int64, level str
 	kbTr := s.kbTranslations(ctx, ws)
 	cands := make([]exercises.MatchCandidate, 0, len(ws))
 	for _, w := range ws {
-		if tr := kbTr[w.lexemeID]; len(tr) > 0 {
-			cands = append(cands, exercises.MatchCandidate{Word: w.lemma, Senses: [][]string{tr}})
+		if t, ok := firstFitTranslation(kbTr[w.lexemeID]); ok {
+			cands = append(cands, exercises.MatchCandidate{Word: w.lemma, Senses: [][]string{{t}}})
 			continue
 		}
 		if sn := senses[key{w.lemma, dictPos[w.pos]}]; len(sn) > 0 {
@@ -602,7 +602,24 @@ func (s *authServer) kbTranslations(ctx context.Context, ws []formInfo) map[int6
 	}
 	out := map[int64][]string{}
 	for _, r := range rows {
+		if slices.ContainsFunc(r.Flags, func(f string) bool { return slices.Contains(kbUnfitFlags, f) }) {
+			continue // грубый или устаревший перевод верным ответом упражнения быть не должен
+		}
 		out[r.LexemeID] = append(out[r.LexemeID], r.Text)
 	}
 	return out
+}
+
+// kbUnfitFlags — пометки переводов базы знаний, с которыми перевод не годится для упражнений.
+var kbUnfitFlags = []string{"vulgar", "offensive", "derogatory", "archaic", "obsolete", "dated"}
+
+// firstFitTranslation берёт первый перевод из списка (основной первым), который годится для плиток; частота русского
+// слова здесь не пересматривает выбор базы знаний.
+func firstFitTranslation(tr []string) (string, bool) {
+	for _, t := range tr {
+		if got, ok := exercises.PickTranslation([][]string{{t}}, nil); ok {
+			return got, true
+		}
+	}
+	return "", false
 }

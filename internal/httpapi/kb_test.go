@@ -34,7 +34,7 @@ func (f *fakeStore) KbListChosenTranslations(_ context.Context, arg db.KbListCho
 	var out []db.KbListChosenTranslationsRow
 	for _, id := range arg.LexemeIds {
 		for i, text := range f.kbTranslations[id] {
-			out = append(out, db.KbListChosenTranslationsRow{LexemeID: id, Text: text, Rank: int32(i + 1)}) //nolint:gosec // малое число
+			out = append(out, db.KbListChosenTranslationsRow{LexemeID: id, Text: text, Rank: int32(i + 1), Flags: f.kbFlags[id][text]}) //nolint:gosec // малое число
 		}
 	}
 	return out, nil
@@ -134,5 +134,27 @@ func TestMatchKbErrorDegradesToLegacy(t *testing.T) {
 	ex := decodeExercise(t, rec)
 	if ex.Options == nil || !slices.Contains(*ex.Options, "яблоко") {
 		t.Fatalf("ждали перевод из старого словаря: %+v", ex.Options)
+	}
+}
+
+func TestMatchSkipsFlaggedKbTranslations(t *testing.T) {
+	for _, flag := range []string{"vulgar", "offensive", "derogatory", "archaic", "obsolete", "dated"} {
+		e, token := matchEnv(t)
+		e.store.kbTranslations = map[int64][]string{1: {"плод"}}
+		e.store.kbFlags = map[int64]map[string][]string{1: {"плод": {flag}}}
+		ex := decodeExercise(t, getNext(t, e, token))
+		if ex.Options == nil || slices.Contains(*ex.Options, "плод") || !slices.Contains(*ex.Options, "яблоко") {
+			t.Fatalf("%s: перевод с пометкой не должен быть верным ответом, слово идёт по старому словарю: %+v", flag, ex.Options)
+		}
+	}
+}
+
+func TestMatchFirstFitKbTranslationIsNotDisplacedBySecond(t *testing.T) {
+	e, token := matchEnv(t)
+	e.store.kbTranslations = map[int64][]string{1: {"плод", "фрукт"}}
+	freqOf(e, "фрукт") // второй перевод частый, первого в списке частот нет
+	ex := decodeExercise(t, getNext(t, e, token))
+	if ex.Options == nil || !slices.Contains(*ex.Options, "плод") || slices.Contains(*ex.Options, "фрукт") {
+		t.Fatalf("первый годный перевод базы знаний — основной: %+v", ex.Options)
 	}
 }

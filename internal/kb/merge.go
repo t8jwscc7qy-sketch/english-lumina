@@ -145,10 +145,15 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 		if !validRu(text) {
 			continue
 		}
-		g := groups[text]
+		// «ё» и «е» — одно слово (в источниках пишут по-разному): склеиваем, показываем вариант с «ё»
+		key := foldYo(text)
+		g := groups[key]
 		if g == nil {
 			g = &group{text: text, sources: map[string]bool{}, tags: map[string]bool{}}
-			groups[text] = g
+			groups[key] = g
+		}
+		if strings.Contains(text, "ё") {
+			g.text = text
 		}
 		g.sources[c.Source] = true
 		if c.GroupNo == 0 {
@@ -254,7 +259,8 @@ func ScoreTranslations(cands []Candidate, ranks map[string]int) []Scored {
 }
 
 // PickTranslations выбирает до max переводов: первый — лучший, следующие по возможности из других значений
-// (если значения известны), иначе по порядку оценок. Вторым и далее не берутся грубые, устаревшие, диалектные переводы и переводы
+// (значения известны только у переводов Kaikki), иначе по порядку оценок. Грубые переводы не выбираются вообще, вторым и
+// далее не берутся устаревшие, диалектные переводы и переводы
 // с оценкой ниже minExtraScore: единственный лучший перевод слова берётся даже с пометкой и низкой оценкой, добавочные нет.
 func PickTranslations(scored []Scored, max int) []Scored {
 	var picked []Scored
@@ -265,13 +271,16 @@ func PickTranslations(scored []Scored, max int) []Scored {
 			if used[i] {
 				continue
 			}
-			if len(picked) > 0 && (s.Score < minExtraScore || hasAny(s.Flags, oldTags) || hasAny(s.Flags, coarseTags) || hasAny(s.Flags, localTags)) {
+			if hasAny(s.Flags, coarseTags) {
+				continue // грубый перевод не выбирается никогда, даже первым: он остаётся запасной строкой
+			}
+			if len(picked) > 0 && (s.Score < minExtraScore || hasAny(s.Flags, oldTags) || hasAny(s.Flags, localTags)) {
 				continue
 			}
 			if next < 0 {
 				next = i
 			}
-			if fresh < 0 && s.SenseNo > 0 && !senseUsed(picked, s.SenseNo) {
+			if fresh < 0 && s.KaikkiSense > 0 && !senseUsed(picked, s.KaikkiSense) {
 				fresh = i
 			}
 		}
@@ -288,7 +297,7 @@ func PickTranslations(scored []Scored, max int) []Scored {
 }
 
 func senseUsed(picked []Scored, senseNo int) bool {
-	return slices.ContainsFunc(picked, func(p Scored) bool { return p.SenseNo == senseNo })
+	return slices.ContainsFunc(picked, func(p Scored) bool { return p.KaikkiSense == senseNo })
 }
 
 // Pron — произношение слова: Accent us, uk или пусто, IPA без слэшей, Audio — имя файла Wikimedia Commons.

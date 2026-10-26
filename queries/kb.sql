@@ -36,7 +36,7 @@ SELECT lexeme_id, payload FROM kb_teaching_card WHERE lexeme_id = ANY(sqlc.arg(l
 
 -- name: KbListChosenTranslations :many
 -- Выбранные переводы слов на язык (до двух на слово; основной первым).
-SELECT lexeme_id, text, rank, score FROM kb_translation
+SELECT lexeme_id, text, rank, score, flags FROM kb_translation
 WHERE chosen AND lang = sqlc.arg(lang)::text AND lexeme_id = ANY(sqlc.arg(lexeme_ids)::bigint[])
 ORDER BY lexeme_id, rank;
 

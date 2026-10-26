@@ -204,3 +204,17 @@ func TestParseEntrySkipsLinksOfVulgarSenses(t *testing.T) {
 		t.Fatalf("синонимы %v, антонимы %v: связи грубых значений не нужны", e.Synonyms, e.Antonyms)
 	}
 }
+
+func TestParseEntrySkipsFormOfSenses(t *testing.T) {
+	line := `{"word":"found","pos":"verb","lang_code":"en","senses":[
+	{"glosses":["simple past and past participle of find"],"tags":["form-of","participle","past"]},
+	{"glosses":["To establish."]},
+	{"glosses":["Alternative spelling of foun."],"tags":["alt-of"]}]}`
+	e, err := ParseEntry([]byte(line))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(e.Senses) != 1 || e.Senses[0].Glosses[0] != "To establish." {
+		t.Fatalf("значения-формы (form-of, alt-of) не нужны: %+v", e.Senses)
+	}
+}
