@@ -93,7 +93,18 @@ type fakeStore struct {
 	kbCards          map[int64]json.RawMessage        // карточки слов базы знаний (ListTeachingCards)
 	kbTranslations   map[int64][]string               // выбранные русские переводы слов в базе знаний, основной первым
 	failKb           bool                             // чтение базы знаний падает (например, миграция не применена)
-	kbFlags          map[int64]map[string][]string    // пометки выбранных переводов: слово → перевод → пометки
+	candidatesErr    error                            // LearnCandidates отвечает этой ошибкой
+	markLearnedErr   error                            // LearnMarkLearned отвечает этой ошибкой
+	wl               map[int64]fakeWord               // состояние изучения слов одного пользователя (word_learning)
+	learnCands       []db.LearnCandidatesRow
+	learnPlacement   []db.LearnPlacementCandidatesRow
+	learnRelations   []db.LearnRelationsRow
+	learnPrefs       *db.LearnPreference
+	kbBuilt          bool  // есть успешная сборка базы знаний
+	reviewTotal      int64 // повторения за семь суток для точности
+	reviewGood       int64
+	failLearn        bool                          // запросы «Знакомства» падают
+	kbFlags          map[int64]map[string][]string // пометки выбранных переводов: слово → перевод → пометки
 	translationCalls int
 	failTranslations bool
 }

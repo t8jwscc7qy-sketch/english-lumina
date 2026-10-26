@@ -50,8 +50,10 @@ const (
 	ErrorErrorCodeInvalidAnswer      ErrorErrorCode = "invalid_answer"
 	ErrorErrorCodeInvalidCredentials ErrorErrorCode = "invalid_credentials"
 	ErrorErrorCodeInvalidRequest     ErrorErrorCode = "invalid_request"
+	ErrorErrorCodeLimitReached       ErrorErrorCode = "limit_reached"
 	ErrorErrorCodeNoExamples         ErrorErrorCode = "no_examples"
 	ErrorErrorCodeNoExercise         ErrorErrorCode = "no_exercise"
+	ErrorErrorCodeNoWords            ErrorErrorCode = "no_words"
 	ErrorErrorCodeNotFound           ErrorErrorCode = "not_found"
 	ErrorErrorCodeOnboardingRequired ErrorErrorCode = "onboarding_required"
 	ErrorErrorCodeTooManyAttempts    ErrorErrorCode = "too_many_attempts"
@@ -76,9 +78,13 @@ func (e ErrorErrorCode) Valid() bool {
 		return true
 	case ErrorErrorCodeInvalidRequest:
 		return true
+	case ErrorErrorCodeLimitReached:
+		return true
 	case ErrorErrorCodeNoExamples:
 		return true
 	case ErrorErrorCodeNoExercise:
+		return true
+	case ErrorErrorCodeNoWords:
 		return true
 	case ErrorErrorCodeNotFound:
 		return true
@@ -116,6 +122,72 @@ func (e ExerciseKind) Valid() bool {
 	case Order:
 		return true
 	case Translate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LearnPreferencesNewWordsMode.
+const (
+	LearnPreferencesNewWordsModeAuto   LearnPreferencesNewWordsMode = "auto"
+	LearnPreferencesNewWordsModeManual LearnPreferencesNewWordsMode = "manual"
+)
+
+// Valid indicates whether the value is a known member of the LearnPreferencesNewWordsMode enum.
+func (e LearnPreferencesNewWordsMode) Valid() bool {
+	switch e {
+	case LearnPreferencesNewWordsModeAuto:
+		return true
+	case LearnPreferencesNewWordsModeManual:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LearnReasonCode.
+const (
+	LearnReasonCodeBacklog LearnReasonCode = "backlog"
+	LearnReasonCodeBase    LearnReasonCode = "base"
+	LearnReasonCodeDone    LearnReasonCode = "done"
+	LearnReasonCodeEasy    LearnReasonCode = "easy"
+	LearnReasonCodeHard    LearnReasonCode = "hard"
+	LearnReasonCodeManual  LearnReasonCode = "manual"
+)
+
+// Valid indicates whether the value is a known member of the LearnReasonCode enum.
+func (e LearnReasonCode) Valid() bool {
+	switch e {
+	case LearnReasonCodeBacklog:
+		return true
+	case LearnReasonCodeBase:
+		return true
+	case LearnReasonCodeDone:
+		return true
+	case LearnReasonCodeEasy:
+		return true
+	case LearnReasonCodeHard:
+		return true
+	case LearnReasonCodeManual:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LearnStatusMode.
+const (
+	LearnStatusModeAuto   LearnStatusMode = "auto"
+	LearnStatusModeManual LearnStatusMode = "manual"
+)
+
+// Valid indicates whether the value is a known member of the LearnStatusMode enum.
+func (e LearnStatusMode) Valid() bool {
+	switch e {
+	case LearnStatusModeAuto:
+		return true
+	case LearnStatusModeManual:
 		return true
 	default:
 		return false
@@ -179,6 +251,27 @@ func (e MistakeResultStatus) Valid() bool {
 	case Closed:
 		return true
 	case Open:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PlacementResultNext.
+const (
+	Learn PlacementResultNext = "learn"
+	More  PlacementResultNext = "more"
+	Stop  PlacementResultNext = "stop"
+)
+
+// Valid indicates whether the value is a known member of the PlacementResultNext enum.
+func (e PlacementResultNext) Valid() bool {
+	switch e {
+	case Learn:
+		return true
+	case More:
+		return true
+	case Stop:
 		return true
 	default:
 		return false
@@ -351,6 +444,103 @@ type Exercise struct {
 // ExerciseKind Вид упражнения. gap — пропуск в предложении, order — собрать предложение из плиток, translate — перевести русское предложение (prompt) по-английски, ответ вводится вручную (choices пуст, tiles нет), form — выбрать верную форму слова (в prompt пропуск, в hint начальная форма), match — соединить пять английских слов (words) с пятью русскими переводами (options)
 type ExerciseKind string
 
+// IntroduceRequest defines model for IntroduceRequest.
+type IntroduceRequest struct {
+	// Key Ключ идемпотентности
+	Key       string  `json:"key"`
+	LexemeIds []int64 `json:"lexemeIds"`
+}
+
+// IntroduceResponse defines model for IntroduceResponse.
+type IntroduceResponse struct {
+	CardIds    []int64 `json:"cardIds"`
+	Introduced int     `json:"introduced"`
+}
+
+// LearnBlock defines model for LearnBlock.
+type LearnBlock struct {
+	Limit     int         `json:"limit"`
+	Reason    LearnReason `json:"reason"`
+	Remaining int         `json:"remaining"`
+	Words     []LearnWord `json:"words"`
+}
+
+// LearnPreferences defines model for LearnPreferences.
+type LearnPreferences struct {
+	CampCoverage   float32                      `json:"campCoverage"`
+	NewWordsMode   LearnPreferencesNewWordsMode `json:"newWordsMode"`
+	NewWordsPerDay int                          `json:"newWordsPerDay"`
+}
+
+// LearnPreferencesNewWordsMode defines model for LearnPreferences.NewWordsMode.
+type LearnPreferencesNewWordsMode string
+
+// LearnReason defines model for LearnReason.
+type LearnReason struct {
+	// Code Почему дневной лимит новых слов такой
+	Code LearnReasonCode `json:"code"`
+
+	// Text Объяснение по-русски
+	Text string `json:"text"`
+}
+
+// LearnReasonCode Почему дневной лимит новых слов такой
+type LearnReasonCode string
+
+// LearnStatus defines model for LearnStatus.
+type LearnStatus struct {
+	// Introduced Слов введено, но ещё не вспомнено хорошо
+	Introduced int `json:"introduced"`
+
+	// KbReady Собрана ли база знаний
+	KbReady bool `json:"kbReady"`
+
+	// KnownAtStart Слов отмечено «знаю» в быстром тесте
+	KnownAtStart int `json:"knownAtStart"`
+
+	// Learned Слов изучено (вспомнены хорошо)
+	Learned int             `json:"learned"`
+	Limit   int             `json:"limit"`
+	Mode    LearnStatusMode `json:"mode"`
+
+	// NewToday Слов введено сегодня (сутки по часовому поясу настроек)
+	NewToday int `json:"newToday"`
+
+	// PerDay Число слов в день из настроек (потолок в авто-режиме)
+	PerDay    int         `json:"perDay"`
+	Reason    LearnReason `json:"reason"`
+	Remaining int         `json:"remaining"`
+}
+
+// LearnStatusMode defines model for LearnStatus.Mode.
+type LearnStatusMode string
+
+// LearnWord defines model for LearnWord.
+type LearnWord struct {
+	// AudioUrl Ссылка на звуковой файл Wikimedia Commons; нет, если звука нет
+	AudioUrl *string `json:"audioUrl,omitempty"`
+
+	// Examples До двух примеров Tatoeba (атрибуция в самом примере)
+	Examples []Example `json:"examples"`
+	Forms    []string  `json:"forms"`
+
+	// Ipa Транскрипция (IPA) без слэшей
+	Ipa   *string `json:"ipa,omitempty"`
+	Lemma string  `json:"lemma"`
+
+	// Level Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
+	Level    CefrLevel `json:"level"`
+	LexemeId int64     `json:"lexemeId"`
+	Pos      string    `json:"pos"`
+
+	// Rank Место слова по частоте (1 — самое частое); нет, если слова нет в списке
+	Rank     *int     `json:"rank,omitempty"`
+	Synonyms []string `json:"synonyms"`
+
+	// Translations Русские переводы (до двух), основной первым
+	Translations []string `json:"translations"`
+}
+
 // Level defines model for Level.
 type Level string
 
@@ -481,6 +671,38 @@ type PairResult struct {
 	// Given Перевод, который выбрал пользователь
 	Given string `json:"given"`
 	Word  string `json:"word"`
+}
+
+// PlacementPage defines model for PlacementPage.
+type PlacementPage struct {
+	HasMore bool `json:"hasMore"`
+
+	// Skip Сколько слов пропущено (как в запросе)
+	Skip  int             `json:"skip"`
+	Words []PlacementWord `json:"words"`
+}
+
+// PlacementRequest defines model for PlacementRequest.
+type PlacementRequest struct {
+	Key   string  `json:"key"`
+	Known []int64 `json:"known"`
+	Shown []int64 `json:"shown"`
+}
+
+// PlacementResult defines model for PlacementResult.
+type PlacementResult struct {
+	Marked int                 `json:"marked"`
+	Next   PlacementResultNext `json:"next"`
+}
+
+// PlacementResultNext defines model for PlacementResult.Next.
+type PlacementResultNext string
+
+// PlacementWord defines model for PlacementWord.
+type PlacementWord struct {
+	Lemma    string `json:"lemma"`
+	LexemeId int64  `json:"lexemeId"`
+	Pos      string `json:"pos"`
 }
 
 // ProgressOverview defines model for ProgressOverview.
@@ -685,6 +907,15 @@ type ReviewCardJSONRequestBody = ReviewCardRequest
 // AnswerExerciseJSONRequestBody defines body for AnswerExercise for application/json ContentType.
 type AnswerExerciseJSONRequestBody = AnswerRequest
 
+// IntroduceWordsJSONRequestBody defines body for IntroduceWords for application/json ContentType.
+type IntroduceWordsJSONRequestBody = IntroduceRequest
+
+// SubmitPlacementJSONRequestBody defines body for SubmitPlacement for application/json ContentType.
+type SubmitPlacementJSONRequestBody = PlacementRequest
+
+// PutLearnPreferencesJSONRequestBody defines body for PutLearnPreferences for application/json ContentType.
+type PutLearnPreferencesJSONRequestBody = LearnPreferences
+
 // PutSettingsJSONRequestBody defines body for PutSettings for application/json ContentType.
 type PutSettingsJSONRequestBody = Settings
 
@@ -717,6 +948,27 @@ type ServerInterface interface {
 	// ListExerciseTopics Темы с рейтингом
 	// (GET /api/v1/exercises/topics)
 	ListExerciseTopics(w http.ResponseWriter, r *http.Request)
+	// GetLearnBlock Блок слов для знакомства
+	// (GET /api/v1/learn/block)
+	GetLearnBlock(w http.ResponseWriter, r *http.Request)
+	// IntroduceWords Ввести слова после знакомства
+	// (POST /api/v1/learn/introduce)
+	IntroduceWords(w http.ResponseWriter, r *http.Request)
+	// GetPlacement Страница быстрого теста «знаю / не знаю»
+	// (GET /api/v1/learn/placement)
+	GetPlacement(w http.ResponseWriter, r *http.Request)
+	// SubmitPlacement Отправить ответы быстрого теста
+	// (POST /api/v1/learn/placement)
+	SubmitPlacement(w http.ResponseWriter, r *http.Request)
+	// GetLearnPreferences Настройки обучения
+	// (GET /api/v1/learn/preferences)
+	GetLearnPreferences(w http.ResponseWriter, r *http.Request)
+	// PutLearnPreferences Сохранить настройки обучения
+	// (PUT /api/v1/learn/preferences)
+	PutLearnPreferences(w http.ResponseWriter, r *http.Request)
+	// GetLearnStatus Состояние «Знакомства»
+	// (GET /api/v1/learn/status)
+	GetLearnStatus(w http.ResponseWriter, r *http.Request)
 	// GetLevelSuggestion Предложение сменить уровень
 	// (GET /api/v1/level/suggestion)
 	GetLevelSuggestion(w http.ResponseWriter, r *http.Request)
@@ -878,6 +1130,104 @@ func (siw *ServerInterfaceWrapper) ListExerciseTopics(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListExerciseTopics(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLearnBlock operation middleware
+func (siw *ServerInterfaceWrapper) GetLearnBlock(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLearnBlock(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// IntroduceWords operation middleware
+func (siw *ServerInterfaceWrapper) IntroduceWords(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.IntroduceWords(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPlacement operation middleware
+func (siw *ServerInterfaceWrapper) GetPlacement(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPlacement(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SubmitPlacement operation middleware
+func (siw *ServerInterfaceWrapper) SubmitPlacement(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SubmitPlacement(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLearnPreferences operation middleware
+func (siw *ServerInterfaceWrapper) GetLearnPreferences(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLearnPreferences(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutLearnPreferences operation middleware
+func (siw *ServerInterfaceWrapper) PutLearnPreferences(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutLearnPreferences(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLearnStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetLearnStatus(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLearnStatus(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1174,6 +1524,13 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/cards/review", wrapper.ReviewCard)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/next", wrapper.GetNextExercise)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/exercises/answer", wrapper.AnswerExercise)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/learn/status", wrapper.GetLearnStatus)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/learn/block", wrapper.GetLearnBlock)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/learn/introduce", wrapper.IntroduceWords)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/learn/placement", wrapper.GetPlacement)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/learn/placement", wrapper.SubmitPlacement)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/learn/preferences", wrapper.GetLearnPreferences)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1/learn/preferences", wrapper.PutLearnPreferences)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/exercises/topics", wrapper.ListExerciseTopics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/mistakes", wrapper.ListMistakes)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/level/suggestion", wrapper.GetLevelSuggestion)

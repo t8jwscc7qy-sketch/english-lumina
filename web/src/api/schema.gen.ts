@@ -233,6 +233,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/learn/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Состояние «Знакомства»
+         * @description Сколько слов изучено и введено, дневной лимит новых слов, сколько ещё можно сегодня и почему так (причина лимита). kbReady — собрана ли база знаний (без неё блоков для знакомства нет).
+         */
+        get: operations["getLearnStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Блок слов для знакомства
+         * @description До семи новых слов (не больше остатка дневного лимита) с переводом, транскрипцией, звуком и примерами. Лимит исчерпан или просрочено слишком много карточек — 200 с пустым списком и причиной. Подходящих слов нет — 404 no_words.
+         */
+        get: operations["getLearnBlock"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/introduce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ввести слова после знакомства
+         * @description Создаёт карточки для слов блока и помечает слова как введённые. Повтор запроса с тем же key ничего не меняет и отдаёт прежний результат. Больше остатка дневного лимита — 409 limit_reached.
+         */
+        post: operations["introduceWords"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/placement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Страница быстрого теста «знаю / не знаю»
+         * @description До 50 самых частых слов уровня, которых ещё нет ни в карточках, ни в состоянии изучения. Сколько слов пропустить, задаётся числом skip в строке запроса (читается без объявления в контракте: параметр запроса заставил бы генератор добавить новую зависимость). Слова, отмеченные «знаю», из списка пропадают, а «не знаю» остаются, поэтому следующую страницу просят с skip, равным числу «не знаю» на уже показанных страницах.
+         */
+        get: operations["getPlacement"];
+        put?: never;
+        /**
+         * Отправить ответы быстрого теста
+         * @description Отмеченные «знаю» слова становятся изученными (без карточек). Повтор запроса с тем же key ничего не меняет. Ответ подсказывает, что делать дальше: more — показать следующую страницу (знакомых не меньше 80 %), stop — тест не нужен (меньше 50 %), learn — перейти к знакомству.
+         */
+        post: operations["submitPlacement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learn/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Настройки обучения
+         * @description Режим новых слов, число в день и покрытие «Привала»; до первого сохранения — значения по умолчанию.
+         */
+        get: operations["getLearnPreferences"];
+        /** Сохранить настройки обучения */
+        put: operations["putLearnPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/exercises/topics": {
         parameters: {
             query?: never;
@@ -383,6 +488,96 @@ export interface components {
         };
         /** @enum {string} */
         Level: "A1" | "A2" | "B1" | "B2" | "C1";
+        LearnReason: {
+            /**
+             * @description Почему дневной лимит новых слов такой
+             * @enum {string}
+             */
+            code: "manual" | "backlog" | "hard" | "easy" | "base" | "done";
+            /** @description Объяснение по-русски */
+            text: string;
+        };
+        LearnStatus: {
+            /** @description Слов изучено (вспомнены хорошо) */
+            learned: number;
+            /** @description Слов введено, но ещё не вспомнено хорошо */
+            introduced: number;
+            /** @description Слов отмечено «знаю» в быстром тесте */
+            knownAtStart: number;
+            /** @description Слов введено сегодня (сутки по часовому поясу настроек) */
+            newToday: number;
+            limit: number;
+            remaining: number;
+            reason: components["schemas"]["LearnReason"];
+            /** @enum {string} */
+            mode: "auto" | "manual";
+            /** @description Число слов в день из настроек (потолок в авто-режиме) */
+            perDay: number;
+            /** @description Собрана ли база знаний */
+            kbReady: boolean;
+        };
+        LearnWord: {
+            /** Format: int64 */
+            lexemeId: number;
+            lemma: string;
+            pos: string;
+            level: components["schemas"]["CefrLevel"];
+            /** @description Место слова по частоте (1 — самое частое); нет, если слова нет в списке */
+            rank?: number;
+            /** @description Русские переводы (до двух), основной первым */
+            translations: string[];
+            /** @description Транскрипция (IPA) без слэшей */
+            ipa?: string;
+            /** @description Ссылка на звуковой файл Wikimedia Commons; нет, если звука нет */
+            audioUrl?: string;
+            forms: string[];
+            synonyms: string[];
+            /** @description До двух примеров Tatoeba (атрибуция в самом примере) */
+            examples: components["schemas"]["Example"][];
+        };
+        LearnBlock: {
+            words: components["schemas"]["LearnWord"][];
+            limit: number;
+            remaining: number;
+            reason: components["schemas"]["LearnReason"];
+        };
+        IntroduceRequest: {
+            lexemeIds: number[];
+            /** @description Ключ идемпотентности */
+            key: string;
+        };
+        IntroduceResponse: {
+            introduced: number;
+            cardIds: number[];
+        };
+        PlacementWord: {
+            /** Format: int64 */
+            lexemeId: number;
+            lemma: string;
+            pos: string;
+        };
+        PlacementPage: {
+            words: components["schemas"]["PlacementWord"][];
+            /** @description Сколько слов пропущено (как в запросе) */
+            skip: number;
+            hasMore: boolean;
+        };
+        PlacementRequest: {
+            known: number[];
+            shown: number[];
+            key: string;
+        };
+        PlacementResult: {
+            marked: number;
+            /** @enum {string} */
+            next: "more" | "stop" | "learn";
+        };
+        LearnPreferences: {
+            /** @enum {string} */
+            newWordsMode: "auto" | "manual";
+            newWordsPerDay: number;
+            campCoverage: number;
+        };
         /**
          * @description Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
          * @enum {string}
@@ -738,7 +933,7 @@ export interface components {
                  * @description Машинный код ошибки
                  * @enum {string}
                  */
-                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "already_answered" | "invalid_answer" | "internal";
+                code: "invalid_request" | "invalid_credentials" | "forbidden_origin" | "too_many_attempts" | "busy" | "unauthorized" | "onboarding_required" | "no_examples" | "word_not_found" | "not_found" | "no_exercise" | "no_words" | "limit_reached" | "already_answered" | "invalid_answer" | "internal";
                 /** @description Текст для пользователя на русском */
                 message: string;
             };
@@ -1177,6 +1372,208 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    getLearnStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Состояние */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnStatus"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Настройки ещё не заполнены (onboarding_required) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getLearnBlock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Блок слов */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnBlock"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Подходящих слов нет (no_words) или настройки не заполнены (onboarding_required) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    introduceWords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntroduceRequest"];
+            };
+        };
+        responses: {
+            /** @description Слова введены (или уже были введены с этим ключом) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntroduceResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Дневной лимит новых слов исчерпан (limit_reached) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getPlacement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Страница слов */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacementPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Настройки не заполнены (onboarding_required) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    submitPlacement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlacementRequest"];
+            };
+        };
+        responses: {
+            /** @description Ответы приняты */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacementResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getLearnPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Настройки */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnPreferences"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    putLearnPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LearnPreferences"];
+            };
+        };
+        responses: {
+            /** @description Сохранено */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnPreferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listExerciseTopics: {

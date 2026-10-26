@@ -309,6 +309,170 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /api/v1/learn/status:
+    get:
+      operationId: getLearnStatus
+      summary: Состояние «Знакомства»
+      description: >
+        Сколько слов изучено и введено, дневной лимит новых слов, сколько ещё можно сегодня и почему так (причина лимита).
+        kbReady — собрана ли база знаний (без неё блоков для знакомства нет).
+      responses:
+        "200":
+          description: Состояние
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Настройки ещё не заполнены (onboarding_required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/learn/block:
+    get:
+      operationId: getLearnBlock
+      summary: Блок слов для знакомства
+      description: >
+        До семи новых слов (не больше остатка дневного лимита) с переводом, транскрипцией, звуком и примерами. Лимит
+        исчерпан или просрочено слишком много карточек — 200 с пустым списком и причиной. Подходящих слов нет — 404 no_words.
+      responses:
+        "200":
+          description: Блок слов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnBlock"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Подходящих слов нет (no_words) или настройки не заполнены (onboarding_required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/learn/introduce:
+    post:
+      operationId: introduceWords
+      summary: Ввести слова после знакомства
+      description: >
+        Создаёт карточки для слов блока и помечает слова как введённые. Повтор запроса с тем же key ничего не меняет и
+        отдаёт прежний результат. Больше остатка дневного лимита — 409 limit_reached.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntroduceRequest"
+      responses:
+        "200":
+          description: Слова введены (или уже были введены с этим ключом)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntroduceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Дневной лимит новых слов исчерпан (limit_reached)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/learn/placement:
+    get:
+      operationId: getPlacement
+      summary: Страница быстрого теста «знаю / не знаю»
+      description: >
+        До 50 самых частых слов уровня, которых ещё нет ни в карточках, ни в состоянии изучения. Сколько слов
+        пропустить, задаётся числом skip в строке запроса (читается без объявления в контракте: параметр запроса
+        заставил бы генератор добавить новую зависимость). Слова, отмеченные «знаю», из списка пропадают, а «не знаю»
+        остаются, поэтому следующую страницу просят с skip, равным числу «не знаю» на уже показанных страницах.
+      responses:
+        "200":
+          description: Страница слов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlacementPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Настройки не заполнены (onboarding_required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: submitPlacement
+      summary: Отправить ответы быстрого теста
+      description: >
+        Отмеченные «знаю» слова становятся изученными (без карточек). Повтор запроса с тем же key ничего не меняет.
+        Ответ подсказывает, что делать дальше: more — показать следующую страницу (знакомых не меньше 80 %), stop — тест
+        не нужен (меньше 50 %), learn — перейти к знакомству.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlacementRequest"
+      responses:
+        "200":
+          description: Ответы приняты
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlacementResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/learn/preferences:
+    get:
+      operationId: getLearnPreferences
+      summary: Настройки обучения
+      description: Режим новых слов, число в день и покрытие «Привала»; до первого сохранения — значения по умолчанию.
+      responses:
+        "200":
+          description: Настройки
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnPreferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: putLearnPreferences
+      summary: Сохранить настройки обучения
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LearnPreferences"
+      responses:
+        "200":
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnPreferences"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/v1/exercises/topics:
     get:
       operationId: listExerciseTopics
@@ -437,6 +601,196 @@ components:
     Level:
       type: string
       enum: [A1, A2, B1, B2, C1]
+    LearnReason:
+      type: object
+      required: [code, text]
+      properties:
+        code:
+          type: string
+          enum: [manual, backlog, hard, easy, base, done]
+          description: Почему дневной лимит новых слов такой
+        text:
+          type: string
+          description: Объяснение по-русски
+    LearnStatus:
+      type: object
+      required: [learned, introduced, knownAtStart, newToday, limit, remaining, reason, mode, perDay, kbReady]
+      properties:
+        learned:
+          type: integer
+          description: Слов изучено (вспомнены хорошо)
+        introduced:
+          type: integer
+          description: Слов введено, но ещё не вспомнено хорошо
+        knownAtStart:
+          type: integer
+          description: Слов отмечено «знаю» в быстром тесте
+        newToday:
+          type: integer
+          description: Слов введено сегодня (сутки по часовому поясу настроек)
+        limit:
+          type: integer
+        remaining:
+          type: integer
+        reason:
+          $ref: "#/components/schemas/LearnReason"
+        mode:
+          type: string
+          enum: [auto, manual]
+        perDay:
+          type: integer
+          description: Число слов в день из настроек (потолок в авто-режиме)
+        kbReady:
+          type: boolean
+          description: Собрана ли база знаний
+    LearnWord:
+      type: object
+      required: [lexemeId, lemma, pos, level, translations, forms, synonyms, examples]
+      properties:
+        lexemeId:
+          type: integer
+          format: int64
+        lemma:
+          type: string
+        pos:
+          type: string
+        level:
+          $ref: "#/components/schemas/CefrLevel"
+        rank:
+          type: integer
+          minimum: 1
+          description: Место слова по частоте (1 — самое частое); нет, если слова нет в списке
+        translations:
+          type: array
+          items:
+            type: string
+          description: Русские переводы (до двух), основной первым
+        ipa:
+          type: string
+          description: Транскрипция (IPA) без слэшей
+        audioUrl:
+          type: string
+          description: Ссылка на звуковой файл Wikimedia Commons; нет, если звука нет
+        forms:
+          type: array
+          items:
+            type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        examples:
+          type: array
+          description: До двух примеров Tatoeba (атрибуция в самом примере)
+          items:
+            $ref: "#/components/schemas/Example"
+    LearnBlock:
+      type: object
+      required: [words, limit, remaining, reason]
+      properties:
+        words:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearnWord"
+        limit:
+          type: integer
+        remaining:
+          type: integer
+        reason:
+          $ref: "#/components/schemas/LearnReason"
+    IntroduceRequest:
+      type: object
+      required: [lexemeIds, key]
+      properties:
+        lexemeIds:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items:
+            type: integer
+            format: int64
+        key:
+          type: string
+          maxLength: 64
+          description: Ключ идемпотентности
+    IntroduceResponse:
+      type: object
+      required: [introduced, cardIds]
+      properties:
+        introduced:
+          type: integer
+        cardIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+    PlacementWord:
+      type: object
+      required: [lexemeId, lemma, pos]
+      properties:
+        lexemeId:
+          type: integer
+          format: int64
+        lemma:
+          type: string
+        pos:
+          type: string
+    PlacementPage:
+      type: object
+      required: [words, skip, hasMore]
+      properties:
+        words:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlacementWord"
+        skip:
+          type: integer
+          description: Сколько слов пропущено (как в запросе)
+        hasMore:
+          type: boolean
+    PlacementRequest:
+      type: object
+      required: [known, shown, key]
+      properties:
+        known:
+          type: array
+          maxItems: 50
+          items:
+            type: integer
+            format: int64
+        shown:
+          type: array
+          maxItems: 50
+          items:
+            type: integer
+            format: int64
+        key:
+          type: string
+          maxLength: 64
+    PlacementResult:
+      type: object
+      required: [marked, next]
+      properties:
+        marked:
+          type: integer
+        next:
+          type: string
+          enum: [more, stop, learn]
+    LearnPreferences:
+      type: object
+      required: [newWordsMode, newWordsPerDay, campCoverage]
+      properties:
+        newWordsMode:
+          type: string
+          enum: [auto, manual]
+        newWordsPerDay:
+          type: integer
+          minimum: 1
+          maximum: 30
+        campCoverage:
+          type: number
+          minimum: 0.9
+          maximum: 0.99
     CefrLevel:
       type: string
       description: Уровень слова в источниках; шкала цели пользователя (Level) кончается на C1, а у слов бывает и C2
@@ -1080,7 +1434,7 @@ components:
             code:
               type: string
               description: Машинный код ошибки
-              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, already_answered, invalid_answer, internal]
+              enum: [invalid_request, invalid_credentials, forbidden_origin, too_many_attempts, busy, unauthorized, onboarding_required, no_examples, word_not_found, not_found, no_exercise, no_words, limit_reached, already_answered, invalid_answer, internal]
             message:
               type: string
               description: Текст для пользователя на русском

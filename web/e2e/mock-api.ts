@@ -232,9 +232,24 @@ export type ProgressOpts = {
   fail?: boolean
 }
 
+export type LearnOpts = {
+  /** Слова блока; без них /learn/block отвечает 404 no_words. */
+  words?: { lexemeId: number; lemma: string; pos: string; level: string; translations: string[]; ipa?: string; rank?: number }[]
+  /** Лимит дня исчерпан (пустой блок). */
+  exhausted?: boolean
+  /** Слова быстрого теста (одна страница). */
+  placement?: { lexemeId: number; lemma: string; pos: string }[]
+  /** Что подсказывает POST /learn/placement. */
+  placementNext?: 'more' | 'learn' | 'stop'
+  /** Сюда складываются тела принятых POST /learn/introduce и /learn/placement и PUT /learn/preferences. */
+  introduced?: unknown[]
+  placed?: unknown[]
+  prefsPuts?: unknown[]
+}
+
 export async function mockApi(
   page: Page,
-  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts },
+  opts: { loggedIn: boolean; settings?: Settings | null; settingsStatus?: number; sources?: Source[]; dueCards?: string[]; exercises?: ExerciseOpts; mistakes?: MistakeFixture[]; closedThisWeek?: number; progress?: ProgressOpts; overview?: OverviewOpts; milestones?: MilestonesOpts; level?: LevelSuggestionOpts; learn?: LearnOpts },
 ) {
   let loggedIn = opts.loggedIn
   let settings: Settings | null = opts.settings === undefined ? SETTINGS : opts.settings
@@ -488,6 +503,51 @@ export async function mockApi(
   await page.route('**/api/v1/level/suggestion', (route) =>
     route.fulfill({ json: opts.level?.suggestion && suggestionVisible ? { suggestion: opts.level.suggestion } : {} }),
   )
+
+  const learnReason = { code: 'base', text: 'Столько слов поместится в твои минуты' }
+  await page.route('**/api/v1/learn/status', (route) =>
+    route.fulfill({
+      json: {
+        learned: 3, introduced: 2, knownAtStart: 1, newToday: opts.learn?.exhausted ? 5 : 1, limit: 5, remaining: opts.learn?.exhausted ? 0 : 4,
+        reason: learnReason, mode: 'auto', perDay: 12, kbReady: opts.learn !== undefined,
+      },
+    }),
+  )
+  await page.route('**/api/v1/learn/block', (route) => {
+    const words = opts.learn?.words
+    if (opts.learn?.exhausted) return route.fulfill({ json: { words: [], limit: 5, remaining: 0, reason: { code: 'done', text: 'На сегодня всё' } } })
+    if (!words) return route.fulfill(apiError(404, 'no_words', 'Слов для знакомства пока нет'))
+    return route.fulfill({
+      json: {
+        limit: 5, remaining: 4, reason: learnReason,
+        words: words.map((w) => ({
+          ...w, forms: [], synonyms: [],
+          examples: [{ en: { text: `I see a ${w.lemma} today.`, author: 'tom', tatoebaId: w.lexemeId * 10 }, ru: { text: 'Я вижу это сегодня.', author: 'ivan', tatoebaId: w.lexemeId * 10 + 1 }, highlight: { start: 8, end: 8 + w.lemma.length } }],
+        })),
+      },
+    })
+  })
+  await page.route('**/api/v1/learn/introduce', (route) => {
+    const body = route.request().postDataJSON() as { lexemeIds: number[] }
+    opts.learn?.introduced?.push(body)
+    return route.fulfill({ json: { introduced: body.lexemeIds.length, cardIds: body.lexemeIds } })
+  })
+  await page.route('**/api/v1/learn/placement**', (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { known: number[] }
+      opts.learn?.placed?.push(body)
+      return route.fulfill({ json: { marked: body.known.length, next: opts.learn?.placementNext ?? 'learn' } })
+    }
+    return route.fulfill({ json: { words: opts.learn?.placement ?? [], skip: 0, hasMore: false } })
+  })
+  let prefs = { newWordsMode: 'auto', newWordsPerDay: 12, campCoverage: 0.95 }
+  await page.route('**/api/v1/learn/preferences', (route) => {
+    if (route.request().method() === 'PUT') {
+      prefs = route.request().postDataJSON() as typeof prefs
+      opts.learn?.prefsPuts?.push(prefs)
+    }
+    return route.fulfill({ json: prefs })
+  })
 
   await page.route('**/api/v1/milestones', (route) => {
     if (opts.milestones?.fail) return route.fulfill(apiError(500, 'internal', 'Внутренняя ошибка, попробуй ещё раз'))

@@ -7,6 +7,7 @@ import type { FoxMood } from '@/components/brand/Fox'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/features/auth/auth'
 import { useCardQueue } from '@/features/cards/cards'
+import { LearnCard } from '@/features/learn/LearnCard'
 import { LevelSuggestionCard } from '@/features/level/LevelSuggestionCard'
 import { useMilestones } from '@/features/milestones/milestones'
 import { useSettings } from '@/features/settings/settings'
@@ -187,6 +188,8 @@ export function TodayPage() {
       </section>
 
       <LevelSuggestionCard />
+
+      <LearnCard />
 
       <section
         aria-labelledby="path-title"

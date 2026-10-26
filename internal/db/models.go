@@ -132,6 +132,14 @@ type KbTranslation struct {
 	SourceIds []int64
 }
 
+type LearnPreference struct {
+	UserID         int64
+	NewWordsMode   string
+	NewWordsPerDay int32
+	CampCoverage   float32
+	UpdatedAt      pgtype.Timestamptz
+}
+
 type Lexeme struct {
 	ID        int64
 	Lemma     string
@@ -229,6 +237,15 @@ type WordFrequency struct {
 	Word     string
 	Count    int64
 	Rank     int32
+}
+
+type WordLearning struct {
+	UserID       int64
+	LexemeID     int64
+	Status       string
+	Source       string
+	IntroducedAt pgtype.Timestamptz
+	LearnedAt    pgtype.Timestamptz
 }
 
 type WordTranslation struct {

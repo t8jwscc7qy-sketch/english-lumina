@@ -411,8 +411,8 @@ func TestReviewAppliesRatingAndWritesEvent(t *testing.T) {
 	if card.Reps != 1 || card.State == 0 || !card.Due.Time.After(before) || !card.LastReview.Valid {
 		t.Fatalf("карточка после «хорошо»: %+v", card)
 	}
-	if len(e.store.events) != 1 {
-		t.Fatalf("событий %d, ожидали 1", len(e.store.events))
+	if reviewEvents(e) != 1 {
+		t.Fatalf("событий %d, ожидали 1", reviewEvents(e))
 	}
 	ev := e.store.events[0]
 	var p struct {
@@ -448,16 +448,16 @@ func TestReviewWithSameKeyIsAppliedOnce(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("повтор: статус %d, ожидали 200", rec.Code)
 	}
-	if e.store.cards[id] != afterFirst || len(e.store.events) != 1 {
-		t.Fatalf("повтор изменил карточку или добавил событие: %+v, событий %d", e.store.cards[id], len(e.store.events))
+	if e.store.cards[id] != afterFirst || reviewEvents(e) != 1 {
+		t.Fatalf("повтор изменил карточку или добавил событие: %+v, событий %d", e.store.cards[id], reviewEvents(e))
 	}
 	// Даже с другой оценкой тот же ключ — повтор, а не новая оценка.
 	if rec := doReview(e, token, id, 1, "same"); rec.Code != http.StatusOK || e.store.cards[id] != afterFirst {
 		t.Fatalf("тот же ключ с другой оценкой должен быть проигнорирован: %d", rec.Code)
 	}
 	// Новый ключ — новая оценка.
-	if rec := doReview(e, token, id, 3, "other"); rec.Code != http.StatusOK || e.store.cards[id].Reps != 2 || len(e.store.events) != 2 {
-		t.Fatalf("новый ключ: reps %d, событий %d", e.store.cards[id].Reps, len(e.store.events))
+	if rec := doReview(e, token, id, 3, "other"); rec.Code != http.StatusOK || e.store.cards[id].Reps != 2 || reviewEvents(e) != 2 {
+		t.Fatalf("новый ключ: reps %d, событий %d", e.store.cards[id].Reps, reviewEvents(e))
 	}
 }
 
@@ -468,8 +468,8 @@ func TestReviewSameKeyOnDifferentCardsIsSeparate(t *testing.T) {
 	b := seed(t, e, 2, time.Now().Add(-time.Hour))
 	doReview(e, token, a, 3, "k")
 	doReview(e, token, b, 3, "k")
-	if e.store.cards[a].Reps != 1 || e.store.cards[b].Reps != 1 || len(e.store.events) != 2 {
-		t.Fatalf("ключ должен действовать в рамках карточки: %d/%d повторений, событий %d", e.store.cards[a].Reps, e.store.cards[b].Reps, len(e.store.events))
+	if e.store.cards[a].Reps != 1 || e.store.cards[b].Reps != 1 || reviewEvents(e) != 2 {
+		t.Fatalf("ключ должен действовать в рамках карточки: %d/%d повторений, событий %d", e.store.cards[a].Reps, e.store.cards[b].Reps, reviewEvents(e))
 	}
 }
 
@@ -563,7 +563,10 @@ func TestReviewWhenLastReviewIsAheadOfClock(t *testing.T) {
 		t.Fatalf("после оценки: %+v (last_review не должен отодвигаться назад)", after)
 	}
 	// Повтор с тем же ключом при таком состоянии — тоже успех без изменений.
-	if rec := doReview(e, token, id, 3, "k1"); rec.Code != http.StatusOK || e.store.cards[id] != after || len(e.store.events) != 1 {
-		t.Fatalf("повтор: статус %d, событий %d", rec.Code, len(e.store.events))
+	if rec := doReview(e, token, id, 3, "k1"); rec.Code != http.StatusOK || e.store.cards[id] != after || reviewEvents(e) != 1 {
+		t.Fatalf("повтор: статус %d, событий %d", rec.Code, reviewEvents(e))
 	}
 }
+
+// reviewEvents считает события оценок карточек (без сопутствующих, например word.learned).
+func reviewEvents(e env) int { return len(eventsOfType(e, "card.reviewed")) }
