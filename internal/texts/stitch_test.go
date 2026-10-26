@@ -184,3 +184,61 @@ func ids(t Text) []int64 {
 	}
 	return out
 }
+
+func TestStitchNeverListsTargetWithoutTwoOccurrences(t *testing.T) {
+	// Мир с очень высоким покрытием: подгонка тянется к шести целевым словам, а потолок десять предложений даёт каждому
+	// только по два, значит, шестое не помещается и не должно попасть в список.
+	for seed := int64(1); seed <= 40; seed++ {
+		known, cands := world(60, 14, 5)
+		text, ok := Stitch(known, cands, Options{Goal: 0.80, Tolerance: 0.02, MinTargets: 6, MaxTargets: 6, Seed: seed})
+		if !ok {
+			continue
+		}
+		for _, target := range text.Targets {
+			n := 0
+			for _, s := range text.Sentences {
+				for _, tok := range s.Tokens {
+					if tok == target {
+						n++
+					}
+				}
+			}
+			if n < 2 {
+				t.Fatalf("зерно %d: слово %s в списке, а в тексте %d раз", seed, target, n)
+			}
+		}
+		if len(text.Sentences) > 10 {
+			t.Fatalf("предложений %d больше потолка", len(text.Sentences))
+		}
+	}
+}
+
+func TestStitchNameIsNotTheTargetWord(t *testing.T) {
+	known := map[string]bool{"kw01": true, "kw02": true, "kw03": true}
+	mark := Candidate{Target: "mark", Forms: map[string]bool{"mark": true}}
+	for i := int64(1); i <= 3; i++ {
+		mark.Sentences = append(mark.Sentences, Sentence{ID: i, Tokens: []string{"kw01", "kw02", "kw03", "saw", "Mark", "today"}})
+	}
+	if _, ok := Stitch(known, []Candidate{mark}, Options{MinSentences: 2, MinTargets: 1, Seed: 1}); ok {
+		t.Fatal("имя Mark посреди предложения не считается словом mark")
+	}
+	// В начале предложения заглавная буква — обычное слово.
+	start := Candidate{Target: "mark", Forms: map[string]bool{"mark": true}}
+	for i := int64(1); i <= 3; i++ {
+		start.Sentences = append(start.Sentences, Sentence{ID: i, Tokens: []string{"Mark", "kw01", "kw02", "kw03", "today"}})
+	}
+	text, ok := Stitch(known, []Candidate{start}, Options{MinSentences: 2, MinTargets: 1, Seed: 1})
+	if !ok || len(text.Targets) != 1 {
+		t.Fatalf("слово в начале предложения подходит: ok=%v %+v", ok, text.Targets)
+	}
+}
+
+func TestStitchRespectsLowerBounds(t *testing.T) {
+	known, cands := world(30, 1, 2) // одно слово, два предложения: меньше MinSentences
+	if _, ok := Stitch(known, cands, Options{Seed: 1}); ok {
+		t.Fatal("два предложения при MinSentences 6: текста нет")
+	}
+	if _, ok := Stitch(known, cands, Options{Seed: 1, MinSentences: 2, MinTargets: 1}); !ok {
+		t.Fatal("с явно сниженной границей текст собирается")
+	}
+}

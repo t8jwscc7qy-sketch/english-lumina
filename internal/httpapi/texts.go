@@ -55,12 +55,39 @@ func (s *authServer) textGoal(ctx context.Context, userID int64) (float64, error
 }
 
 type storedSentence struct {
-	ID        int64    `json:"id"`
-	TatoebaID int64    `json:"tatoebaId"`
-	Author    string   `json:"author"`
-	En        string   `json:"en"`
-	Ru        string   `json:"ru"`
-	Tokens    []string `json:"tokens"`
+	ID          int64    `json:"id"`
+	TatoebaID   int64    `json:"tatoebaId"`
+	Author      string   `json:"author"`
+	RuTatoebaID int64    `json:"ruTatoebaId"`
+	RuAuthor    string   `json:"ruAuthor"`
+	En          string   `json:"en"`
+	Ru          string   `json:"ru"`
+	Tokens      []string `json:"tokens"`
+}
+
+// storedText — тело сохранённого текста: по нему повторно отдаётся ещё не оценённый текст.
+type storedText struct {
+	Sentences []storedSentence   `json:"sentences"`
+	Targets   []string           `json:"targets"`
+	Hints     []api.ReadWordHint `json:"hints"`
+	Cohesion  float64            `json:"cohesion"`
+}
+
+func readTextOf(id int64, mode api.ReadTextMode, title string, goal, coverage float64, body storedText) api.ReadText {
+	out := api.ReadText{
+		Id: id, Mode: mode, Title: title, Goal: float32(goal), Coverage: float32(coverage), Cohesion: float32(body.Cohesion),
+		Targets: body.Targets, Hints: body.Hints, Sentences: make([]api.ReadSentence, len(body.Sentences)),
+	}
+	if out.Hints == nil {
+		out.Hints = []api.ReadWordHint{}
+	}
+	if out.Targets == nil {
+		out.Targets = []string{}
+	}
+	for i, st := range body.Sentences {
+		out.Sentences[i] = api.ReadSentence{TatoebaId: st.TatoebaID, Author: st.Author, RuTatoebaId: st.RuTatoebaID, RuAuthor: st.RuAuthor, En: st.En, Ru: st.Ru, Tokens: st.Tokens}
+	}
+	return out
 }
 
 // GetNextText собирает и отдаёт текст на целевом уровне понимания.
@@ -75,6 +102,21 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 		mode = api.ReadTextModeListen
 	}
 	ctx := r.Context()
+	// Пока предыдущий текст не оценён, отдаём его же: возврат на страницу и смена режима не теряют текст.
+	if r.URL.Query().Get("new") != "1" {
+		last, err := s.store.TextLastUnrated(ctx, &user.ID)
+		switch {
+		case err == nil:
+			var body storedText
+			if json.Unmarshal(last.Body, &body) == nil && len(body.Sentences) > 0 {
+				writeJSON(w, http.StatusOK, readTextOf(last.ID, mode, last.Title, float64(last.Goal), float64(last.CoverageAtBuild), body))
+				return
+			}
+		case !errors.Is(err, pgx.ErrNoRows):
+			s.failTexts(w, fmt.Errorf("последний текст: %w", err))
+			return
+		}
+	}
 	knownRows, err := s.store.LearnKnownWords(ctx, user.ID)
 	if err != nil {
 		s.failTexts(w, fmt.Errorf("известные слова: %w", err))
@@ -117,8 +159,15 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 		if len(cands) >= textCandidateWords {
 			break
 		}
-		forms := words.SingleWords(words.Forms(t.Lemma, t.Pos))
-		if _, dup := targetRow[t.Lemma]; dup || len(forms) == 0 || exercises.IsFunctionWord(t.Lemma) { // служебные слова и так считаются известными; одна лемма — одно целевое слово
+		// Формы, которые уже известны (то же слово другой частью речи, совпавшая форма другого слова), целевыми не бывают.
+		var forms []string
+		for _, f := range words.SingleWords(words.Forms(t.Lemma, t.Pos)) {
+			if !known[f] && !exercises.IsFunctionWord(f) {
+				forms = append(forms, f)
+			}
+		}
+		_, dup := targetRow[t.Lemma]
+		if dup || len(forms) == 0 || known[strings.ToLower(t.Lemma)] || exercises.IsFunctionWord(t.Lemma) { // одна лемма — одно целевое слово
 			continue
 		}
 		rows, err := s.store.ListExamples(ctx, db.ListExamplesParams{Query: words.TSQuery(words.Forms(t.Lemma, t.Pos)), MaxRows: textExampleRows})
@@ -154,7 +203,7 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 	wordCount := 0
 	for i, sn := range text.Sentences {
 		row := byEnID[sn.ID]
-		sentences[i] = storedSentence{ID: sn.ID, TatoebaID: row.EnTatoebaID, Author: row.EnAuthor, En: sn.En, Ru: sn.Ru, Tokens: sn.Tokens}
+		sentences[i] = storedSentence{ID: sn.ID, TatoebaID: row.EnTatoebaID, Author: row.EnAuthor, RuTatoebaID: row.RuTatoebaID, RuAuthor: row.RuAuthor, En: sn.En, Ru: sn.Ru, Tokens: sn.Tokens}
 		tokens[i] = sn.Tokens
 		wordCount += len(sn.Tokens)
 	}
@@ -164,7 +213,8 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	title := "Новые слова: " + strings.Join(text.Targets[:min(3, len(text.Targets))], ", ")
-	body, err := json.Marshal(map[string]any{"sentences": sentences, "targets": text.Targets})
+	stored := storedText{Sentences: sentences, Targets: text.Targets, Hints: hints, Cohesion: text.Cohesion}
+	body, err := json.Marshal(stored)
 	if err != nil {
 		s.failTexts(w, err)
 		return
@@ -177,13 +227,7 @@ func (s *authServer) GetNextText(w http.ResponseWriter, r *http.Request) {
 		s.failTexts(w, fmt.Errorf("сохранение текста: %w", err))
 		return
 	}
-	out := api.ReadText{
-		Id: id, Mode: mode, Title: title, Goal: float32(goal), Coverage: float32(text.Coverage), Cohesion: float32(text.Cohesion),
-		Targets: text.Targets, Hints: hints, Sentences: make([]api.ReadSentence, len(sentences)),
-	}
-	for i, st := range sentences {
-		out.Sentences[i] = api.ReadSentence{TatoebaId: st.TatoebaID, Author: st.Author, En: st.En, Ru: st.Ru, Tokens: st.Tokens}
-	}
+	out := readTextOf(id, mode, title, goal, text.Coverage, stored)
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -206,7 +250,12 @@ func (s *authServer) textHints(ctx context.Context, text texts.Text, cands []tex
 				continue
 			}
 			seen[tok] = true
-			if lemma, isTarget := formOf[tok]; isTarget {
+			base := strings.TrimSuffix(strings.TrimSuffix(tok, "'s"), "'")
+			lemma, isTarget := formOf[tok]
+			if !isTarget {
+				lemma, isTarget = formOf[base]
+			}
+			if isTarget {
 				row := targetRow[lemma]
 				card, _ := parseCard(row.Payload)
 				hints = append(hints, hintOf(tok, row.LexemeID, row.Lemma, row.Pos, card, true))

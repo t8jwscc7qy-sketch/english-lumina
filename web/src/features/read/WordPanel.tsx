@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReadWordHint } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { useAddCard } from '@/features/cards/cards'
@@ -11,9 +11,24 @@ export function WordPanel({ token, hint, onClose }: Props) {
   const add = useAddCard()
   const know = useKnowWord()
   const [done, setDone] = useState<string | null>(null)
+  const ref = useRef<HTMLElement>(null)
+
+  // Панель открывается под текстом: переносим на неё фокус и прокручиваем к ней; Esc закрывает.
+  useEffect(() => {
+    ref.current?.focus()
+    if (typeof ref.current?.scrollIntoView === 'function') ref.current.scrollIntoView({ block: 'nearest' })
+  }, [])
 
   return (
-    <section aria-label={`Слово ${token}`} aria-live="polite" className="surface flex flex-col gap-3 p-4">
+    <section
+      ref={ref}
+      tabIndex={-1}
+      aria-label={`Слово ${token}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose()
+      }}
+      className="surface flex flex-col gap-3 p-4 outline-none"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 lang="en" className="text-title break-words">
           {token}
@@ -52,7 +67,7 @@ export function WordPanel({ token, hint, onClose }: Props) {
               disabled={know.isPending || done === 'known'}
               onClick={() => know.mutate(hint.lexemeId, { onSuccess: (marked) => setDone(marked ? 'known' : 'has') })}
             >
-              {done === 'known' ? 'Отмечено как известное' : done === 'has' ? 'У слова уже есть карточка' : 'Знаю'}
+              {done === 'known' ? 'Отмечено как известное' : done === 'has' ? 'Слово уже учится' : 'Знаю'}
             </Button>
           </div>
         </>

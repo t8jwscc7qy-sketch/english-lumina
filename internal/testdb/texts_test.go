@@ -79,10 +79,27 @@ func TestTextQueries(t *testing.T) {
 		t.Fatalf("последние предложения: %v %v", ids, err)
 	}
 
+	// Последний неоценённый текст.
+	last, err := q.TextLastUnrated(ctx, &user.ID)
+	if err != nil || last.ID != id {
+		t.Fatalf("последний неоценённый: %+v %v", last, err)
+	}
+	// Текст без номеров предложений (будущий авторский) не ломает запрос последних предложений.
+	noIDs, _ := json.Marshal(map[string]any{"sentences": []map[string]any{{"en": "x"}}})
+	if _, err := q.TextInsert(ctx, db.TextInsertParams{UserID: &user.ID, Kind: "authored", Title: "Без номеров", Body: noIDs, WordCount: 5, CoverageAtBuild: 0.9, Goal: 0.85}); err != nil {
+		t.Fatal(err)
+	}
+	if ids2, err := q.TextRecentSentenceIDs(ctx, db.TextRecentSentenceIDsParams{UserID: &user.ID, MaxTexts: 5}); err != nil || len(ids2) != 2 {
+		t.Fatalf("без номеров: %v %v", ids2, err)
+	}
+
 	// Оценка один раз на текст.
 	rate := db.TextRateInsertParams{UserID: user.ID, TextID: id, Mode: "read", Understood: "easy", CoverageAtRead: 0.86}
 	if n, err := q.TextRateInsert(ctx, rate); err != nil || n != 1 {
 		t.Fatalf("оценка: %d %v", n, err)
+	}
+	if l, err := q.TextLastUnrated(ctx, &user.ID); err != nil || l.ID == id || l.Title != "Без номеров" {
+		t.Fatalf("оценённый текст больше не «неоценённый»: %+v %v", l, err)
 	}
 	if n, err := q.TextRateInsert(ctx, rate); err != nil || n != 0 {
 		t.Fatalf("повторная оценка: %d %v", n, err)

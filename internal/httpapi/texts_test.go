@@ -148,7 +148,7 @@ func TestTextNextDoesNotRepeatRecentSentences(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatal(code)
 	}
-	second, code, body := nextText(t, e, token, "")
+	second, code, body := nextText(t, e, token, "?new=1")
 	if code != http.StatusOK {
 		t.Fatalf("второй текст: %d %s", code, body)
 	}
@@ -275,5 +275,60 @@ func TestTextTargetsAreDistinctLemmas(t *testing.T) {
 			t.Fatalf("лемма %s дважды среди целевых слов: %v", tg, text.Targets)
 		}
 		seen[tg] = true
+	}
+}
+
+func TestTextNextReturnsSameUnratedTextUntilRated(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	first, _, _ := nextText(t, e, token, "")
+	again, code, _ := nextText(t, e, token, "?mode=listen")
+	if code != http.StatusOK || again.Id != first.Id || again.Mode != api.ReadTextModeListen || len(again.Sentences) != len(first.Sentences) {
+		t.Fatalf("неоценённый текст отдаётся повторно: %d %d (режим %s)", first.Id, again.Id, again.Mode)
+	}
+	if len(again.Hints) != len(first.Hints) || again.Sentences[0].Author != first.Sentences[0].Author {
+		t.Fatal("подсказки и атрибуция сохраняются вместе с текстом")
+	}
+	if len(e.store.texts) != 1 {
+		t.Fatalf("текстов в базе %d, ждали 1", len(e.store.texts))
+	}
+	forced, _, _ := nextText(t, e, token, "?new=1")
+	if forced.Id == first.Id {
+		t.Fatal("new=1 собирает новый текст")
+	}
+	if rec := e.do(http.MethodPost, textRatePath, rateBody(forced.Id, "ok"), withCookie(token)); rec.Code != http.StatusOK {
+		t.Fatal(rec.Code)
+	}
+	after, _, _ := nextText(t, e, token, "")
+	if after.Id == forced.Id {
+		t.Fatal("после оценки собирается новый текст")
+	}
+}
+
+func TestTextCarriesBothSidesAttribution(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	text, _, _ := nextText(t, e, token, "")
+	for _, s := range text.Sentences {
+		if s.RuAuthor != "ivan" || s.RuTatoebaId < 2000 {
+			t.Fatalf("у русского перевода должны быть автор и номер: %+v", s)
+		}
+	}
+}
+
+func TestTextTargetWithKnownFormIsSkipped(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	// «kw00» уже известно как слово; такая же лемма другой части речи целевой быть не может.
+	payload, _ := json.Marshal(map[string]any{"lemma": "kw00", "translations": []string{"x"}})
+	e.store.textTargets = append([]db.TextTargetWordsRow{{LexemeID: 902, Lemma: "kw00", Pos: "verb", Payload: payload}}, e.store.textTargets...)
+	text, code, _ := nextText(t, e, token, "")
+	if code != http.StatusOK || slices.Contains(text.Targets, "kw00") {
+		t.Fatalf("известная форма не бывает целевым словом: %d %v", code, text.Targets)
+	}
+}
+
+func TestTextNotEnoughSentencesIsNoText(t *testing.T) {
+	e, token := textsEnv(t, 25)
+	e.store.textTargets = e.store.textTargets[:1] // одно слово с тремя предложениями: меньше шести
+	if _, code, body := nextText(t, e, token, ""); code != http.StatusNotFound || errorCode(t, body) != api.ErrorErrorCodeNoText {
+		t.Fatalf("мало предложений: %d %s", code, body)
 	}
 }

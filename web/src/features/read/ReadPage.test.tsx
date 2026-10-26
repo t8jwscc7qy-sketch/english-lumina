@@ -179,3 +179,38 @@ describe('ReadPage', () => {
     expect(container.querySelector('img')).toBeNull()
   })
 })
+
+describe('ReadPage: исправления после ревью', () => {
+  it('источники: оба автора и оба номера', async () => {
+    stub(() => jsonResponse(200, TEXT))
+    const user = userEvent.setup()
+    render()
+    await user.click(await screen.findByText('Источники предложений'))
+    expect(screen.getByRole('link', { name: '#101' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '#201' })).toBeInTheDocument()
+    expect(screen.getByText(/ivan, Tatoeba/)).toBeInTheDocument()
+  })
+
+  it('«Другой текст» просит новый (new=1) и показывает его', async () => {
+    let n = 0
+    const calls = stub(() => jsonResponse(200, { ...TEXT, id: ++n === 1 ? 7 : 8 }))
+    const user = userEvent.setup()
+    render()
+    await user.click(await screen.findByRole('button', { name: 'Другой текст' }))
+    await waitFor(() => expect(calls.some((c) => c.url.includes('new=1'))).toBe(true))
+    expect(await screen.findByRole('button', { name: 'Почти всё' })).toBeInTheDocument()
+  })
+
+  it('панель слова забирает фокус, Esc закрывает и возвращает фокус на слово', async () => {
+    stub(() => jsonResponse(200, TEXT))
+    const user = userEvent.setup()
+    render()
+    const word = (await screen.findAllByRole('button', { name: 'dog' }))[0]
+    await user.click(word)
+    const panel = screen.getByRole('region', { name: 'Слово dog' })
+    expect(panel).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('region', { name: 'Слово dog' })).not.toBeInTheDocument()
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-word')).toBe('dog'))
+  })
+})

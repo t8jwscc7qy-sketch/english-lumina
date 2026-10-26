@@ -1035,10 +1035,16 @@ type Rating struct {
 // ReadSentence defines model for ReadSentence.
 type ReadSentence struct {
 	// Author Автор английского предложения на Tatoeba (атрибуция CC BY)
-	Author    string `json:"author"`
-	En        string `json:"en"`
-	Ru        string `json:"ru"`
-	TatoebaId int64  `json:"tatoebaId"`
+	Author string `json:"author"`
+	En     string `json:"en"`
+	Ru     string `json:"ru"`
+
+	// RuAuthor Автор русского перевода (атрибуция CC BY)
+	RuAuthor string `json:"ruAuthor"`
+
+	// RuTatoebaId Номер русского перевода на Tatoeba
+	RuTatoebaId int64 `json:"ruTatoebaId"`
+	TatoebaId   int64 `json:"tatoebaId"`
 
 	// Tokens Слова предложения в исходном регистре, в порядке появления
 	Tokens []string `json:"tokens"`

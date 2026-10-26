@@ -98,6 +98,7 @@ type AuthStore interface {
 	SheetWordStatuses(ctx context.Context, arg db.SheetWordStatusesParams) ([]db.SheetWordStatusesRow, error)
 	TextInsert(ctx context.Context, arg db.TextInsertParams) (int64, error)
 	TextGet(ctx context.Context, arg db.TextGetParams) (db.TextGetRow, error)
+	TextLastUnrated(ctx context.Context, userID *int64) (db.TextLastUnratedRow, error)
 	TextRateInsert(ctx context.Context, arg db.TextRateInsertParams) (int64, error)
 	TextRecentSentenceIDs(ctx context.Context, arg db.TextRecentSentenceIDsParams) ([]int64, error)
 	TextTargetWords(ctx context.Context, arg db.TextTargetWordsParams) ([]db.TextTargetWordsRow, error)

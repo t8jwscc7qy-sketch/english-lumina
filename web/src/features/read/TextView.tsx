@@ -45,6 +45,7 @@ export function TextView({ sentences, hints, selected, onPick, playing, showAllT
                   <button
                     key={k}
                     type="button"
+                    data-word={seg.key}
                     onClick={() => onPick(seg.key, i)}
                     aria-pressed={selected === seg.key}
                     className={`rounded px-0.5 ${isTarget ? 'underline decoration-primary decoration-2 underline-offset-4' : ''} ${reading ? 'bg-primary text-primary-foreground' : ''} ${selected === seg.key ? 'bg-muted' : ''} hover:bg-muted`}

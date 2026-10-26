@@ -281,8 +281,8 @@ export type ReadMode = 'read' | 'listen'
 export type Understood = 'easy' | 'ok' | 'hard'
 
 /** Следующий текст для чтения или слушания; 404 no_text — собрать нечего. */
-export async function getNextText(mode: ReadMode): Promise<ReadText> {
-  const res = await request(`/api/v1/texts/next?mode=${mode}`)
+export async function getNextText(mode: ReadMode, fresh = false): Promise<ReadText> {
+  const res = await request(`/api/v1/texts/next?mode=${mode}${fresh ? '&new=1' : ''}`)
   return (await res.json()) as ReadText
 }
 

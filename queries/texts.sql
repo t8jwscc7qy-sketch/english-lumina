@@ -7,6 +7,17 @@ RETURNING id;
 SELECT id, kind, title, body, word_count, coverage_at_build, goal, created_at
 FROM texts WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id);
 
+-- name: TextLastUnrated :one
+-- Последний собранный и ещё не оценённый текст пользователя (не старше 12 часов): его отдаём повторно, пока он не оценён,
+-- чтобы возврат на страницу и смена режима не теряли текст и не плодили новые.
+SELECT t.id, t.kind, t.title, t.body, t.word_count, t.coverage_at_build, t.goal, t.created_at
+FROM texts t
+WHERE t.user_id = sqlc.arg(user_id)
+  AND t.created_at > now() - interval '12 hours'
+  AND NOT EXISTS (SELECT 1 FROM text_reads r WHERE r.text_id = t.id AND r.user_id = t.user_id)
+ORDER BY t.id DESC
+LIMIT 1;
+
 -- name: TextRateInsert :execrows
 -- 1 строка — оценка записана, 0 — этот текст уже оценён (повтор запроса).
 INSERT INTO text_reads (user_id, text_id, mode, understood, coverage_at_read)
@@ -17,7 +28,8 @@ ON CONFLICT DO NOTHING;
 -- Номера предложений последних текстов пользователя: в новом тексте они не повторяются.
 SELECT DISTINCT (s ->> 'id')::bigint AS sentence_id
 FROM (SELECT body FROM texts WHERE user_id = sqlc.arg(user_id) ORDER BY id DESC LIMIT sqlc.arg(max_texts)::int) t,
-     jsonb_array_elements(t.body -> 'sentences') s;
+     jsonb_array_elements(t.body -> 'sentences') s
+WHERE s ->> 'id' IS NOT NULL;
 
 -- name: TextTargetWords :many
 -- Следующие по частоте слова, которых пользователь ещё не знает (не изучено и не «знаю»): кандидаты в целевые слова

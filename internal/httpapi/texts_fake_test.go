@@ -92,3 +92,12 @@ func (f *fakeStore) TextSetCoverage(_ context.Context, a db.TextSetCoverageParam
 	f.learnPrefs = &p
 	return nil
 }
+
+func (f *fakeStore) TextLastUnrated(_ context.Context, _ *int64) (db.TextLastUnratedRow, error) {
+	for id := f.nextTextID; id > 0; id-- {
+		if t, ok := f.texts[id]; ok && !f.textRated[id] {
+			return db.TextLastUnratedRow{ID: t.ID, Kind: t.Kind, Title: t.Title, Body: t.Body, WordCount: t.WordCount, CoverageAtBuild: t.CoverageAtBuild, Goal: t.Goal}, nil
+		}
+	}
+	return db.TextLastUnratedRow{}, pgx.ErrNoRows
+}

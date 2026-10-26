@@ -80,6 +80,45 @@ func (q *Queries) TextInsert(ctx context.Context, arg TextInsertParams) (int64, 
 	return id, err
 }
 
+const textLastUnrated = `-- name: TextLastUnrated :one
+SELECT t.id, t.kind, t.title, t.body, t.word_count, t.coverage_at_build, t.goal, t.created_at
+FROM texts t
+WHERE t.user_id = $1
+  AND t.created_at > now() - interval '12 hours'
+  AND NOT EXISTS (SELECT 1 FROM text_reads r WHERE r.text_id = t.id AND r.user_id = t.user_id)
+ORDER BY t.id DESC
+LIMIT 1
+`
+
+type TextLastUnratedRow struct {
+	ID              int64
+	Kind            string
+	Title           string
+	Body            json.RawMessage
+	WordCount       int16
+	CoverageAtBuild float32
+	Goal            float32
+	CreatedAt       pgtype.Timestamptz
+}
+
+// Последний собранный и ещё не оценённый текст пользователя (не старше 12 часов): его отдаём повторно, пока он не оценён,
+// чтобы возврат на страницу и смена режима не теряли текст и не плодили новые.
+func (q *Queries) TextLastUnrated(ctx context.Context, userID *int64) (TextLastUnratedRow, error) {
+	row := q.db.QueryRow(ctx, textLastUnrated, userID)
+	var i TextLastUnratedRow
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Title,
+		&i.Body,
+		&i.WordCount,
+		&i.CoverageAtBuild,
+		&i.Goal,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const textRateInsert = `-- name: TextRateInsert :execrows
 INSERT INTO text_reads (user_id, text_id, mode, understood, coverage_at_read)
 VALUES ($1, $2, $3, $4, $5)
@@ -113,6 +152,7 @@ const textRecentSentenceIDs = `-- name: TextRecentSentenceIDs :many
 SELECT DISTINCT (s ->> 'id')::bigint AS sentence_id
 FROM (SELECT body FROM texts WHERE user_id = $1 ORDER BY id DESC LIMIT $2::int) t,
      jsonb_array_elements(t.body -> 'sentences') s
+WHERE s ->> 'id' IS NOT NULL
 `
 
 type TextRecentSentenceIDsParams struct {

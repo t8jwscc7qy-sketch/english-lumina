@@ -612,7 +612,8 @@ paths:
       summary: Следующий текст для чтения или слушания
       description: >
         Собирает текст из предложений Tatoeba так, чтобы ученик понимал около goal слов (по умолчанию 85 %, настройка
-        80–90 %), с 3–6 новыми словами, каждое минимум дважды. Режим mode=read или mode=listen читается из строки запроса
+        80–90 %), с несколькими (обычно 3–6) новыми словами, каждое минимум дважды. Пока предыдущий текст не оценён
+        (и ему меньше 12 часов), отдаётся он же; параметр new=1 в строке запроса собирает новый. Режим mode=read или mode=listen читается из строки запроса
         без объявления в контракте (параметр запроса заставил бы генератор добавить новую зависимость); любое другое
         значение — read. Собрать текст нельзя (мало известных слов или предложений) — 404 no_text.
       responses:
@@ -1710,7 +1711,7 @@ components:
             $ref: "#/components/schemas/ReadWordHint"
     ReadSentence:
       type: object
-      required: [tatoebaId, author, en, ru, tokens]
+      required: [tatoebaId, author, ruTatoebaId, ruAuthor, en, ru, tokens]
       properties:
         tatoebaId:
           type: integer
@@ -1718,6 +1719,13 @@ components:
         author:
           type: string
           description: Автор английского предложения на Tatoeba (атрибуция CC BY)
+        ruTatoebaId:
+          type: integer
+          format: int64
+          description: Номер русского перевода на Tatoeba
+        ruAuthor:
+          type: string
+          description: Автор русского перевода (атрибуция CC BY)
         en:
           type: string
         ru:

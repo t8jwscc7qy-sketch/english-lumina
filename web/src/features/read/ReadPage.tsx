@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { ApiError, type ReadMode, type Understood } from '@/api/client'
 import { FoxNote } from '@/components/brand/FoxNote'
 import { Button } from '@/components/ui/button'
-import { useNextText, useRateText } from './read'
+import { useFreshText, useNextText, useRateText } from './read'
 import { wordAtChar } from './segments'
 import { canSpeak, speak, stopSpeaking } from './speech'
 import { TextView } from './TextView'
@@ -13,6 +13,7 @@ const RATES = [0.7, 1, 1.2] as const
 const percent = (v: number) => `${Math.round(v * 100)}%`
 
 function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => void; loadingNext: boolean }) {
+  const fresh = useFreshText(mode)
   const next = useNextText(mode)
   const rate = useRateText()
   const text = next.data
@@ -111,7 +112,18 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
         </section>
       )}
 
-      {revealed && picked && <WordPanel key={picked} token={picked} hint={hint} onClose={() => setPicked(null)} />}
+      {revealed && picked && (
+        <WordPanel
+          key={picked}
+          token={picked}
+          hint={hint}
+          onClose={() => {
+            setPicked(null)
+            // Фокус возвращается на слово, с которого открыли подсказку.
+            queueMicrotask(() => document.querySelector<HTMLElement>(`[data-word="${CSS.escape(picked)}"]`)?.focus())
+          }}
+        />
+      )}
 
       {revealed && (
         <details className="text-xs text-muted-foreground">
@@ -120,11 +132,21 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
             {text.sentences.map((s) => (
               <li key={s.tatoebaId}>
                 <a href={`https://tatoeba.org/en/sentences/show/${s.tatoebaId}`} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">{`#${s.tatoebaId}`}</a>
-                {` ${s.author}, Tatoeba, CC BY 2.0 FR`}
+                {` ${s.author} · `}
+                <a href={`https://tatoeba.org/en/sentences/show/${s.ruTatoebaId}`} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">{`#${s.ruTatoebaId}`}</a>
+                {` ${s.ruAuthor}, Tatoeba, CC BY 2.0 FR`}
               </li>
             ))}
           </ul>
         </details>
+      )}
+
+      {revealed && !answer && (
+        <p>
+          <Button variant="secondary" size="sm" disabled={fresh.isPending} onClick={() => { stop(); fresh.mutate() }}>
+            Другой текст
+          </Button>
+        </p>
       )}
 
       {revealed && (
@@ -134,7 +156,7 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
               <p role="status">{`Принято. Цель понимания теперь ${percent(answer.goal)}.`}</p>
               <div className="flex flex-wrap gap-3">
                 <Button
-                  disabled={loadingNext}
+                  disabled={loadingNext || fresh.isPending}
                   onClick={() => {
                     stop()
                     onNext()

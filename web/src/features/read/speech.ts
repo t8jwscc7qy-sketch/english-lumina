@@ -14,6 +14,9 @@ export type SpeakHandlers = {
 
 let session = 0
 
+// Chrome может собрать мусором высказывание без ссылки, и тогда `onend` не придёт: держим ссылки, пока идёт чтение.
+const live = new Set<SpeechSynthesisUtterance>()
+
 /** Читает предложения подряд; повторный вызов или `stopSpeaking` прерывает прежнее чтение. */
 export function speak(sentences: string[], rate: number, handlers: SpeakHandlers = {}, from = 0): void {
   if (!canSpeak()) return
@@ -30,8 +33,13 @@ export function speak(sentences: string[], rate: number, handlers: SpeakHandlers
     u.rate = rate
     u.onstart = () => handlers.onSentence?.(i)
     u.onboundary = (e) => handlers.onWord?.(i, e.charIndex)
-    u.onend = () => next(i + 1)
+    live.add(u)
+    u.onend = () => {
+      live.delete(u)
+      next(i + 1)
+    }
     u.onerror = () => {
+      live.delete(u)
       if (mine === session) handlers.onEnd?.()
     }
     window.speechSynthesis.speak(u)
@@ -41,5 +49,6 @@ export function speak(sentences: string[], rate: number, handlers: SpeakHandlers
 
 export function stopSpeaking(): void {
   session++
+  live.clear()
   if (canSpeak()) window.speechSynthesis.cancel()
 }

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/t8jwscc7qy-sketch/english-lumina/internal/exercises"
 )
@@ -80,6 +81,16 @@ type usable struct {
 	extra int // неизвестных слов, кроме форм целевого слова
 }
 
+// formAt — слово tokens[i] (в нижнем регистре lower) является формой целевого слова. Слово с заглавной буквы не в начале
+// предложения — имя (Mark, Will, May), а не целевое слово.
+func formAt(forms map[string]bool, tokens, lower []string, i int) bool {
+	if !forms[lower[i]] {
+		return false
+	}
+	r := []rune(tokens[i])
+	return i == 0 || len(r) == 0 || !unicode.IsUpper(r[0])
+}
+
 // usableFor — предложения, подходящие целевому слову: длина по границам, слово есть, лишних неизвестных не больше
 // допуска. Предложения с одинаковым номером берутся один раз.
 func usableFor(c Candidate, known map[string]bool, o Options) []usable {
@@ -90,10 +101,12 @@ func usableFor(c Candidate, known map[string]bool, o Options) []usable {
 			continue
 		}
 		lower := make([]string, len(s.Tokens))
-		has := false
 		for i, t := range s.Tokens {
 			lower[i] = strings.ToLower(t)
-			has = has || c.Forms[lower[i]]
+		}
+		has := false
+		for i := range s.Tokens {
+			has = has || formAt(c.Forms, s.Tokens, lower, i)
 		}
 		if !has {
 			continue
@@ -207,8 +220,8 @@ func build(chosen []cand, known map[string]bool, o Options, rng *rand.Rand) Text
 	count := map[string]int{}
 	countHits := func(u usable) {
 		for _, ch := range chosen {
-			for _, w := range u.lower {
-				if ch.c.Forms[w] {
+			for i := range u.lower {
+				if formAt(ch.c.Forms, u.s.Tokens, u.lower, i) {
 					count[ch.c.Target]++
 					hits[u.s.ID]++
 					break
@@ -266,7 +279,9 @@ func build(chosen []cand, known map[string]bool, o Options, rng *rand.Rand) Text
 		tokens[i] = u.s.Tokens
 	}
 	for _, ch := range chosen {
-		t.Targets = append(t.Targets, ch.c.Target)
+		if count[ch.c.Target] >= o.PerTarget { // слово без двух вхождений целевым не считается
+			t.Targets = append(t.Targets, ch.c.Target)
+		}
 	}
 	t.Coverage = Understanding(tokens, known)
 	t.Cohesion = cohesion(ordered)
@@ -290,9 +305,10 @@ func Stitch(known map[string]bool, cands []Candidate, opts Options) (Text, bool)
 		return Text{}, false
 	}
 	// Окно самых частотных подходящих слов; внутри окна выбор случаен, но порядок по частоте сохраняется.
-	window := min(len(ok), 3*o.MaxTargets)
+	maxN := min(o.MaxTargets, o.MaxSentences/o.PerTarget) // больше слов, чем можно показать дважды, не берём
+	window := min(len(ok), 3*maxN)
 	idx := rng.Perm(window)
-	n := min((o.MinTargets+o.MaxTargets)/2, window)
+	n := min((o.MinTargets+maxN)/2, window)
 	var best Text
 	bestGap := math.MaxFloat64
 	seen := map[int]bool{}
@@ -314,11 +330,12 @@ func Stitch(known map[string]bool, cands []Candidate, opts Options) (Text, bool)
 		switch {
 		case t.Coverage < o.Goal-o.Tolerance && n > min(o.MinTargets, window):
 			n--
-		case t.Coverage > o.Goal+o.Tolerance && n < min(o.MaxTargets, window):
+		case t.Coverage > o.Goal+o.Tolerance && n < min(maxN, window):
 			n++
 		default:
 			iter = 8 // в допуске (или двигаться некуда)
 		}
 	}
-	return best, len(best.Sentences) > 0
+	// Нижние границы: меньше MinSentences предложений или ни одного целевого слова — текст не отдаём.
+	return best, len(best.Sentences) >= o.MinSentences && len(best.Targets) >= 1
 }

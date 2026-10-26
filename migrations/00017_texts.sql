@@ -25,6 +25,8 @@ CREATE TABLE text_reads (
     PRIMARY KEY (user_id, text_id)
 );
 
+CREATE INDEX text_reads_text ON text_reads (text_id);
+
 -- Цель понимания текста (80–90 %; real хранит дроби неточно, поэтому границы чуть шире).
 ALTER TABLE learn_preferences
     ADD COLUMN text_coverage real NOT NULL DEFAULT 0.85 CHECK (text_coverage BETWEEN 0.795 AND 0.905);
