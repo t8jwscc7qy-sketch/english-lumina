@@ -116,3 +116,22 @@ describe('LearnPage', () => {
     expect(container.querySelector('b')).toBeNull()
   })
 })
+
+describe('LearnPage: фразы со звуком', () => {
+  it('у фразы с записью «▶ Запись», без записи при отсутствии синтеза кнопки нет', async () => {
+    const withAudio = {
+      ...BLOCK,
+      words: [
+        { ...BLOCK.words[0], examples: [{ ...BLOCK.words[0].examples[0], en: { ...BLOCK.words[0].examples[0].en, audio: { url: 'https://tatoeba.org/audio/download/9', author: 'alice', license: 'CC BY 4.0' } } }] },
+        BLOCK.words[1],
+      ],
+    }
+    stub(() => jsonResponse(200, withAudio))
+    const user = userEvent.setup()
+    render()
+    await screen.findByRole('heading', { name: 'apple' })
+    expect(screen.getByRole('button', { name: /Прослушать фразу: I eat an apple/ })).toHaveTextContent('▶ Запись')
+    await user.click(screen.getByRole('button', { name: 'Дальше' }))
+    expect(screen.queryByRole('button', { name: /Прослушать фразу/ })).not.toBeInTheDocument()
+  })
+})

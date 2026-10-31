@@ -1,0 +1,1516 @@
+[
+ {
+  "id": "t300-001",
+  "title": "Потерянный кошелёк",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "wallet",
+    "pos": "noun"
+   },
+   {
+    "lemma": "street",
+    "pos": "noun"
+   },
+   {
+    "lemma": "police",
+    "pos": "noun"
+   },
+   {
+    "lemma": "return",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom goes down the street on his way to work.",
+    "ru": "Том идёт по улице на работу."
+   },
+   {
+    "en": "He sees a wallet on the street.",
+    "ru": "Он видит на улице кошелёк."
+   },
+   {
+    "en": "\"Hey, someone lost a wallet!\" he says.",
+    "ru": "«Эй, кто-то потерял кошелёк!» — говорит он."
+   },
+   {
+    "en": "He looks in the wallet. There is a lot of money in it.",
+    "ru": "Он заглядывает в кошелёк. В нём много денег."
+   },
+   {
+    "en": "There is a name, too: Anna Brown.",
+    "ru": "Там есть и имя: Анна Браун."
+   },
+   {
+    "en": "Tom thinks about the money for a minute. Then he knows what to do.",
+    "ru": "Том минуту думает о деньгах. Потом понимает, что делать."
+   },
+   {
+    "en": "He goes to the police and gives them the wallet. \"Please return it to her,\" he says.",
+    "ru": "Он идёт в полицию и отдаёт кошелёк. «Пожалуйста, верните его ей», — говорит он."
+   },
+   {
+    "en": "\"We will return it,\" says a man from the police.",
+    "ru": "«Мы вернём его», — говорит полицейский."
+   },
+   {
+    "en": "The next day, Anna comes to see Tom.",
+    "ru": "На следующий день Анна приходит к Тому."
+   },
+   {
+    "en": "\"Thank you so much!\" she says. \"You are a great man.\"",
+    "ru": "«Большое спасибо! — говорит она. — Вы замечательный человек.»"
+   },
+   {
+    "en": "Tom is happy. He knows he did the right thing.",
+    "ru": "Том рад. Он знает, что поступил правильно."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom",
+   "Anna"
+  ]
+ },
+ {
+  "id": "t300-002",
+  "title": "Громкий сосед",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "neighbor",
+    "pos": "noun"
+   },
+   {
+    "lemma": "music",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "loud",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "knock",
+    "pos": "verb"
+   },
+   {
+    "lemma": "sleep",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max has a new neighbor.",
+    "ru": "У Макса новый сосед."
+   },
+   {
+    "en": "Her name is Kate.",
+    "ru": "Её зовут Кейт."
+   },
+   {
+    "en": "Every night, Kate plays music.",
+    "ru": "Каждый вечер Кейт включает музыку."
+   },
+   {
+    "en": "The music is very loud, and Max cannot sleep.",
+    "ru": "Музыка очень громкая, и Макс не может спать."
+   },
+   {
+    "en": "\"This is a problem,\" he says. \"I need to talk to my neighbor.\"",
+    "ru": "«Это проблема, — говорит он. — Мне надо поговорить с соседкой.»"
+   },
+   {
+    "en": "He goes to her door and knocks.",
+    "ru": "Он идёт к её двери и стучит."
+   },
+   {
+    "en": "No one comes. He knocks and knocks.",
+    "ru": "Никто не выходит. Он стучит и стучит."
+   },
+   {
+    "en": "Then Kate opens the door. \"Sorry, I cannot hear you. The music is so loud!\"",
+    "ru": "Потом Кейт открывает дверь. «Простите, я вас не слышу. Музыка такая громкая!»"
+   },
+   {
+    "en": "\"That is the problem,\" says Max. \"Your music is too loud at night.\"",
+    "ru": "«В этом и дело, — говорит Макс. — Ваша музыка слишком громкая ночью.»"
+   },
+   {
+    "en": "Kate laughs. \"Sorry, neighbor. I will try to keep it down.\"",
+    "ru": "Кейт смеётся. «Простите, сосед. Я постараюсь потише.»"
+   },
+   {
+    "en": "Now the night is good, and Max sleeps well.",
+    "ru": "Теперь ночь тихая, и Макс хорошо спит."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max",
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-003",
+  "title": "Автобус и начальник",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "bus",
+    "pos": "noun"
+   },
+   {
+    "lemma": "boss",
+    "pos": "noun"
+   },
+   {
+    "lemma": "hurry",
+    "pos": "verb"
+   },
+   {
+    "lemma": "ticket",
+    "pos": "noun"
+   },
+   {
+    "lemma": "driver",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben is late for work.",
+    "ru": "Бен опаздывает на работу."
+   },
+   {
+    "en": "His boss does not like it when people are late.",
+    "ru": "Начальник не любит, когда опаздывают."
+   },
+   {
+    "en": "Ben runs to the bus. \"I have to hurry!\" he says.",
+    "ru": "Бен бежит к автобусу. «Мне надо торопиться!» — говорит он."
+   },
+   {
+    "en": "He gets on the bus. \"Your ticket, please,\" says the driver.",
+    "ru": "Он садится в автобус. «Ваш билет, пожалуйста», — говорит водитель."
+   },
+   {
+    "en": "Ben looks for his ticket. He cannot find it.",
+    "ru": "Бен ищет билет. Он не может его найти."
+   },
+   {
+    "en": "\"Hurry up!\" says a woman. \"We are all late.\"",
+    "ru": "«Поторопитесь! — говорит женщина. — Мы все опаздываем.»"
+   },
+   {
+    "en": "At last Ben finds the ticket in his hand and gives it to the driver.",
+    "ru": "Наконец Бен находит билет в своей руке и отдаёт его водителю."
+   },
+   {
+    "en": "The bus goes and goes. Ben gets to work.",
+    "ru": "Автобус едет и едет. Бен приходит на работу."
+   },
+   {
+    "en": "His boss is there. \"Ben, you are late again,\" he says.",
+    "ru": "Начальник уже там. «Бен, вы опять опоздали», — говорит он."
+   },
+   {
+    "en": "\"I know, boss. The bus was late, too,\" says Ben.",
+    "ru": "«Я знаю, шеф. Автобус тоже опоздал», — говорит Бен."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t300-004",
+  "title": "Рыбалка",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "fish",
+    "pos": "noun"
+   },
+   {
+    "lemma": "river",
+    "pos": "noun"
+   },
+   {
+    "lemma": "boat",
+    "pos": "noun"
+   },
+   {
+    "lemma": "catch",
+    "pos": "verb"
+   },
+   {
+    "lemma": "pull",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Today Tom and his dad go to the river.",
+    "ru": "Сегодня Том и его папа идут к реке."
+   },
+   {
+    "en": "They have a little boat.",
+    "ru": "У них небольшая лодка."
+   },
+   {
+    "en": "\"We will catch a lot of fish,\" says Dad.",
+    "ru": "«Мы поймаем много рыбы», — говорит папа."
+   },
+   {
+    "en": "They sit in the boat on the river.",
+    "ru": "Они сидят в лодке на реке."
+   },
+   {
+    "en": "Tom waits and waits. He does not catch a fish.",
+    "ru": "Том ждёт и ждёт. Он не ловит рыбу."
+   },
+   {
+    "en": "\"Be good, fish!\" he says. \"Come to me!\"",
+    "ru": "«Будь умницей, рыба! — говорит он. — Иди ко мне!»"
+   },
+   {
+    "en": "Dad laughs. \"You have to wait, Tom.\"",
+    "ru": "Папа смеётся. «Надо ждать, Том.»"
+   },
+   {
+    "en": "Then Tom feels something pull. \"I have a fish!\" he says.",
+    "ru": "Тут Том чувствует рывок. «Я поймал рыбу!» — говорит он."
+   },
+   {
+    "en": "It is a big fish. Tom and Dad pull and pull.",
+    "ru": "Это большая рыба. Том и папа тянут и тянут."
+   },
+   {
+    "en": "At last Tom catches the fish and puts it in the boat.",
+    "ru": "Наконец Том вытаскивает рыбу и кладёт её в лодку."
+   },
+   {
+    "en": "\"Great!\" says Dad. \"Now we have something good to eat.\"",
+    "ru": "«Отлично! — говорит папа. — Теперь у нас есть что-то вкусное.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Dad",
+   "Tom"
+  ]
+ },
+ {
+  "id": "t300-005",
+  "title": "Подарок для мамы",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "gift",
+    "pos": "noun"
+   },
+   {
+    "lemma": "flower",
+    "pos": "noun"
+   },
+   {
+    "lemma": "surprise",
+    "pos": "noun"
+   },
+   {
+    "lemma": "garden",
+    "pos": "noun"
+   },
+   {
+    "lemma": "birthday",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "It is the night before Mom's birthday.",
+    "ru": "Наступила ночь перед днём рождения мамы."
+   },
+   {
+    "en": "Kate wants to give her a gift.",
+    "ru": "Кейт хочет подарить ей подарок."
+   },
+   {
+    "en": "\"I have no money,\" she thinks. \"But I have an idea.\"",
+    "ru": "«У меня нет денег, — думает она. — Но у меня есть идея.»"
+   },
+   {
+    "en": "In the garden, there are a lot of flowers.",
+    "ru": "В саду много цветов."
+   },
+   {
+    "en": "Kate takes some flowers from the garden.",
+    "ru": "Кейт срывает в саду несколько цветов."
+   },
+   {
+    "en": "She keeps them for the morning.",
+    "ru": "Она оставляет их до утра."
+   },
+   {
+    "en": "In the morning, Kate goes to her mother's room.",
+    "ru": "Утром Кейт идёт в комнату мамы."
+   },
+   {
+    "en": "\"Happy birthday, Mom! This is a gift for you,\" she says.",
+    "ru": "«С днём рождения, мама! Это тебе подарок», — говорит она."
+   },
+   {
+    "en": "Mom looks at the flowers. \"What a nice surprise!\" she says.",
+    "ru": "Мама смотрит на цветы. «Какой приятный сюрприз!» — говорит она."
+   },
+   {
+    "en": "\"I love my gift,\" says Mom. \"And I love my girl.\"",
+    "ru": "«Я люблю свой подарок, — говорит мама. — И я люблю свою девочку.»"
+   },
+   {
+    "en": "The surprise is the best gift of the day.",
+    "ru": "Сюрприз — лучший подарок этого дня."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate",
+   "Mom"
+  ]
+ },
+ {
+  "id": "t300-006",
+  "title": "Пропавший щенок",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "puppy",
+    "pos": "noun"
+   },
+   {
+    "lemma": "park",
+    "pos": "noun"
+   },
+   {
+    "lemma": "search",
+    "pos": "verb"
+   },
+   {
+    "lemma": "bark",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna has a little puppy.",
+    "ru": "У Анны есть маленький щенок."
+   },
+   {
+    "en": "One day, the puppy is not at home.",
+    "ru": "Однажды щенка нет дома."
+   },
+   {
+    "en": "\"Where is my puppy?\" says Anna. \"I must find him!\"",
+    "ru": "«Где мой щенок? — говорит Анна. — Я должна его найти!»"
+   },
+   {
+    "en": "She calls her friend Max. \"Please help me search!\"",
+    "ru": "Она звонит другу Максу. «Пожалуйста, помоги мне искать!»"
+   },
+   {
+    "en": "They search the house. Then they go to the park.",
+    "ru": "Они ищут по дому. Потом идут в парк."
+   },
+   {
+    "en": "They go to the park. They search and search.",
+    "ru": "Они идут в парк. Они ищут и ищут."
+   },
+   {
+    "en": "Then they hear something. \"Bark, bark!\"",
+    "ru": "Вдруг они что-то слышат. «Гав, гав!»"
+   },
+   {
+    "en": "It is the puppy! He is in the park, away from home.",
+    "ru": "Это щенок! Он в парке, далеко от дома."
+   },
+   {
+    "en": "The puppy barks and runs to Anna.",
+    "ru": "Щенок лает и бежит к Анне."
+   },
+   {
+    "en": "\"Bad puppy!\" says Anna, but she laughs. \"I love you.\"",
+    "ru": "«Плохой щенок!» — говорит Анна, но смеётся. «Я тебя люблю.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna",
+   "Max"
+  ],
+  "allow": [
+   "артикль:10"
+  ]
+ },
+ {
+  "id": "t300-007",
+  "title": "Ужин в ресторане",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "restaurant",
+    "pos": "noun"
+   },
+   {
+    "lemma": "menu",
+    "pos": "noun"
+   },
+   {
+    "lemma": "waiter",
+    "pos": "noun"
+   },
+   {
+    "lemma": "dinner",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom and Kate go to a restaurant for dinner.",
+    "ru": "Том и Кейт идут в ресторан на ужин."
+   },
+   {
+    "en": "The restaurant is nice, and there are a lot of people.",
+    "ru": "Ресторан приятный, и в нём много людей."
+   },
+   {
+    "en": "A waiter comes with the menu.",
+    "ru": "Подходит официант с меню."
+   },
+   {
+    "en": "\"What do you want for dinner?\" asks the waiter.",
+    "ru": "«Что вы хотите на ужин?» — спрашивает официант."
+   },
+   {
+    "en": "Tom looks at the menu. \"I do not know,\" he says.",
+    "ru": "Том смотрит в меню. «Я не знаю», — говорит он."
+   },
+   {
+    "en": "\"Let me see the menu,\" says Kate. \"I want something nice.\"",
+    "ru": "«Дай я посмотрю меню, — говорит Кейт. — Я хочу что-нибудь вкусное.»"
+   },
+   {
+    "en": "\"Good idea,\" says the waiter. \"And you, sir?\"",
+    "ru": "«Хорошая мысль, — говорит официант. — А вы, сэр?»"
+   },
+   {
+    "en": "Tom wants a big dinner. He asks for something big.",
+    "ru": "Том хочет плотный ужин. Он просит что-нибудь посытнее."
+   },
+   {
+    "en": "The waiter comes back with the dinner.",
+    "ru": "Официант приносит ужин."
+   },
+   {
+    "en": "\"This is the best dinner,\" says Tom.",
+    "ru": "«Это лучший ужин», — говорит Том."
+   },
+   {
+    "en": "Kate laughs. \"You say that about every restaurant.\"",
+    "ru": "Кейт смеётся. «Ты так говоришь про каждый ресторан.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom",
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-008",
+  "title": "Старая фотография",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "photo",
+    "pos": "noun"
+   },
+   {
+    "lemma": "grandmother",
+    "pos": "noun"
+   },
+   {
+    "lemma": "smile",
+    "pos": "verb"
+   },
+   {
+    "lemma": "album",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate finds an old album in her mother's room.",
+    "ru": "Кейт находит в комнате мамы старый альбом."
+   },
+   {
+    "en": "There are a lot of photos in the album.",
+    "ru": "В альбоме много фотографий."
+   },
+   {
+    "en": "She looks at one photo. A girl smiles at her.",
+    "ru": "Она смотрит на одну фотографию. Девочка улыбается ей."
+   },
+   {
+    "en": "\"Who is this girl?\" she asks her mother.",
+    "ru": "«Кто эта девочка?» — спрашивает она маму."
+   },
+   {
+    "en": "\"That is your grandmother,\" says Mom. \"She was a girl then.\"",
+    "ru": "«Это твоя бабушка, — говорит мама. — Тогда она была девочкой.»"
+   },
+   {
+    "en": "Kate looks at the photo again. The girl has a nice smile.",
+    "ru": "Кейт снова смотрит на фото. У девочки милая улыбка."
+   },
+   {
+    "en": "\"I remember her smile,\" says Mom. \"It was nice.\"",
+    "ru": "«Я помню её улыбку, — говорит мама. — Она была милой.»"
+   },
+   {
+    "en": "Kate smiles, too. She puts the photo back in the album.",
+    "ru": "Кейт тоже улыбается. Она кладёт фото обратно в альбом."
+   },
+   {
+    "en": "\"Can I keep this photo?\" she asks.",
+    "ru": "«Можно мне оставить это фото?» — спрашивает она."
+   },
+   {
+    "en": "\"Yes,\" says Mom. \"Your grandmother will like that.\"",
+    "ru": "«Да, — говорит мама. — Твоей бабушке это понравится.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-009",
+  "title": "У моря",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "sea",
+    "pos": "noun"
+   },
+   {
+    "lemma": "beach",
+    "pos": "noun"
+   },
+   {
+    "lemma": "sand",
+    "pos": "noun"
+   },
+   {
+    "lemma": "swim",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max and Kate go to the sea.",
+    "ru": "Макс и Кейт едут к морю."
+   },
+   {
+    "en": "It is a nice day, and the beach is big.",
+    "ru": "День хороший, и пляж большой."
+   },
+   {
+    "en": "\"I want to swim,\" says Kate. \"Come with me!\"",
+    "ru": "«Я хочу плавать, — говорит Кейт. — Пойдём со мной!»"
+   },
+   {
+    "en": "Max looks at the sea. \"It is big. I do not know how to swim well.\"",
+    "ru": "Макс смотрит на море. «Оно большое. Я плохо умею плавать.»"
+   },
+   {
+    "en": "\"I can help you,\" says Kate. \"Let me show you.\"",
+    "ru": "«Я могу тебе помочь, — говорит Кейт. — Давай покажу.»"
+   },
+   {
+    "en": "They go in the sea together. Kate swims, and Max tries to swim.",
+    "ru": "Они заходят в море вместе. Кейт плывёт, а Макс пытается плыть."
+   },
+   {
+    "en": "Max is not good at it. But he does not stop.",
+    "ru": "У Макса не очень получается. Но он не сдаётся."
+   },
+   {
+    "en": "After some time, they sit on the sand.",
+    "ru": "Через некоторое время они садятся на песок."
+   },
+   {
+    "en": "The sand is nice, and the sea is nice.",
+    "ru": "Песок мягкий, а море приятное."
+   },
+   {
+    "en": "\"I can swim!\" says Max. \"I really can!\"",
+    "ru": "«Я умею плавать! — говорит Макс. — Правда умею!»"
+   },
+   {
+    "en": "Kate laughs. \"Yes, you can. I am sure we will come back to the beach.\"",
+    "ru": "Кейт смеётся. «Да, умеешь. Уверена, мы ещё вернёмся на пляж.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max",
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-010",
+  "title": "Сломанный телефон",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "phone",
+    "pos": "noun"
+   },
+   {
+    "lemma": "screen",
+    "pos": "noun"
+   },
+   {
+    "lemma": "repair",
+    "pos": "verb"
+   },
+   {
+    "lemma": "shop",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben's phone is broken.",
+    "ru": "Телефон Бена сломан."
+   },
+   {
+    "en": "The screen of the phone is broken, too.",
+    "ru": "Экран телефона тоже разбит."
+   },
+   {
+    "en": "\"This is bad,\" says Ben. \"I need my phone for work.\"",
+    "ru": "«Это плохо, — говорит Бен. — Мне нужен телефон для работы.»"
+   },
+   {
+    "en": "He goes to a shop.",
+    "ru": "Он идёт в магазин."
+   },
+   {
+    "en": "\"Hello,\" says the man in the shop. \"Can I help you?\"",
+    "ru": "«Здравствуйте, — говорит мужчина в магазине. — Могу я вам помочь?»"
+   },
+   {
+    "en": "\"My phone does not work. Can you repair the screen?\" asks Ben.",
+    "ru": "«Мой телефон не работает. Вы можете починить экран?» — спрашивает Бен."
+   },
+   {
+    "en": "\"Yes, I can repair it,\" says the man. \"Come back when I am done.\"",
+    "ru": "«Да, могу, — говорит мужчина. — Зайдите, когда я закончу.»"
+   },
+   {
+    "en": "Ben waits in the shop. He thinks about his phone.",
+    "ru": "Бен ждёт в магазине. Он думает о своём телефоне."
+   },
+   {
+    "en": "After some time, the man gives him the phone.",
+    "ru": "Через некоторое время мужчина отдаёт ему телефон."
+   },
+   {
+    "en": "The screen is as good as new. \"Thank you!\" says Ben.",
+    "ru": "Экран как новый. «Спасибо!» — говорит Бен."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t300-011",
+  "title": "Урок гитары",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "guitar",
+    "pos": "noun"
+   },
+   {
+    "lemma": "lesson",
+    "pos": "noun"
+   },
+   {
+    "lemma": "practice",
+    "pos": "verb"
+   },
+   {
+    "lemma": "song",
+    "pos": "noun"
+   },
+   {
+    "lemma": "teacher",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom wants to play the guitar.",
+    "ru": "Том хочет играть на гитаре."
+   },
+   {
+    "en": "He gets a guitar and goes to his first lesson.",
+    "ru": "Он берёт гитару и идёт на первый урок."
+   },
+   {
+    "en": "The teacher is a woman. \"Hello, Tom. Let us start,\" she says.",
+    "ru": "Учитель — женщина. «Здравствуй, Том. Начнём», — говорит она."
+   },
+   {
+    "en": "The lesson is hard. Tom cannot play the guitar well.",
+    "ru": "Урок трудный. Том не умеет хорошо играть на гитаре."
+   },
+   {
+    "en": "\"You have to practice every day,\" says the teacher.",
+    "ru": "«Тебе надо заниматься каждый день», — говорит учитель."
+   },
+   {
+    "en": "Tom practices at home. He practices in the morning and at night.",
+    "ru": "Том занимается дома. Он занимается и утром, и ночью."
+   },
+   {
+    "en": "After a year, Tom can play a song.",
+    "ru": "Через год Том может сыграть песню."
+   },
+   {
+    "en": "His friends come to hear the song.",
+    "ru": "Друзья приходят послушать песню."
+   },
+   {
+    "en": "\"It is a great song!\" says his friend. \"Play more!\"",
+    "ru": "«Отличная песня! — говорит друг. — Играй ещё!»"
+   },
+   {
+    "en": "Tom is very happy. Now he loves the guitar.",
+    "ru": "Том очень счастлив. Теперь он любит гитару."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t300-012",
+  "title": "Секрет",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "coffee",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "news",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "secret",
+    "pos": "noun"
+   },
+   {
+    "lemma": "whisper",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna meets her friend Kate for coffee.",
+    "ru": "Анна встречается с подругой Кейт за кофе."
+   },
+   {
+    "en": "\"I have some news,\" says Kate.",
+    "ru": "«У меня есть новости», — говорит Кейт."
+   },
+   {
+    "en": "\"What news?\" asks Anna. \"Tell me!\"",
+    "ru": "«Какие новости? — спрашивает Анна. — Расскажи!»"
+   },
+   {
+    "en": "\"It is a secret,\" says Kate. \"Do not tell.\"",
+    "ru": "«Это секрет, — говорит Кейт. — Не рассказывай.»"
+   },
+   {
+    "en": "Anna looks around. Then she whispers, \"I will keep the secret.\"",
+    "ru": "Анна оглядывается. Потом шепчет: «Я сохраню секрет.»"
+   },
+   {
+    "en": "Kate whispers, too. \"I have a new job in another place.\"",
+    "ru": "Кейт тоже шепчет. «Я получила новую работу в другом месте.»"
+   },
+   {
+    "en": "\"That is great news!\" says Anna.",
+    "ru": "«Это отличная новость!» — говорит Анна."
+   },
+   {
+    "en": "\"Do not say it,\" says Kate. \"It is a secret.\"",
+    "ru": "«Не говори никому, — говорит Кейт. — Это секрет.»"
+   },
+   {
+    "en": "They drink their coffee and talk about the news.",
+    "ru": "Они пьют кофе и говорят о новостях."
+   },
+   {
+    "en": "Anna is happy for her friend, but she will miss her.",
+    "ru": "Анна рада за подругу, но будет по ней скучать."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna",
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-013",
+  "title": "Футбол",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "ball",
+    "pos": "noun"
+   },
+   {
+    "lemma": "goal",
+    "pos": "noun"
+   },
+   {
+    "lemma": "score",
+    "pos": "verb"
+   },
+   {
+    "lemma": "team",
+    "pos": "noun"
+   },
+   {
+    "lemma": "game",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max and Ben play on the same team.",
+    "ru": "Макс и Бен играют в одной команде."
+   },
+   {
+    "en": "Today is a big game.",
+    "ru": "Сегодня большая игра."
+   },
+   {
+    "en": "The other team is good. They score a goal first.",
+    "ru": "Другая команда сильная. Они первыми забивают гол."
+   },
+   {
+    "en": "\"Come on!\" says Max. \"We can do it!\"",
+    "ru": "«Давайте! — говорит Макс. — Мы можем!»"
+   },
+   {
+    "en": "Ben gets the ball. He runs and runs.",
+    "ru": "Бен получает мяч. Он бежит и бежит."
+   },
+   {
+    "en": "He gives the ball to Max.",
+    "ru": "Он отдаёт мяч Максу."
+   },
+   {
+    "en": "Max puts the ball in the goal.",
+    "ru": "Макс отправляет мяч в ворота."
+   },
+   {
+    "en": "\"Goal!\" says the team. Now the score is the same.",
+    "ru": "«Гол!» — кричит команда. Теперь счёт равный."
+   },
+   {
+    "en": "At the end, Ben scores the last goal.",
+    "ru": "В конце Бен забивает последний гол."
+   },
+   {
+    "en": "The team wins the game. Max and Ben are the best.",
+    "ru": "Команда выигрывает игру. Макс и Бен — лучшие."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max",
+   "Ben"
+  ]
+ },
+ {
+  "id": "t300-014",
+  "title": "Письмо",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "letter",
+    "pos": "noun"
+   },
+   {
+    "lemma": "write",
+    "pos": "verb"
+   },
+   {
+    "lemma": "envelope",
+    "pos": "noun"
+   },
+   {
+    "lemma": "mail",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate wants to write a letter to her brother.",
+    "ru": "Кейт хочет написать письмо брату."
+   },
+   {
+    "en": "He lives in another place, and she misses him.",
+    "ru": "Он живёт далеко, и она скучает по нему."
+   },
+   {
+    "en": "She writes, \"Dear Tom, how are you?\"",
+    "ru": "Она пишет: «Дорогой Том, как ты?»"
+   },
+   {
+    "en": "She writes about her job, her friends, and her day.",
+    "ru": "Она пишет о работе, о друзьях и о своём дне."
+   },
+   {
+    "en": "Then she puts the letter in an envelope.",
+    "ru": "Потом она кладёт письмо в конверт."
+   },
+   {
+    "en": "She writes his name and his home on the envelope.",
+    "ru": "Она пишет на конверте его имя и адрес."
+   },
+   {
+    "en": "She goes out and puts the letter in the mail.",
+    "ru": "Она выходит и опускает письмо в почтовый ящик."
+   },
+   {
+    "en": "Then she waits for a letter from him.",
+    "ru": "Потом она ждёт письма от него."
+   },
+   {
+    "en": "After a few days, a letter comes in the mail for Kate.",
+    "ru": "Через несколько дней Кейт приходит письмо по почте."
+   },
+   {
+    "en": "It is from her brother. \"Thank you for your letter,\" he writes.",
+    "ru": "Оно от брата. «Спасибо за твоё письмо», — пишет он."
+   },
+   {
+    "en": "Kate laughs. She likes to write letters.",
+    "ru": "Кейт смеётся. Ей нравится писать письма."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-015",
+  "title": "Новая работа",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "office",
+    "pos": "noun"
+   },
+   {
+    "lemma": "meeting",
+    "pos": "noun"
+   },
+   {
+    "lemma": "nervous",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "colleague",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Today is Anna's first day at her new job.",
+    "ru": "Сегодня первый день Анны на новой работе."
+   },
+   {
+    "en": "She is nervous.",
+    "ru": "Она нервничает."
+   },
+   {
+    "en": "At the office, a man says hello to her. Her office is nice.",
+    "ru": "В офисе с ней здоровается мужчина. Её кабинет приятный."
+   },
+   {
+    "en": "\"I am Ben,\" he says. \"We are colleagues.\"",
+    "ru": "«Я Бен, — говорит он. — Мы коллеги.»"
+   },
+   {
+    "en": "\"Nice to meet you,\" says Anna. \"I am a little nervous.\"",
+    "ru": "«Рада познакомиться, — говорит Анна. — Я немного нервничаю.»"
+   },
+   {
+    "en": "\"Do not worry,\" says Ben. \"Everyone is nice here.\"",
+    "ru": "«Не волнуйся, — говорит Бен. — Здесь все хорошие.»"
+   },
+   {
+    "en": "In the morning, there is a meeting.",
+    "ru": "Утром начинается совещание."
+   },
+   {
+    "en": "Anna sits with her new colleagues. She listens and says nothing.",
+    "ru": "Анна сидит с новыми коллегами. Она слушает и молчит."
+   },
+   {
+    "en": "After the meeting, Ben asks, \"How was it?\"",
+    "ru": "После совещания Бен спрашивает: «Как тебе?»"
+   },
+   {
+    "en": "\"It was good,\" says Anna. \"I am not nervous now.\"",
+    "ru": "«Хорошо, — говорит Анна. — Теперь я не нервничаю.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna"
+  ]
+ },
+ {
+  "id": "t300-016",
+  "title": "Пикник",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "picnic",
+    "pos": "noun"
+   },
+   {
+    "lemma": "sandwich",
+    "pos": "noun"
+   },
+   {
+    "lemma": "basket",
+    "pos": "noun"
+   },
+   {
+    "lemma": "lake",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom and Kate go on a picnic.",
+    "ru": "Том и Кейт едут на пикник."
+   },
+   {
+    "en": "Kate has a big basket.",
+    "ru": "У Кейт большая корзина."
+   },
+   {
+    "en": "\"What is in the basket?\" asks Tom.",
+    "ru": "«Что в корзине?» — спрашивает Том."
+   },
+   {
+    "en": "\"Sandwiches!\" says Kate. \"A lot of sandwiches.\"",
+    "ru": "«Бутерброды! — говорит Кейт. — Много бутербродов.»"
+   },
+   {
+    "en": "They go to a lake. It is a nice place for a picnic.",
+    "ru": "Они идут к озеру. Это хорошее место для пикника."
+   },
+   {
+    "en": "They sit and look at the lake.",
+    "ru": "Они садятся и смотрят на озеро."
+   },
+   {
+    "en": "Kate takes a sandwich out of the basket.",
+    "ru": "Кейт достаёт из корзины бутерброд."
+   },
+   {
+    "en": "\"This sandwich is great!\" says Tom.",
+    "ru": "«Этот бутерброд отличный!» — говорит Том."
+   },
+   {
+    "en": "They eat all the sandwiches.",
+    "ru": "Они съедают все бутерброды."
+   },
+   {
+    "en": "\"Next time, bring a bigger basket,\" says Tom.",
+    "ru": "«В следующий раз возьми корзину побольше», — говорит Том."
+   },
+   {
+    "en": "Kate laughs. \"Next picnic, you bring the sandwiches!\"",
+    "ru": "Кейт смеётся. «На следующий пикник бутерброды принесёшь ты!»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Tom",
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-017",
+  "title": "У врача",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "doctor",
+    "pos": "noun"
+   },
+   {
+    "lemma": "pain",
+    "pos": "noun"
+   },
+   {
+    "lemma": "medicine",
+    "pos": "noun"
+   },
+   {
+    "lemma": "cough",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Max does not feel well.",
+    "ru": "Макс плохо себя чувствует."
+   },
+   {
+    "en": "He has a pain in his head, and he coughs.",
+    "ru": "У него болит голова, и он кашляет."
+   },
+   {
+    "en": "\"I must see a doctor,\" he thinks.",
+    "ru": "«Мне надо к врачу», — думает он."
+   },
+   {
+    "en": "At the doctor's, Max sits and waits.",
+    "ru": "У врача Макс сидит и ждёт."
+   },
+   {
+    "en": "\"Come in,\" says the doctor. \"What is the problem?\"",
+    "ru": "«Входите, — говорит врач. — Что случилось?»"
+   },
+   {
+    "en": "\"I cough a lot, and I have a pain in my head,\" says Max.",
+    "ru": "«Я много кашляю, и у меня болит голова», — говорит Макс."
+   },
+   {
+    "en": "The doctor looks at him for a minute.",
+    "ru": "Врач минуту смотрит на него."
+   },
+   {
+    "en": "\"It is not bad,\" says the doctor. \"Take this medicine.\"",
+    "ru": "«Ничего страшного, — говорит врач. — Примите это лекарство.»"
+   },
+   {
+    "en": "Max takes the medicine, and the pain goes away.",
+    "ru": "Макс принимает лекарство, и боль проходит."
+   },
+   {
+    "en": "He does not cough now. \"Thank you, doctor,\" he says.",
+    "ru": "Теперь он не кашляет. «Спасибо, доктор», — говорит он."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Max"
+  ]
+ },
+ {
+  "id": "t300-018",
+  "title": "Зима",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "snow",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "winter",
+    "pos": "noun"
+   },
+   {
+    "lemma": "coat",
+    "pos": "noun"
+   },
+   {
+    "lemma": "warm",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "It is winter, and there is a lot of snow.",
+    "ru": "Зима, и лежит много снега."
+   },
+   {
+    "en": "Anna looks out. \"Look at all that snow!\" she says.",
+    "ru": "Анна смотрит в окно. «Посмотри, сколько снега!» — говорит она."
+   },
+   {
+    "en": "Ben comes in. He is not warm.",
+    "ru": "Входит Бен. Ему не тепло."
+   },
+   {
+    "en": "\"You need a warm coat,\" says Anna.",
+    "ru": "«Тебе нужно тёплое пальто», — говорит Анна."
+   },
+   {
+    "en": "\"I have no coat,\" says Ben. \"I lost it.\"",
+    "ru": "«У меня нет пальто, — говорит Бен. — Я его потерял.»"
+   },
+   {
+    "en": "Anna gives him her father's old coat.",
+    "ru": "Анна даёт ему старое пальто своего отца."
+   },
+   {
+    "en": "The coat is big, but it is warm.",
+    "ru": "Пальто большое, но тёплое."
+   },
+   {
+    "en": "Now Ben is warm. They go out and play in the snow.",
+    "ru": "Теперь Бену тепло. Они выходят и играют в снегу."
+   },
+   {
+    "en": "\"I love winter,\" says Anna.",
+    "ru": "«Я люблю зиму», — говорит Анна."
+   },
+   {
+    "en": "\"Me, too,\" says Ben. \"With a warm coat, it is great!\"",
+    "ru": "«Я тоже, — говорит Бен. — С тёплым пальто — это здорово!»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Anna",
+   "Ben"
+  ],
+  "allow": [
+   "артикль:1",
+   "артикль:9"
+  ]
+ },
+ {
+  "id": "t300-019",
+  "title": "Экзамен",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "exam",
+    "pos": "noun"
+   },
+   {
+    "lemma": "study",
+    "pos": "verb"
+   },
+   {
+    "lemma": "pass",
+    "pos": "verb"
+   },
+   {
+    "lemma": "worried",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate has an exam in the morning.",
+    "ru": "Завтра утром у Кейт экзамен."
+   },
+   {
+    "en": "She is worried.",
+    "ru": "Она волнуется."
+   },
+   {
+    "en": "\"I must study,\" she says.",
+    "ru": "«Мне надо заниматься», — говорит она."
+   },
+   {
+    "en": "She studies all night. She works and works.",
+    "ru": "Она занимается всю ночь. Она работает и работает."
+   },
+   {
+    "en": "In the morning, Kate does not feel well, but she is ready.",
+    "ru": "Утром Кейт неважно себя чувствует, но она готова."
+   },
+   {
+    "en": "At the exam, she looks at the first problem.",
+    "ru": "На экзамене она смотрит на первое задание."
+   },
+   {
+    "en": "She knows what to do! She works and works.",
+    "ru": "Она знает, что делать! Она работает и работает."
+   },
+   {
+    "en": "After the exam, Kate meets her friend.",
+    "ru": "После экзамена Кейт встречает подругу."
+   },
+   {
+    "en": "\"Do you think you will pass?\" asks her friend.",
+    "ru": "«Как думаешь, ты сдашь?» — спрашивает подруга."
+   },
+   {
+    "en": "\"I hope so,\" says Kate.",
+    "ru": "«Надеюсь», — говорит Кейт."
+   },
+   {
+    "en": "A day later, Kate hears the good news: she passed the exam!",
+    "ru": "Через день Кейт слышит хорошую новость: она сдала экзамен!"
+   },
+   {
+    "en": "Now she is happy, not worried.",
+    "ru": "Теперь она рада и не волнуется."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-020",
+  "title": "Звезда",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "star",
+    "pos": "noun"
+   },
+   {
+    "lemma": "sky",
+    "pos": "noun"
+   },
+   {
+    "lemma": "wish",
+    "pos": "noun"
+   },
+   {
+    "lemma": "dream",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "It is a nice night, and Ben looks at the sky.",
+    "ru": "Хорошая ночь, и Бен смотрит на небо."
+   },
+   {
+    "en": "There are a lot of stars in the sky.",
+    "ru": "На небе много звёзд."
+   },
+   {
+    "en": "Then he sees a star go down.",
+    "ru": "Вдруг он видит, как звезда летит вниз."
+   },
+   {
+    "en": "\"A star!\" he says. \"I can make a wish!\"",
+    "ru": "«Звезда! — говорит он. — Я могу загадать желание!»"
+   },
+   {
+    "en": "Ben thinks about his wish for a minute.",
+    "ru": "Бен минуту думает о своём желании."
+   },
+   {
+    "en": "\"I wish for a good job,\" he says.",
+    "ru": "«Я желаю хорошую работу», — говорит он."
+   },
+   {
+    "en": "\"No, that is not my dream,\" he thinks.",
+    "ru": "«Нет, это не моя мечта», — думает он."
+   },
+   {
+    "en": "His dream is to see the world.",
+    "ru": "Его мечта — увидеть мир."
+   },
+   {
+    "en": "\"I wish to see the world,\" he says to the star.",
+    "ru": "«Я хочу увидеть мир», — говорит он звезде."
+   },
+   {
+    "en": "The star goes away, and the sky is good again.",
+    "ru": "Звезда исчезает, и небо снова ясное."
+   },
+   {
+    "en": "Ben laughs. A dream is a good thing to have.",
+    "ru": "Бен смеётся. Мечта — это хорошо."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 1"
+  ],
+  "names": [
+   "Ben"
+  ],
+  "allow": [
+   "артикль:6",
+   "артикль:9"
+  ]
+ }
+]

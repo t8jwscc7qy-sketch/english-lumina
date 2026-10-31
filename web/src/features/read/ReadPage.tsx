@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useLearnStatus } from '@/features/learn/learn'
 import { useFreshText, useNextText, useRateText } from './read'
 import { wordAtChar } from './segments'
-import { canSpeak, speak, stopSpeaking } from './speech'
+import { canPlay, speak, stopSpeaking, type SpeakItem } from './speech'
 import { ConstructionPanel } from './ConstructionPanel'
 import { TextView } from './TextView'
 import { WordPanel } from './WordPanel'
@@ -35,11 +35,18 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
 
   if (!text) return null
 
+  const items: SpeakItem[] = text.sentences.map((s) => ({ text: s.en, audioUrl: s.audio?.url }))
+  const playable = canPlay(items)
+
+  function playOne(i: number) {
+    speak([items[i]], speed, { onSentence: () => setPlaying({ sentence: i, word: -1 }), onEnd: () => setPlaying(null) })
+  }
+
   function play(from = 0) {
     if (!text) return
     setTalking(true)
     speak(
-      text.sentences.map((s) => s.en),
+      items,
       speed,
       {
         onSentence: (i) => setPlaying({ sentence: i, word: -1 }),
@@ -76,7 +83,7 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {canSpeak() && (
+        {playable && (
           <>
             {talking ? (
               <Button variant="secondary" onClick={stop}>
@@ -105,11 +112,11 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
       </div>
 
       {revealed ? (
-        <TextView sentences={text.sentences} hints={text.hints} selected={picked} onPick={(key) => setPicked(key)} playing={playing} showAllTranslations={allRu} />
+        <TextView sentences={text.sentences} hints={text.hints} selected={picked} onPick={(key) => setPicked(key)} playing={playing} showAllTranslations={allRu} onPlay={playable ? playOne : undefined} />
       ) : (
         <section className="surface flex flex-col items-start gap-3 p-6">
           <p className="text-muted-foreground">
-            {canSpeak() ? 'Сначала послушай текст, потом открой его и проверь себя.' : 'В этом браузере нет синтеза речи: открой текст и читай.'}
+            {playable ? 'Сначала послушай текст, потом открой его и проверь себя.' : 'В этом браузере нет звука: открой текст и читай.'}
           </p>
           <Button onClick={() => setRevealed(true)}>Показать текст</Button>
         </section>
@@ -159,12 +166,24 @@ function Reader({ mode, onNext, loadingNext }: { mode: ReadMode; onNext: () => v
         <details className="text-xs text-muted-foreground">
           <summary className="cursor-pointer">Источники предложений</summary>
           <ul className="mt-1">
-            {text.sentences.map((s) => (
+            {text.sentences.every((s) => s.tatoebaId === undefined) && <li>Авторский текст проекта Verst (предложения написаны для курса).</li>}
+            {text.sentences.filter((s) => s.tatoebaId !== undefined && s.ruTatoebaId !== undefined).map((s) => (
               <li key={s.tatoebaId}>
                 <a href={`https://tatoeba.org/en/sentences/show/${s.tatoebaId}`} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">{`#${s.tatoebaId}`}</a>
                 {` ${s.author} · `}
                 <a href={`https://tatoeba.org/en/sentences/show/${s.ruTatoebaId}`} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">{`#${s.ruTatoebaId}`}</a>
                 {` ${s.ruAuthor}, Tatoeba, CC BY 2.0 FR`}
+                {s.audio && (
+                  <>
+                    {' · озвучка: '}
+                    {s.audio.attributionUrl ? (
+                      <a href={s.audio.attributionUrl} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">{s.audio.author}</a>
+                    ) : (
+                      s.audio.author
+                    )}
+                    {`, ${s.audio.license}`}
+                  </>
+                )}
               </li>
             ))}
           </ul>

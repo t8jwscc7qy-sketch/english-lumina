@@ -1,0 +1,517 @@
+[
+ {
+  "id": "t300-021",
+  "title": "Семейный ужин",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "dinner",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "family",
+    "pos": "noun"
+   },
+   {
+    "lemma": "cook",
+    "pos": "verb"
+   },
+   {
+    "lemma": "food",
+    "pos": "noun",
+    "mass": true
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate wanted to cook dinner for her family.",
+    "ru": "Кейт хотела приготовить ужин для своей семьи."
+   },
+   {
+    "en": "She had a lot of work that day, but she did not stop.",
+    "ru": "В тот день у неё было много работы, но она не останавливалась."
+   },
+   {
+    "en": "She went out and got some food.",
+    "ru": "Она вышла и купила продуктов."
+   },
+   {
+    "en": "At home, she started to cook.",
+    "ru": "Дома она начала готовить."
+   },
+   {
+    "en": "Her mother called. \"What are you doing?\" she asked.",
+    "ru": "Позвонила мама. «Что ты делаешь?» — спросила она."
+   },
+   {
+    "en": "\"I am making dinner for the family,\" said Kate. \"Come and eat with us!\"",
+    "ru": "«Я готовлю ужин для всей семьи, — сказала Кейт. — Приходи поесть с нами!»"
+   },
+   {
+    "en": "Her mother, father, and brother came.",
+    "ru": "Пришли мама, папа и брат."
+   },
+   {
+    "en": "The food was great. They all ate and talked.",
+    "ru": "Еда была отличная. Они все ели и разговаривали."
+   },
+   {
+    "en": "\"You are a great cook,\" said her father.",
+    "ru": "«Ты замечательная повариха», — сказал её отец."
+   },
+   {
+    "en": "Kate was happy. It was a good family dinner.",
+    "ru": "Кейт была счастлива. Это был хороший семейный ужин."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Kate"
+  ]
+ },
+ {
+  "id": "t300-022",
+  "title": "Собеседование",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "interview",
+    "pos": "noun"
+   },
+   {
+    "lemma": "nervous",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "question",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben had an interview for a new job.",
+    "ru": "У Бена было собеседование на новую работу."
+   },
+   {
+    "en": "He was very nervous.",
+    "ru": "Он очень волновался."
+   },
+   {
+    "en": "A woman said hello to him.",
+    "ru": "Женщина поздоровалась с ним."
+   },
+   {
+    "en": "\"Please come in,\" she said. \"Sit down.\"",
+    "ru": "«Входите, пожалуйста, — сказала она. — Садитесь.»"
+   },
+   {
+    "en": "Ben sat down. The woman asked a question.",
+    "ru": "Бен сел. Женщина задала вопрос."
+   },
+   {
+    "en": "\"Why do you want this job?\"",
+    "ru": "«Почему вы хотите эту работу?»"
+   },
+   {
+    "en": "Ben thought for a minute. It was a hard question.",
+    "ru": "Бен подумал минуту. Это был трудный вопрос."
+   },
+   {
+    "en": "\"I like to help people,\" he said. \"And I am ready to work.\"",
+    "ru": "«Я люблю помогать людям, — сказал он. — И я готов работать.»"
+   },
+   {
+    "en": "The woman had one more question, and Ben was ready.",
+    "ru": "У женщины был ещё один вопрос, и Бен был готов."
+   },
+   {
+    "en": "Ben was not nervous now.",
+    "ru": "Теперь Бен уже не волновался."
+   },
+   {
+    "en": "After the interview, the woman said, \"You can start now.\"",
+    "ru": "После собеседования женщина сказала: «Вы можете начать прямо сейчас.»"
+   },
+   {
+    "en": "Ben was so happy.",
+    "ru": "Бен был так счастлив."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t300-023",
+  "title": "В большом городе",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "city",
+    "pos": "noun"
+   },
+   {
+    "lemma": "map",
+    "pos": "noun"
+   },
+   {
+    "lemma": "hotel",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate and Max went to a big city.",
+    "ru": "Кейт и Макс поехали в большой город."
+   },
+   {
+    "en": "They wanted to find their hotel, but they did not know the way.",
+    "ru": "Они хотели найти свой отель, но не знали дороги."
+   },
+   {
+    "en": "Max had a map, but it was old.",
+    "ru": "У Макса была карта, но она была старая."
+   },
+   {
+    "en": "\"This map is not right,\" said Kate.",
+    "ru": "«Эта карта неправильная», — сказала Кейт."
+   },
+   {
+    "en": "They were lost in the city.",
+    "ru": "Они заблудились в городе."
+   },
+   {
+    "en": "They asked a man for help.",
+    "ru": "Они попросили мужчину о помощи."
+   },
+   {
+    "en": "\"I know the hotel,\" he said. \"Come with me.\"",
+    "ru": "«Я знаю этот отель, — сказал он. — Идёмте со мной.»"
+   },
+   {
+    "en": "The man showed them the way.",
+    "ru": "Мужчина показал им дорогу."
+   },
+   {
+    "en": "They went with him for a few minutes.",
+    "ru": "Они шли с ним несколько минут."
+   },
+   {
+    "en": "At last, they saw the hotel.",
+    "ru": "Наконец они увидели отель."
+   },
+   {
+    "en": "\"Thank you!\" said Max. \"We were lost, but now we are here.\"",
+    "ru": "«Спасибо! — сказал Макс. — Мы заблудились, но теперь мы здесь.»"
+   },
+   {
+    "en": "Kate put the map away and laughed. \"Next time, we will ask first.\"",
+    "ru": "Кейт убрала карту и засмеялась. «В следующий раз сначала спросим.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Kate",
+   "Max"
+  ]
+ },
+ {
+  "id": "t300-024",
+  "title": "В горах",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "mountain",
+    "pos": "noun"
+   },
+   {
+    "lemma": "tent",
+    "pos": "noun"
+   },
+   {
+    "lemma": "food",
+    "pos": "noun",
+    "mass": true
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben and his brother went to the mountains for a few days.",
+    "ru": "Бен и его брат поехали в горы на несколько дней."
+   },
+   {
+    "en": "They took a tent and some food.",
+    "ru": "Они взяли палатку и немного еды."
+   },
+   {
+    "en": "The mountain was big, and the way up was long.",
+    "ru": "Гора была большая, и подъём был долгим."
+   },
+   {
+    "en": "After a long time, they put up the tent.",
+    "ru": "Через долгое время они поставили палатку."
+   },
+   {
+    "en": "\"I am ready to eat,\" said Ben's brother.",
+    "ru": "«Я готов поесть», — сказал брат Бена."
+   },
+   {
+    "en": "They ate their food and sat by the tent.",
+    "ru": "Они поели и сели возле палатки."
+   },
+   {
+    "en": "They talked about their family and their life.",
+    "ru": "Они говорили о своей семье и о своей жизни."
+   },
+   {
+    "en": "They never wanted to go home.",
+    "ru": "Им совсем не хотелось домой."
+   },
+   {
+    "en": "It was a great place, and they were happy.",
+    "ru": "Это было замечательное место, и они были счастливы."
+   },
+   {
+    "en": "\"I love the mountains,\" said Ben.",
+    "ru": "«Я люблю горы», — сказал Бен."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t300-025",
+  "title": "Пекарня",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "bakery",
+    "pos": "noun"
+   },
+   {
+    "lemma": "bread",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "bake",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna worked in a bakery.",
+    "ru": "Анна работала в пекарне."
+   },
+   {
+    "en": "Every morning, she baked bread for people.",
+    "ru": "Каждое утро она пекла хлеб для людей."
+   },
+   {
+    "en": "One morning, a boy came into the bakery.",
+    "ru": "Однажды утром в пекарню зашёл мальчик."
+   },
+   {
+    "en": "\"I want some bread, please,\" he said.",
+    "ru": "«Я хочу хлеба, пожалуйста», — сказал он."
+   },
+   {
+    "en": "\"How much money do you have?\" asked Anna.",
+    "ru": "«Сколько у тебя денег?» — спросила Анна."
+   },
+   {
+    "en": "The boy looked at his hand. He had a little money.",
+    "ru": "Мальчик посмотрел на свою ладонь. У него было немного денег."
+   },
+   {
+    "en": "\"It is not much,\" he said.",
+    "ru": "«Это немного», — сказал он."
+   },
+   {
+    "en": "Anna looked at him. \"That is fine,\" she said, and gave him some bread.",
+    "ru": "Анна посмотрела на него. «Ничего страшного», — сказала она и дала ему хлеба."
+   },
+   {
+    "en": "The boy was happy. \"Thank you!\" he said.",
+    "ru": "Мальчик был счастлив. «Спасибо!» — сказал он."
+   },
+   {
+    "en": "After that day, he came to the bakery every day.",
+    "ru": "После того дня он приходил в пекарню каждый день."
+   },
+   {
+    "en": "Anna always gave him some bread. She loved to bake.",
+    "ru": "Анна всегда давала ему хлеба. Она любила печь."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Anna"
+  ]
+ },
+ {
+  "id": "t300-026",
+  "title": "Забытая сумка",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "station",
+    "pos": "noun"
+   },
+   {
+    "lemma": "bag",
+    "pos": "noun"
+   },
+   {
+    "lemma": "train",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom went to the station to take a train.",
+    "ru": "Том пошёл на вокзал, чтобы сесть на поезд."
+   },
+   {
+    "en": "He had a big bag.",
+    "ru": "У него была большая сумка."
+   },
+   {
+    "en": "He put the bag down and looked for the train.",
+    "ru": "Он поставил сумку и стал высматривать поезд."
+   },
+   {
+    "en": "The train came, and Tom went in.",
+    "ru": "Поезд пришёл, и Том зашёл в вагон."
+   },
+   {
+    "en": "Then he thought, \"Where is my bag?\"",
+    "ru": "Тут он подумал: «Где моя сумка?»"
+   },
+   {
+    "en": "He did not have it! He forgot the bag at the station.",
+    "ru": "Сумки не было! Он забыл её на вокзале."
+   },
+   {
+    "en": "Tom felt bad. He wanted to go back, but the train did not stop.",
+    "ru": "Тому было плохо. Он хотел вернуться, но поезд не останавливался."
+   },
+   {
+    "en": "At the next station, he left the train.",
+    "ru": "На следующей станции он вышел из поезда."
+   },
+   {
+    "en": "He took another train back.",
+    "ru": "Он сел на другой поезд, идущий обратно."
+   },
+   {
+    "en": "At the station, a woman was there with his bag.",
+    "ru": "На вокзале его ждала женщина с его сумкой."
+   },
+   {
+    "en": "\"I saw you leave it,\" she said. \"I kept it for you.\"",
+    "ru": "«Я видела, как вы её оставили, — сказала она. — Я сохранила её для вас.»"
+   },
+   {
+    "en": "\"Thank you!\" said Tom. \"You are great.\"",
+    "ru": "«Спасибо! — сказал Том. — Вы замечательная.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t300-027",
+  "title": "Стрижка",
+  "band": 300,
+  "targets": [
+   {
+    "lemma": "hair",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "cut",
+    "pos": "verb"
+   },
+   {
+    "lemma": "mirror",
+    "pos": "noun"
+   },
+   {
+    "lemma": "short",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "shop",
+    "pos": "noun"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom's hair was long, and it was time to cut it.",
+    "ru": "Волосы Тома были длинными, и пора было их постричь."
+   },
+   {
+    "en": "He went to a little shop.",
+    "ru": "Он пошёл в маленькую парикмахерскую."
+   },
+   {
+    "en": "A man in the shop said, \"Sit down.\"",
+    "ru": "Мужчина в парикмахерской сказал: «Садитесь.»"
+   },
+   {
+    "en": "Tom sat at a big mirror.",
+    "ru": "Том сел у большого зеркала."
+   },
+   {
+    "en": "\"How do you want it?\" asked the man.",
+    "ru": "«Как вы хотите?» — спросил мужчина."
+   },
+   {
+    "en": "\"Not too short,\" said Tom.",
+    "ru": "«Не слишком коротко», — сказал Том."
+   },
+   {
+    "en": "The man started to cut. He cut and cut.",
+    "ru": "Мужчина начал стричь. Он стриг и стриг."
+   },
+   {
+    "en": "Tom looked in the mirror. \"Wait!\" he said. \"That is too much!\"",
+    "ru": "Том посмотрел в зеркало. «Подождите! — сказал он. — Это слишком много!»"
+   },
+   {
+    "en": "The man stopped. Tom's hair was very short now.",
+    "ru": "Мужчина остановился. Волосы Тома теперь были очень короткими."
+   },
+   {
+    "en": "Tom laughed. \"It is fine,\" he said. \"I like it.\"",
+    "ru": "Том засмеялся. «Ничего, — сказал он. — Мне нравится.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Tom"
+  ]
+ }
+]

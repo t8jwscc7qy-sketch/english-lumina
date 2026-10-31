@@ -12,6 +12,8 @@ import (
 type Config struct {
 	HTTPAddr    string
 	DatabaseURL string
+	// AudioNonCommercial — отдавать озвучку Tatoeba под некоммерческими лицензиями (по умолчанию да: проект личный).
+	AudioNonCommercial bool
 }
 
 // Load подхватывает .env (если он есть; уже заданные переменные не перезаписываются)
@@ -23,6 +25,8 @@ func Load() (Config, error) {
 	cfg := Config{
 		HTTPAddr:    getenv("HTTP_ADDR", "127.0.0.1:8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
+		// AUDIO_NONCOMMERCIAL=false выключает озвучку с лицензиями NC/ND одной настройкой.
+		AudioNonCommercial: getenv("AUDIO_NONCOMMERCIAL", "true") != "false",
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, errors.New("не задана переменная DATABASE_URL (см. .env.example)")

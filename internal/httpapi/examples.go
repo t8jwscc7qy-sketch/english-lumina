@@ -52,6 +52,7 @@ func (s *authServer) ListWordExamples(w http.ResponseWriter, r *http.Request) {
 		}
 		out.Examples = append(out.Examples, ex)
 	}
+	attachExampleAudio(r.Context(), s.store, out.Examples)
 	writeJSON(w, http.StatusOK, out)
 }
 

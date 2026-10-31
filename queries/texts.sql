@@ -5,23 +5,41 @@ RETURNING id;
 
 -- name: TextGet :one
 SELECT id, kind, title, body, word_count, coverage_at_build, goal, created_at
-FROM texts WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id);
+FROM texts WHERE id = sqlc.arg(id) AND (user_id = sqlc.arg(user_id) OR user_id IS NULL); -- свои склеенные и общие авторские
 
 -- name: TextLastUnrated :one
--- Последний собранный и ещё не оценённый текст пользователя (не старше 12 часов): его отдаём повторно, пока он не оценён,
--- чтобы возврат на страницу и смена режима не теряли текст и не плодили новые.
+-- Последний показанный и ещё не оценённый текст пользователя (не старше 12 часов): его отдаём повторно, пока он не
+-- оценён, чтобы возврат на страницу и смена режима не теряли текст и не плодили новые.
 SELECT t.id, t.kind, t.title, t.body, t.word_count, t.coverage_at_build, t.goal, t.created_at
-FROM texts t
-WHERE t.user_id = sqlc.arg(user_id)
-  AND t.created_at > now() - interval '12 hours'
-  AND NOT EXISTS (SELECT 1 FROM text_reads r WHERE r.text_id = t.id AND r.user_id = t.user_id)
-ORDER BY t.id DESC
+FROM text_shown sh
+JOIN texts t ON t.id = sh.text_id
+WHERE sh.user_id = sqlc.arg(user_id)
+  AND sh.shown_at > now() - interval '12 hours'
+  AND NOT EXISTS (SELECT 1 FROM text_reads r WHERE r.text_id = sh.text_id AND r.user_id = sh.user_id)
+ORDER BY sh.shown_at DESC
 LIMIT 1;
+
+-- name: TextShownInsert :exec
+INSERT INTO text_shown (user_id, text_id, coverage)
+VALUES (sqlc.arg(user_id), sqlc.arg(text_id), sqlc.arg(coverage))
+ON CONFLICT (user_id, text_id) DO NOTHING;
+
+-- name: TextUpsertAuthored :one
+-- Авторский текст по slug: вставка или обновление (текст файла — источник истины).
+INSERT INTO texts (user_id, kind, slug, band, title, body, word_count, coverage_at_build, goal)
+VALUES (NULL, 'authored', sqlc.arg(slug), sqlc.arg(band), sqlc.arg(title), sqlc.arg(body), sqlc.arg(word_count), 0, 0.85)
+ON CONFLICT (slug) WHERE slug IS NOT NULL DO UPDATE SET band = EXCLUDED.band, title = EXCLUDED.title, body = EXCLUDED.body, word_count = EXCLUDED.word_count
+RETURNING id;
+
+-- name: TextReadIDs :many
+-- Номера текстов, которые пользователь уже оценил (прочитал).
+SELECT text_id FROM text_reads WHERE user_id = $1;
 
 -- name: TextRateInsert :execrows
 -- 1 строка — оценка записана, 0 — этот текст уже оценён (повтор запроса).
 INSERT INTO text_reads (user_id, text_id, mode, understood, coverage_at_read)
-VALUES (sqlc.arg(user_id), sqlc.arg(text_id), sqlc.arg(mode), sqlc.arg(understood), sqlc.arg(coverage_at_read))
+VALUES (sqlc.arg(user_id), sqlc.arg(text_id), sqlc.arg(mode), sqlc.arg(understood),
+        COALESCE((SELECT sh.coverage FROM text_shown sh WHERE sh.user_id = sqlc.arg(user_id) AND sh.text_id = sqlc.arg(text_id)), sqlc.arg(coverage_at_read)))
 ON CONFLICT DO NOTHING;
 
 -- name: TextRecentSentenceIDs :many

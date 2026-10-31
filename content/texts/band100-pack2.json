@@ -1,0 +1,363 @@
+[
+ {
+  "id": "t100-021",
+  "title": "Шляпа",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "hat",
+    "pos": "noun"
+   },
+   {
+    "lemma": "shop",
+    "pos": "noun"
+   },
+   {
+    "lemma": "big",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "small",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna wants a hat.",
+    "ru": "Анна хочет шляпу."
+   },
+   {
+    "en": "She goes to a shop.",
+    "ru": "Она идёт в магазин."
+   },
+   {
+    "en": "In the shop, she sees a hat.",
+    "ru": "В магазине она видит шляпу."
+   },
+   {
+    "en": "\"I like this hat,\" she says.",
+    "ru": "«Мне нравится эта шляпа», — говорит она."
+   },
+   {
+    "en": "She takes the hat. But the hat is big, so big.",
+    "ru": "Она берёт шляпу. Но шляпа большая, очень большая."
+   },
+   {
+    "en": "\"I want a small hat,\" says Anna.",
+    "ru": "«Я хочу маленькую шляпу», — говорит Анна."
+   },
+   {
+    "en": "A man gives Anna a small hat.",
+    "ru": "Мужчина даёт Анне маленькую шляпу."
+   },
+   {
+    "en": "\"This is good!\" says Anna.",
+    "ru": "«Это хорошо!» — говорит Анна."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Anna"
+  ]
+ },
+ {
+  "id": "t100-022",
+  "title": "Мышь и кошка",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "mouse",
+    "pos": "noun"
+   },
+   {
+    "lemma": "cat",
+    "pos": "noun"
+   },
+   {
+    "lemma": "hole",
+    "pos": "noun"
+   },
+   {
+    "lemma": "run",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "A little mouse is here.",
+    "ru": "Здесь маленькая мышь."
+   },
+   {
+    "en": "A cat sees the mouse.",
+    "ru": "Кошка видит мышь."
+   },
+   {
+    "en": "The mouse runs.",
+    "ru": "Мышь бежит."
+   },
+   {
+    "en": "The cat runs and runs.",
+    "ru": "Кошка бежит и бежит."
+   },
+   {
+    "en": "The mouse runs to a hole.",
+    "ru": "Мышь бежит к норке."
+   },
+   {
+    "en": "The mouse goes in the hole.",
+    "ru": "Мышь прячется в норку."
+   },
+   {
+    "en": "The cat looks at the hole.",
+    "ru": "Кошка смотрит на норку."
+   },
+   {
+    "en": "\"Where is the mouse?\" says the cat. \"I cannot see it.\"",
+    "ru": "«Где мышь? — говорит кошка. — Я её не вижу.»"
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ]
+ },
+ {
+  "id": "t100-023",
+  "title": "Окно",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "window",
+    "pos": "noun"
+   },
+   {
+    "lemma": "boy",
+    "pos": "noun"
+   },
+   {
+    "lemma": "open",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Anna sees a window.",
+    "ru": "Анна видит окно."
+   },
+   {
+    "en": "The window is not open.",
+    "ru": "Окно не открыто."
+   },
+   {
+    "en": "A boy is at the window.",
+    "ru": "У окна мальчик."
+   },
+   {
+    "en": "\"Hey, boy! Can you open the window?\" says Anna.",
+    "ru": "«Эй, мальчик! Ты можешь открыть окно?» — говорит Анна."
+   },
+   {
+    "en": "The boy opens the window.",
+    "ru": "Мальчик открывает окно."
+   },
+   {
+    "en": "\"Thank you,\" says Anna.",
+    "ru": "«Спасибо», — говорит Анна."
+   },
+   {
+    "en": "\"Now I can see you!\" says the boy.",
+    "ru": "«Теперь я тебя вижу!» — говорит мальчик."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Anna"
+  ]
+ },
+ {
+  "id": "t100-024",
+  "title": "Суп",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "soup",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "hot",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "mother",
+    "pos": "noun"
+   },
+   {
+    "lemma": "eat",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Ben's mother makes soup.",
+    "ru": "Мама Бена варит суп."
+   },
+   {
+    "en": "The soup is hot.",
+    "ru": "Суп горячий."
+   },
+   {
+    "en": "\"Be good, Ben. Do not eat it now!\" says Mother.",
+    "ru": "«Будь умницей, Бен. Не ешь пока!» — говорит мама."
+   },
+   {
+    "en": "Ben looks at the soup. He wants to eat.",
+    "ru": "Бен смотрит на суп. Ему хочется есть."
+   },
+   {
+    "en": "Ben takes some soup. \"It is hot!\" he says.",
+    "ru": "Бен берёт немного супа. «Он горячий!» — говорит он."
+   },
+   {
+    "en": "Time goes, and the soup is not hot now.",
+    "ru": "Время идёт, и суп уже не горячий."
+   },
+   {
+    "en": "Now Ben can eat. His mother looks at him. The soup is good.",
+    "ru": "Теперь Бен может есть. Мама смотрит на него. Суп хорош."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Ben"
+  ]
+ },
+ {
+  "id": "t100-025",
+  "title": "Часы",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "clock",
+    "pos": "noun"
+   },
+   {
+    "lemma": "late",
+    "pos": "adjective"
+   },
+   {
+    "lemma": "door",
+    "pos": "noun"
+   },
+   {
+    "lemma": "run",
+    "pos": "verb"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Tom looks at the clock.",
+    "ru": "Том смотрит на часы."
+   },
+   {
+    "en": "\"What time is it?\" he says.",
+    "ru": "«Сколько времени?» — говорит он."
+   },
+   {
+    "en": "The clock says it is late.",
+    "ru": "Часы говорят, что уже поздно."
+   },
+   {
+    "en": "\"I am late!\" says Tom.",
+    "ru": "«Я опаздываю!» — говорит Том."
+   },
+   {
+    "en": "Tom runs and runs.",
+    "ru": "Том бежит и бежит."
+   },
+   {
+    "en": "Tom comes to the door. A man is at the door.",
+    "ru": "Том подбегает к двери. У двери стоит мужчина."
+   },
+   {
+    "en": "\"You are not late,\" says the man. \"The clock is not right.\"",
+    "ru": "«Вы не опаздываете, — говорит мужчина. — Часы не правильные.»"
+   },
+   {
+    "en": "\"Good,\" says Tom.",
+    "ru": "«Хорошо», — говорит Том."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Tom"
+  ]
+ },
+ {
+  "id": "t100-026",
+  "title": "Чай",
+  "band": 100,
+  "targets": [
+   {
+    "lemma": "tea",
+    "pos": "noun",
+    "mass": true
+   },
+   {
+    "lemma": "cup",
+    "pos": "noun"
+   },
+   {
+    "lemma": "drink",
+    "pos": "verb"
+   },
+   {
+    "lemma": "hot",
+    "pos": "adjective"
+   }
+  ],
+  "sentences": [
+   {
+    "en": "Kate wants to drink some tea.",
+    "ru": "Кейт хочет выпить чаю."
+   },
+   {
+    "en": "She takes a cup.",
+    "ru": "Она берёт чашку."
+   },
+   {
+    "en": "She gets tea in the cup.",
+    "ru": "Она наливает чай в чашку."
+   },
+   {
+    "en": "The tea is hot. \"Hot, hot, hot!\" says Kate.",
+    "ru": "Чай горячий. «Горячо, горячо, горячо!» — говорит Кейт."
+   },
+   {
+    "en": "She looks at the tea. Now the tea is good.",
+    "ru": "Она смотрит на чай. Теперь чай в самый раз."
+   },
+   {
+    "en": "\"I like tea,\" says Kate.",
+    "ru": "«Я люблю чай», — говорит Кейт."
+   },
+   {
+    "en": "She drinks the tea.",
+    "ru": "Она пьёт чай."
+   }
+  ],
+  "sources": [
+   "автор: Claude, пакет авторских текстов 2"
+  ],
+  "names": [
+   "Kate"
+  ]
+ }
+]

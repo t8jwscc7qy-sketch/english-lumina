@@ -340,6 +340,9 @@ func (s *authServer) GetLearnBlock(w http.ResponseWriter, r *http.Request) {
 		}
 		empty.Words = append(empty.Words, word)
 	}
+	for i := range empty.Words {
+		attachExampleAudio(ctx, s.store, empty.Words[i].Examples)
+	}
 	writeJSON(w, http.StatusOK, empty)
 }
 
